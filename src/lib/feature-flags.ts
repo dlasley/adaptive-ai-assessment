@@ -15,6 +15,11 @@ export const FEATURES = {
 
   // Progress Tracking
   PROGRESS_TRACKING: process.env.NEXT_PUBLIC_ENABLE_PROGRESS_TRACKING === 'true',
+
+  // Writing Evaluation Mode
+  // When false: Use fuzzy logic first, then Claude API only when confidence is low
+  // When true: Always use Claude API for maximum accuracy (higher cost)
+  API_ONLY_EVALUATION: process.env.NEXT_PUBLIC_API_ONLY_EVALUATION === 'true',
 } as const;
 
 // Helper function to check if any new feature is enabled

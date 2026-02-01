@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { units } from '@/lib/units';
 import { FEATURES } from '@/lib/feature-flags';
 import { getOrCreateStudyCode, getStoredStudyCode } from '@/lib/study-codes';
+import { StudyCodeDisplay } from '@/components/StudyCodeDisplay';
 
 export default function Home() {
   const router = useRouter();
@@ -12,7 +13,6 @@ export default function Home() {
   const [numQuestions, setNumQuestions] = useState<number>(10);
   const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
   const [studyCode, setStudyCode] = useState<string | null>(null);
-  const [showCopied, setShowCopied] = useState(false);
   const [isLoadingCode, setIsLoadingCode] = useState(false);
 
   // Load or create study code on mount
@@ -34,13 +34,6 @@ export default function Home() {
     );
   };
 
-  const handleCopyCode = () => {
-    if (studyCode) {
-      navigator.clipboard.writeText(studyCode);
-      setShowCopied(true);
-      setTimeout(() => setShowCopied(false), 2000);
-    }
-  };
 
   const selectedUnitData = units.find(u => u.id === selectedUnit);
 
@@ -55,52 +48,25 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Study Code Card */}
-      {FEATURES.STUDY_CODES && (
-        <div className="max-w-3xl mx-auto bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border-2 border-indigo-200 dark:border-indigo-800">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                🎓 Your Study Code
-              </h3>
-              {isLoadingCode ? (
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Generating your code...
-                </p>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 mb-3">
-                    <code className="text-2xl font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-900 px-4 py-2 rounded-lg">
-                      {studyCode}
-                    </code>
-                    <button
-                      onClick={handleCopyCode}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-                    >
-                      {showCopied ? '✓ Copied!' : '📋 Copy'}
-                    </button>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-                    This anonymous code tracks your progress across devices. Save it to:
-                  </p>
-                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-4">
-                    <li>• View your quiz history and progress</li>
-                    <li>• Get personalized study recommendations</li>
-                    <li>• Access from any device</li>
-                    <li>• Share progress with others (optional)</li>
-                  </ul>
-                </>
-              )}
-            </div>
-            <div className="ml-4">
-              <button
-                onClick={() => router.push('/progress')}
-                className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
-              >
-                View Progress →
-              </button>
-            </div>
+      {/* Study Code Card with QR */}
+      {FEATURES.STUDY_CODES && studyCode && !isLoadingCode && (
+        <div className="max-w-3xl mx-auto">
+          <StudyCodeDisplay studyCode={studyCode} size="medium" />
+          <div className="text-center mt-4">
+            <button
+              onClick={() => router.push('/progress')}
+              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+            >
+              View Progress →
+            </button>
           </div>
+        </div>
+      )}
+      {FEATURES.STUDY_CODES && isLoadingCode && (
+        <div className="max-w-3xl mx-auto bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border-2 border-indigo-200 dark:border-indigo-800">
+          <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
+            Generating your study code...
+          </p>
         </div>
       )}
 
