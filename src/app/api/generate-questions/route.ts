@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadAllQuestions, selectQuestions } from '@/lib/question-loader';
+import { getRandomWritingQuestions } from '@/lib/writing-questions';
+import { Question } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { unitId, topic, numQuestions, difficulty } = body;
+    const { unitId, topic, numQuestions, difficulty, includeWriting = true } = body;
 
     // Validate inputs
     if (!numQuestions) {
@@ -15,7 +17,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Load all questions from JSON
-    const allQuestions = loadAllQuestions();
+    let allQuestions = loadAllQuestions();
+
+    // Optionally include writing questions from database
+    if (includeWriting) {
+      try {
+        const writingQuestions = await getRandomWritingQuestions(
+          Math.ceil(parseInt(numQuestions) * 0.3), // 30% writing questions
+          difficulty as 'beginner' | 'intermediate' | 'advanced' | undefined
+        );
+
+        // Convert writing questions to Question format
+        const convertedWritingQuestions: Question[] = writingQuestions.map(wq => ({
+          id: wq.id,
+          question: wq.question_en,
+          type: 'writing' as const,
+          correctAnswer: wq.correct_answer_fr || '',
+          explanation: wq.explanation,
+          unitId: wq.unit_id || 'all',
+          topic: wq.topic,
+          difficulty: wq.difficulty,
+          writingType: wq.question_type,
+          acceptableVariations: wq.acceptable_variations,
+          hints: wq.hints,
+          requiresCompleteSentence: wq.requires_complete_sentence
+        }));
+
+        // Merge writing questions with standard questions
+        allQuestions = [...allQuestions, ...convertedWritingQuestions];
+      } catch (error) {
+        console.warn('Could not load writing questions:', error);
+        // Continue without writing questions
+      }
+    }
 
     if (allQuestions.length === 0) {
       return NextResponse.json(

@@ -7,6 +7,8 @@ import { units } from '@/lib/units';
 import { FEATURES } from '@/lib/feature-flags';
 import { getStoredStudyCode } from '@/lib/study-codes';
 import { saveQuizResults, saveQuizResultsLocally } from '@/lib/progress-tracking';
+import WritingQuestionComponent from '@/components/WritingQuestion';
+import type { EvaluationResult } from '@/app/api/evaluate-writing/route';
 
 interface TopicRecommendation {
   topic: string;
@@ -30,6 +32,7 @@ export default function QuizPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
+  const [evaluationResults, setEvaluationResults] = useState<Record<string, EvaluationResult>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
@@ -73,11 +76,26 @@ export default function QuizPage() {
     setShowExplanation(false);
   };
 
+  // Handler for writing question evaluation
+  const handleWritingSubmit = (answer: string, evaluation: EvaluationResult) => {
+    if (!currentQuestion) return;
+    setUserAnswers({ ...userAnswers, [currentQuestion.id]: answer });
+    setEvaluationResults({ ...evaluationResults, [currentQuestion.id]: evaluation });
+    setShowExplanation(true);
+  };
+
   const fetchStudyGuide = async () => {
     setLoadingStudyGuide(true);
     try {
       const incorrectQuestions = questions
-        .filter((q) => userAnswers[q.id] !== q.correctAnswer)
+        .filter((q) => {
+          // For writing questions, check evaluation result
+          if (q.type === 'writing' && evaluationResults[q.id]) {
+            return !evaluationResults[q.id].isCorrect;
+          }
+          // For other questions, check direct answer match
+          return userAnswers[q.id] !== q.correctAnswer;
+        })
         .map((q) => ({ topic: q.topic, unitId: q.unitId }));
 
       if (incorrectQuestions.length === 0) {
@@ -154,8 +172,16 @@ export default function QuizPage() {
   const calculateScore = () => {
     let correct = 0;
     questions.forEach((q) => {
-      if (userAnswers[q.id] === q.correctAnswer) {
-        correct++;
+      // For writing questions, check evaluation result
+      if (q.type === 'writing' && evaluationResults[q.id]) {
+        if (evaluationResults[q.id].isCorrect) {
+          correct++;
+        }
+      } else {
+        // For other questions, check direct answer match
+        if (userAnswers[q.id] === q.correctAnswer) {
+          correct++;
+        }
       }
     });
     return {
@@ -217,7 +243,12 @@ export default function QuizPage() {
           <div className="space-y-4 mb-8">
             {questions.map((q, idx) => {
               const userAnswer = userAnswers[q.id];
-              const isCorrect = userAnswer === q.correctAnswer;
+              // For writing questions, use evaluation result; for others, direct comparison
+              const isCorrect = q.type === 'writing' && evaluationResults[q.id]
+                ? evaluationResults[q.id].isCorrect
+                : userAnswer === q.correctAnswer;
+              const evaluation = evaluationResults[q.id];
+
               return (
                 <div
                   key={q.id}
@@ -231,17 +262,38 @@ export default function QuizPage() {
                     <h3 className="font-semibold text-gray-900 dark:text-white">
                       {idx + 1}. {q.question}
                     </h3>
-                    <span className="text-2xl">{isCorrect ? '✅' : '❌'}</span>
+                    <div className="flex items-center gap-2">
+                      {q.type === 'writing' && evaluation && (
+                        <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                          {evaluation.score}%
+                        </span>
+                      )}
+                      <span className="text-2xl">{isCorrect ? '✅' : '❌'}</span>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
                     Your answer: <span className="font-semibold">{userAnswer || 'Not answered'}</span>
                   </p>
-                  {!isCorrect && (
+                  {!isCorrect && q.type !== 'writing' && (
                     <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
                       Correct answer: <span className="font-semibold text-green-700 dark:text-green-400">{q.correctAnswer}</span>
                     </p>
                   )}
-                  {q.explanation && (
+                  {q.type === 'writing' && evaluation && (
+                    <div className="mt-2 space-y-2">
+                      {evaluation.correctedAnswer && (
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Suggested answer: <span className="font-semibold text-green-700 dark:text-green-400">{evaluation.correctedAnswer}</span>
+                        </p>
+                      )}
+                      {evaluation.feedback && (
+                        <p className="text-sm text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+                          💡 {evaluation.feedback}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {q.explanation && q.type !== 'writing' && (
                     <p className="text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 p-3 rounded mt-2">
                       💡 {q.explanation}
                     </p>
@@ -388,114 +440,151 @@ export default function QuizPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-full text-sm font-semibold">
-              {currentQuestion.type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-            </span>
-          </div>
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            {currentQuestion.question}
-          </h3>
-        </div>
+      {/* Render Writing Question Component for writing type */}
+      {currentQuestion.type === 'writing' ? (
+        <div className="space-y-6">
+          <WritingQuestionComponent
+            question={{
+              id: currentQuestion.id,
+              question_en: currentQuestion.question,
+              correct_answer_fr: currentQuestion.correctAnswer,
+              acceptable_variations: currentQuestion.acceptableVariations || [],
+              topic: currentQuestion.topic,
+              difficulty: currentQuestion.difficulty,
+              question_type: currentQuestion.writingType || 'translation',
+              explanation: currentQuestion.explanation || '',
+              hints: currentQuestion.hints || [],
+              unit_id: currentQuestion.unitId,
+              requires_complete_sentence: currentQuestion.requiresCompleteSentence || false,
+              created_at: new Date().toISOString()
+            }}
+            onSubmit={handleWritingSubmit}
+            showHints={true}
+          />
 
-        <div className="space-y-3 mb-8">
-          {currentQuestion.type === 'fill-in-blank' ? (
-            <div>
-              <input
-                type="text"
-                value={userAnswers[currentQuestion.id] || ''}
-                onChange={(e) => handleAnswer(e.target.value)}
-                placeholder="Type your answer here..."
-                className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-indigo-500 focus:outline-none dark:bg-gray-700 dark:text-white"
-              />
+          {/* Navigation for writing questions */}
+          {showExplanation && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <button
+                onClick={handleNext}
+                className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
+              >
+                {currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question →'}
+              </button>
             </div>
-          ) : (
-            currentQuestion.options?.map((option, idx) => {
-              const isSelected = userAnswers[currentQuestion.id] === option;
-              const isCorrect = option === currentQuestion.correctAnswer;
-              const showCorrectness = showExplanation;
-
-              return (
-                <button
-                  key={idx}
-                  onClick={() => handleAnswer(option)}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                    showCorrectness
-                      ? isCorrect
-                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                        : isSelected
-                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                        : 'border-gray-200 dark:border-gray-700'
-                      : isSelected
-                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-indigo-400'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900 dark:text-white">{option}</span>
-                    {showCorrectness && isCorrect && <span className="text-2xl">✅</span>}
-                    {showCorrectness && !isCorrect && isSelected && <span className="text-2xl">❌</span>}
-                  </div>
-                </button>
-              );
-            })
           )}
         </div>
-
-        {showExplanation && (
-          <div className="mb-6 space-y-4">
-            <div className={`p-4 rounded-lg border-2 ${
-              userAnswers[currentQuestion.id] === currentQuestion.correctAnswer
-                ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                : 'border-red-500 bg-red-50 dark:bg-red-900/20'
-            }`}>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                {userAnswers[currentQuestion.id] === currentQuestion.correctAnswer ? (
-                  <span className="text-green-700 dark:text-green-400">✅ Correct!</span>
-                ) : (
-                  <span className="text-red-700 dark:text-red-400">❌ Incorrect</span>
-                )}
-              </p>
-              {userAnswers[currentQuestion.id] !== currentQuestion.correctAnswer && (
-                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                  Correct answer: <span className="font-semibold text-green-700 dark:text-green-400">{currentQuestion.correctAnswer}</span>
-                </p>
-              )}
+      ) : (
+        // Standard question rendering for non-writing questions
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-full text-sm font-semibold">
+                {currentQuestion.type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+              </span>
             </div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+              {currentQuestion.question}
+            </h3>
+          </div>
 
-            {currentQuestion.explanation && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <p className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-1">
-                  Explanation:
-                </p>
-                <p className="text-blue-800 dark:text-blue-200">{currentQuestion.explanation}</p>
+          <div className="space-y-3 mb-8">
+            {currentQuestion.type === 'fill-in-blank' ? (
+              <div>
+                <input
+                  type="text"
+                  value={userAnswers[currentQuestion.id] || ''}
+                  onChange={(e) => handleAnswer(e.target.value)}
+                  placeholder="Type your answer here..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-indigo-500 focus:outline-none dark:bg-gray-700 dark:text-white"
+                />
               </div>
+            ) : (
+              currentQuestion.options?.map((option, idx) => {
+                const isSelected = userAnswers[currentQuestion.id] === option;
+                const isCorrect = option === currentQuestion.correctAnswer;
+                const showCorrectness = showExplanation;
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleAnswer(option)}
+                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                      showCorrectness
+                        ? isCorrect
+                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                          : isSelected
+                          ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                          : 'border-gray-200 dark:border-gray-700'
+                        : isSelected
+                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-indigo-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-900 dark:text-white">{option}</span>
+                      {showCorrectness && isCorrect && <span className="text-2xl">✅</span>}
+                      {showCorrectness && !isCorrect && isSelected && <span className="text-2xl">❌</span>}
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
-        )}
-
-        <div>
-          {!showExplanation && hasAnswered && (
-            <button
-              onClick={() => setShowExplanation(true)}
-              className="w-full py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
-            >
-              Submit Answer
-            </button>
-          )}
 
           {showExplanation && (
-            <button
-              onClick={handleNext}
-              className="w-full py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
-            >
-              {currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question →'}
-            </button>
+            <div className="mb-6 space-y-4">
+              <div className={`p-4 rounded-lg border-2 ${
+                userAnswers[currentQuestion.id] === currentQuestion.correctAnswer
+                  ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                  : 'border-red-500 bg-red-50 dark:bg-red-900/20'
+              }`}>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                  {userAnswers[currentQuestion.id] === currentQuestion.correctAnswer ? (
+                    <span className="text-green-700 dark:text-green-400">✅ Correct!</span>
+                  ) : (
+                    <span className="text-red-700 dark:text-red-400">❌ Incorrect</span>
+                  )}
+                </p>
+                {userAnswers[currentQuestion.id] !== currentQuestion.correctAnswer && (
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                    Correct answer: <span className="font-semibold text-green-700 dark:text-green-400">{currentQuestion.correctAnswer}</span>
+                  </p>
+                )}
+              </div>
+
+              {currentQuestion.explanation && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-1">
+                    Explanation:
+                  </p>
+                  <p className="text-blue-800 dark:text-blue-200">{currentQuestion.explanation}</p>
+                </div>
+              )}
+            </div>
           )}
+
+          <div>
+            {!showExplanation && hasAnswered && (
+              <button
+                onClick={() => setShowExplanation(true)}
+                className="w-full py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+              >
+                Submit Answer
+              </button>
+            )}
+
+            {showExplanation && (
+              <button
+                onClick={handleNext}
+                className="w-full py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+              >
+                {currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question →'}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Progress bar */}
       <div className="mt-6 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
