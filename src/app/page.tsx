@@ -1,19 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { units } from '@/lib/units';
+import { FEATURES } from '@/lib/feature-flags';
+import { getOrCreateStudyCode, getStoredStudyCode } from '@/lib/study-codes';
 
 export default function Home() {
   const router = useRouter();
   const [selectedUnit, setSelectedUnit] = useState<string>('all');
   const [numQuestions, setNumQuestions] = useState<number>(10);
   const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [studyCode, setStudyCode] = useState<string | null>(null);
+  const [showCopied, setShowCopied] = useState(false);
+  const [isLoadingCode, setIsLoadingCode] = useState(false);
+
+  // Load or create study code on mount
+  useEffect(() => {
+    if (FEATURES.STUDY_CODES) {
+      const loadCode = async () => {
+        setIsLoadingCode(true);
+        const code = await getOrCreateStudyCode();
+        setStudyCode(code);
+        setIsLoadingCode(false);
+      };
+      loadCode();
+    }
+  }, []);
 
   const handleStartPractice = () => {
     router.push(
       `/quiz/${selectedUnit}?num=${numQuestions}&difficulty=${difficulty}`
     );
+  };
+
+  const handleCopyCode = () => {
+    if (studyCode) {
+      navigator.clipboard.writeText(studyCode);
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 2000);
+    }
   };
 
   const selectedUnitData = units.find(u => u.id === selectedUnit);
@@ -28,6 +54,55 @@ export default function Home() {
           AI-generated questions from all your course materials
         </p>
       </div>
+
+      {/* Study Code Card */}
+      {FEATURES.STUDY_CODES && (
+        <div className="max-w-3xl mx-auto bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border-2 border-indigo-200 dark:border-indigo-800">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                🎓 Your Study Code
+              </h3>
+              {isLoadingCode ? (
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Generating your code...
+                </p>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    <code className="text-2xl font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-900 px-4 py-2 rounded-lg">
+                      {studyCode}
+                    </code>
+                    <button
+                      onClick={handleCopyCode}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                    >
+                      {showCopied ? '✓ Copied!' : '📋 Copy'}
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                    This anonymous code tracks your progress across devices. Save it to:
+                  </p>
+                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-4">
+                    <li>• View your quiz history and progress</li>
+                    <li>• Get personalized study recommendations</li>
+                    <li>• Access from any device</li>
+                    <li>• Share progress with others (optional)</li>
+                  </ul>
+                </>
+              )}
+            </div>
+            <div className="ml-4">
+              <button
+                onClick={() => router.push('/progress')}
+                className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+              >
+                View Progress →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Practice Configuration Card */}
       <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8 space-y-6">
@@ -111,8 +186,7 @@ export default function Home() {
           🚀 Start Practice Session
         </button>
       </div>
-
-      {/* Info Cards */}
+{/*
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
           <div className="text-4xl mb-3">📚</div>
@@ -137,7 +211,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Browse by Unit */}
       <div className="max-w-5xl mx-auto">
         <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">
           Or Browse by Unit
@@ -165,7 +238,7 @@ export default function Home() {
           ))}
         </div>
       </div>
-
+*/}
       {/* How it Works */}
       <div className="max-w-4xl mx-auto bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-lg p-8">
         <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">

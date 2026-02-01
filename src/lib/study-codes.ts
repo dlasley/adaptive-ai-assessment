@@ -8,17 +8,57 @@ import { supabase, isSupabaseAvailable, StudyCode, QuizHistory, ConceptMastery }
 // Local storage key for study code
 const STUDY_CODE_KEY = 'french_study_code';
 
+// Curated adjectives - family-friendly, easy to spell
+const ADJECTIVES = [
+  'happy', 'brave', 'clever', 'swift', 'gentle', 'bright', 'calm', 'kind',
+  'wise', 'bold', 'cool', 'warm', 'quick', 'strong', 'smart', 'proud',
+  'loyal', 'noble', 'wild', 'free', 'sweet', 'pure', 'true', 'fair',
+  'grand', 'great', 'fine', 'nice', 'good', 'dear', 'royal', 'magic',
+  'lucky', 'jolly', 'merry', 'sunny', 'starry', 'golden', 'silver', 'peaceful',
+  'playful', 'cheerful', 'hopeful', 'fearless', 'graceful', 'powerful', 'mighty', 'tiny',
+  'giant', 'cosmic', 'arctic', 'tropical', 'mystic', 'epic', 'super', 'ultra',
+  'mega', 'hyper', 'neo', 'retro', 'vintage', 'modern', 'ancient', 'future',
+  'speedy', 'zippy', 'bouncy', 'fluffy', 'fuzzy', 'shiny', 'sparkly', 'glowing',
+  'radiant', 'vibrant', 'vivid', 'dazzling', 'blazing', 'soaring', 'flying', 'sailing',
+  'dancing', 'singing', 'smiling', 'laughing', 'dreaming', 'wondering', 'exploring', 'seeking',
+  'daring', 'caring', 'sharing', 'loving', 'healing', 'helping', 'guiding', 'leading',
+  'rising', 'shining', 'winning', 'roaring', 'howling', 'charging', 'racing', 'rushing',
+  'stellar', 'lunar', 'solar', 'astral', 'crystal', 'diamond', 'emerald', 'sapphire',
+  'ruby', 'amber', 'jade', 'pearl', 'coral', 'ocean', 'forest', 'mountain',
+  'river', 'thunder', 'lightning', 'storm', 'cloud', 'rainbow', 'aurora', 'crimson',
+  'azure', 'violet', 'scarlet', 'indigo', 'copper', 'bronze', 'keen', 'eager',
+  'active', 'lively', 'peppy', 'perky', 'snappy', 'spunky', 'zippy', 'frisky'
+];
+
+// Curated animals - common, easy to spell
+const ANIMALS = [
+  'elephant', 'panda', 'dolphin', 'tiger', 'eagle', 'lion', 'bear', 'wolf',
+  'fox', 'hawk', 'owl', 'deer', 'rabbit', 'otter', 'seal', 'whale',
+  'shark', 'dragon', 'phoenix', 'griffin', 'unicorn', 'pegasus', 'sphinx', 'kraken',
+  'leopard', 'jaguar', 'cheetah', 'panther', 'cougar', 'lynx', 'bobcat', 'ocelot',
+  'monkey', 'gorilla', 'chimp', 'lemur', 'koala', 'kangaroo', 'wombat', 'platypus',
+  'wallaby', 'badger', 'ferret', 'meerkat', 'raccoon', 'skunk', 'porcupine', 'hedgehog',
+  'beaver', 'squirrel', 'chipmunk', 'hamster', 'gerbil', 'mouse', 'bat', 'raven',
+  'crow', 'robin', 'sparrow', 'finch', 'cardinal', 'bluejay', 'hummingbird', 'pelican',
+  'flamingo', 'stork', 'heron', 'crane', 'swan', 'goose', 'duck', 'penguin',
+  'puffin', 'albatross', 'seagull', 'falcon', 'osprey', 'vulture', 'condor', 'parrot',
+  'macaw', 'cockatoo', 'parakeet', 'canary', 'python', 'cobra', 'gecko', 'iguana',
+  'turtle', 'tortoise', 'frog', 'toad', 'salamander', 'crab', 'lobster', 'shrimp',
+  'octopus', 'squid', 'jellyfish', 'starfish', 'seahorse', 'clownfish', 'salmon', 'trout',
+  'bass', 'catfish', 'goldfish', 'butterfly', 'dragonfly', 'firefly', 'ladybug', 'beetle',
+  'cricket', 'mantis', 'moth', 'spider', 'scorpion', 'centipede', 'snail', 'slug',
+  'worm', 'ant', 'bee', 'wasp', 'hornet', 'termite', 'mosquito', 'fly'
+];
+
 /**
  * Generate a new anonymous study code
- * Format: study-xxxxxxxx (8 random alphanumeric characters)
+ * Format: "adjective animal" (e.g., "happy elephant")
+ * Uses spaces instead of dashes for easier typing on phones
  */
 export function generateStudyCode(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let code = 'study-';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+  const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+  return `${adjective} ${animal}`;
 }
 
 /**
@@ -46,10 +86,11 @@ export function clearStudyCode(): void {
 }
 
 /**
- * Create a new study code in the database
+ * Create a new study code in the database with collision handling
  * Returns the code on success, null on failure
+ * Implements retry logic (up to 10 attempts) to handle duplicate codes
  */
-export async function createStudyCode(displayName?: string): Promise<string | null> {
+export async function createStudyCode(displayName?: string, maxAttempts = 10): Promise<string | null> {
   // If Supabase not available, just return a local code
   if (!isSupabaseAvailable()) {
     const code = generateStudyCode();
@@ -57,29 +98,50 @@ export async function createStudyCode(displayName?: string): Promise<string | nu
     return code;
   }
 
-  try {
-    const code = generateStudyCode();
+  // Try up to maxAttempts times to generate a unique code
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const code = generateStudyCode();
 
-    const { data, error } = await supabase!
-      .from('study_codes')
-      .insert({
-        code,
-        display_name: displayName || null,
-      })
-      .select()
-      .single();
+      // Attempt to insert the code
+      const { data, error } = await supabase!
+        .from('study_codes')
+        .insert({
+          code,
+          display_name: displayName || null,
+        })
+        .select()
+        .single();
 
-    if (error) {
+      // Success - code is unique
+      if (!error && data) {
+        storeStudyCode(code);
+        console.log(`✓ Study code created: "${code}" (attempt ${attempt}/${maxAttempts})`);
+        return code;
+      }
+
+      // Check if error is due to duplicate code
+      if (error && error.code === '23505') {
+        // Unique constraint violation - code already exists
+        console.log(`⚠ Collision detected for "${code}", retrying... (attempt ${attempt}/${maxAttempts})`);
+        continue; // Try again with a new code
+      }
+
+      // Other error - log and return null
       console.error('Error creating study code:', error);
       return null;
+    } catch (error) {
+      console.error('Failed to create study code:', error);
+      // Continue trying if we haven't exhausted attempts
+      if (attempt === maxAttempts) {
+        return null;
+      }
     }
-
-    storeStudyCode(code);
-    return code;
-  } catch (error) {
-    console.error('Failed to create study code:', error);
-    return null;
   }
+
+  // Exhausted all attempts
+  console.error(`Failed to generate unique study code after ${maxAttempts} attempts`);
+  return null;
 }
 
 /**

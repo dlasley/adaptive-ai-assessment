@@ -4,6 +4,9 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Question } from '@/types';
 import { units } from '@/lib/units';
+import { FEATURES } from '@/lib/feature-flags';
+import { getStoredStudyCode } from '@/lib/study-codes';
+import { saveQuizResults, saveQuizResultsLocally } from '@/lib/progress-tracking';
 
 interface TopicRecommendation {
   topic: string;
@@ -99,12 +102,44 @@ export default function QuizPage() {
     }
   };
 
+  // Save quiz results to database
+  const saveResults = async () => {
+    if (!FEATURES.PROGRESS_TRACKING) return;
+
+    const studyCode = getStoredStudyCode();
+    if (!studyCode) return;
+
+    const { correct } = calculateScore();
+    const scorePercentage = Math.round((correct / questions.length) * 100);
+
+    const result = {
+      studyCode,
+      unitId,
+      difficulty: difficulty as 'beginner' | 'intermediate' | 'advanced',
+      totalQuestions: questions.length,
+      correctAnswers: correct,
+      scorePercentage,
+      questions,
+      userAnswers,
+    };
+
+    try {
+      await saveQuizResults(result);
+      console.log('✅ Quiz results saved to database');
+    } catch (error) {
+      console.error('Failed to save quiz results:', error);
+      // Fallback to localStorage
+      saveQuizResultsLocally(result);
+    }
+  };
+
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setShowExplanation(false);
     } else {
       setShowResults(true);
+      saveResults(); // Save quiz results when finishing
       fetchStudyGuide();
     }
   };

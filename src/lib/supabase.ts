@@ -34,6 +34,7 @@ export interface StudyCode {
   id: string;
   code: string;
   display_name: string | null;
+  admin_label: string | null;
   created_at: string;
   last_active_at: string;
   total_quizzes: number;
