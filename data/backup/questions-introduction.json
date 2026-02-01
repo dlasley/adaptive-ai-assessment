@@ -1,0 +1,3764 @@
+[
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q1",
+    "question": "What is the name of your French I teacher?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur Bernard",
+      "Monsieur ",
+      "Monsieur Laurent",
+      "Monsieur Pierre"
+    ],
+    "correctAnswer": "Monsieur ",
+    "explanation": "According to Slide 1 and Slide 8, the teacher's name is Monsieur .",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q2",
+    "question": "How many languages does Monsieur  speak?",
+    "type": "multiple-choice",
+    "options": [
+      "2 languages",
+      "3 languages",
+      "4 languages",
+      "5 languages"
+    ],
+    "correctAnswer": "3 languages",
+    "explanation": "Slide 8 states that Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q3",
+    "question": "Monsieur  has lived in France for over 7 years.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "This information is found on Slide 8, which confirms Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q4",
+    "question": "According to Slide 6, _____ % of the class is participation.",
+    "type": "fill-in-blank",
+    "correctAnswer": "50",
+    "explanation": "Slide 6 clearly states: 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!'",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q5",
+    "question": "Which of the following is NOT one of the four key skills in French I?",
+    "type": "multiple-choice",
+    "options": [
+      "Speaking Skills",
+      "Listening Comprehension Skills",
+      "Cooking Skills",
+      "Reading Skills"
+    ],
+    "correctAnswer": "Cooking Skills",
+    "explanation": "Slide 3 lists the four key skills as Speaking, Listening Comprehension, Reading, and Writing. Cooking Skills is not mentioned.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q6",
+    "question": "Students should take out their Chromebooks whenever they want during class.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 4 states: 'Chromebooks are only to be taken out when the teacher asks for them. They should not be out at any other moment.'",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q7",
+    "question": "What should you write in your journal at the beginning of each class?",
+    "type": "multiple-choice",
+    "options": [
+      "Your homework",
+      "The warm up question from the board",
+      "Today's date",
+      "Your name"
+    ],
+    "correctAnswer": "The warm up question from the board",
+    "explanation": "Slide 5 explains that the daily warm up procedure requires students to take their journal out and answer the warm up question that will be on the board.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q8",
+    "question": "According to Slide 2, _____ or more offenses in one day will result in a parent/guardian call home.",
+    "type": "fill-in-blank",
+    "correctAnswer": "3",
+    "explanation": "Slide 2, Rule 7 states: '3 or more offenses in one day will results in a parent/guardian call home.'",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q9",
+    "question": "Monsieur  has written two books and is an author.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 8 confirms that Mr.  is an author and has written two books.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q10",
+    "question": "Which of the following activities will NOT be part of French I class?",
+    "type": "multiple-choice",
+    "options": [
+      "Role plays and Skits",
+      "Unit Exams and Assessments",
+      "Learning French culture",
+      "Playing video games"
+    ],
+    "correctAnswer": "Playing video games",
+    "explanation": "Slide 6 describes the class structure as including role plays & skits, exams & assessments, and learning about French culture, but video games are not mentioned as part of the curriculum.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q1",
+    "question": "Combien de langues est-ce que Monsieur  parle?",
+    "type": "multiple-choice",
+    "options": [
+      "2 langues",
+      "3 langues",
+      "4 langues",
+      "5 langues"
+    ],
+    "correctAnswer": "3 langues",
+    "explanation": "According to Slide 8, Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q2",
+    "question": "Pendant combien d'années est-ce que Monsieur  a habité en France?",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de 7 ans",
+    "explanation": "Slide 8 states that Mr.  has lived in France for over 7 years (plus de 7 ans).",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q3",
+    "question": "Vrai ou Faux: Les téléphones sont permis en classe.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 5 clearly states 'No Phones' in the classroom rules.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q4",
+    "question": "Quel pourcentage de la note de classe vient de la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "40%",
+      "50%",
+      "60%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 emphasizes that participation is key and represents 50% of the class grade.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q5",
+    "question": "Vrai ou Faux: Les Chromebooks doivent être sortis au début de chaque classe.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 4 states that Chromebooks should only be taken out when the teacher asks for them.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q6",
+    "question": "Monsieur  a écrit _____ livres.",
+    "type": "fill-in-blank",
+    "correctAnswer": "deux",
+    "explanation": "Slide 8 states that Mr.  is an author and has written two books (deux livres).",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q7",
+    "question": "Quels sont deux des quatre compétences principales en classe?",
+    "type": "multiple-choice",
+    "options": [
+      "Parler et danser",
+      "Lire et écrire",
+      "Chanter et dessiner",
+      "Parler et jouer"
+    ],
+    "correctAnswer": "Lire et écrire",
+    "explanation": "Slide 3 lists four key skills including Reading Skills and Writing Skills among Speaking and Listening Comprehension Skills.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q8",
+    "question": "Vrai ou Faux: Les devoirs (warm-ups) comptent pour la note final.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 5 states that warm-ups will be part of your grade and graded weekly.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q9",
+    "question": "Quel est l'événement que Monsieur  va organiser à la fin du semestre?",
+    "type": "multiple-choice",
+    "options": [
+      "Un dîner français",
+      "Un potluck français",
+      "Une danse française",
+      "Un examen final"
+    ],
+    "correctAnswer": "Un potluck français",
+    "explanation": "Slide 6 mentions a Winter potluck (French Style) at the end of the semester.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q10",
+    "question": "Combien d'infractions en un jour peuvent résulter en un appel à vos parents?",
+    "type": "fill-in-blank",
+    "correctAnswer": "3 ou plus",
+    "explanation": "Slide 2, Rule 7 states that 3 or more offenses in one day will result in a parent/guardian call home.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q1",
+    "question": "Selon les matériaux d'apprentissage, quel pourcentage de la note finale en cours de français dépend de la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "50%",
+      "75%",
+      "100%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Le slide 6 stipule clairement que 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!'",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q2",
+    "question": "Monsieur  a vécu en France pendant _____ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de 7",
+    "explanation": "Le slide 8 indique que 'Mr.  has lived in France for over 7 years.'",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q3",
+    "question": "Vrai ou Faux: Les téléphones portables sont autorisés en classe de Monsieur .",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Le slide 2 énumère clairement 'No Phones' comme règle de classe.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q4",
+    "question": "Quel livre ou ressource Monsieur  recommande-t-il comme matériel d'apprentissage principal pour les étudiants avancés?",
+    "type": "multiple-choice",
+    "options": [
+      "Un manuel de grammaire française",
+      "Ses propres livres écrits",
+      "Les matériaux du cours ne spécifient pas de ressource principale recommandée",
+      "Une application de langue en ligne"
+    ],
+    "correctAnswer": "Les matériaux du cours ne spécifient pas de ressource principale recommandée",
+    "explanation": "Bien que Monsieur  soit auteur de deux livres, les matériaux de cours ne mentionnent pas ces livres comme ressources d'apprentissage recommandées pour la classe.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q5",
+    "question": "Combien de langues Monsieur  parle-t-il couramment?",
+    "type": "fill-in-blank",
+    "correctAnswer": "3",
+    "explanation": "Le slide 8 mentionne que 'Mr.  speaks 3 languages.'",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q6",
+    "question": "Vrai ou Faux: Les Chromebooks doivent rester sur le bureau à tout moment pendant le cours.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Le slide 2 stipule que 'Chromebooks are only to be taken out when the teacher asks for them.' Ils ne doivent pas être sortis à d'autres moments.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q7",
+    "question": "Quel événement culturel Monsieur  organise-t-il à la fin du semestre?",
+    "type": "multiple-choice",
+    "options": [
+      "Un voyage en France",
+      "Un pique-nique français",
+      "Un repas potluck de style français",
+      "Une projection de films français"
+    ],
+    "correctAnswer": "Un repas potluck de style français",
+    "explanation": "Le slide 6 mentionne 'Winter potluck (French Style) at the end of the semester' comme activité de classe.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q8",
+    "question": "Selon les matériaux, combien d'infractions en un jour entraîneront un appel téléphonique à la maison?",
+    "type": "fill-in-blank",
+    "correctAnswer": "3 ou plus",
+    "explanation": "Le slide 2 indique que '3 or more offenses in one day will results in a parent/guardian call home.'",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q9",
+    "question": "Quel type d'activité interactive est spécifiquement mentionné comme faisant partie intégrante de la structure du cours?",
+    "type": "multiple-choice",
+    "options": [
+      "Des présentations formelles uniquement",
+      "Des jeux de rôle et des sketches",
+      "Des travaux écrits individuels uniquement",
+      "Des tests standardisés"
+    ],
+    "correctAnswer": "Des jeux de rôle et des sketches",
+    "explanation": "Le slide 6 énumère spécifiquement 'Role plays & Skits' comme élément de la structure interactive du cours.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q10",
+    "question": "Vrai ou Faux: Les réponses d'une seule phrase aux questions du réchauffement quotidien (warm-up) sont acceptables et complètement satisfaisantes.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Le slide 5 spécifie clairement que 'I expect complete sentences not one word answers' pour les exercices d'échauffement quotidien.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q1",
+    "question": "What is the French word for the number 5?",
+    "type": "multiple-choice",
+    "options": [
+      "cinq",
+      "six",
+      "quatre",
+      "sept"
+    ],
+    "correctAnswer": "cinq",
+    "explanation": "Cinq is the correct French word for the number 5.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q2",
+    "question": "Le nombre 12 en français est _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "douze",
+    "explanation": "Douze is the French word for the number 12.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q3",
+    "question": "True or False: 'Dix-huit' means the number 18 in French.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Dix-huit (literally 'ten-eight') is the correct French word for 18.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q4",
+    "question": "Which number corresponds to the French word 'quinze'?",
+    "type": "multiple-choice",
+    "options": [
+      "12",
+      "15",
+      "17",
+      "19"
+    ],
+    "correctAnswer": "15",
+    "explanation": "Quinze is the French word for the number 15.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q5",
+    "question": "Le nombre 0 en français s'appelle _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "zéro",
+    "explanation": "Zéro is the French word for the number 0.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q6",
+    "question": "True or False: 'Trois' means the number 2 in French.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Trois means the number 3, not 2. The number 2 is 'deux' in French.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q7",
+    "question": "What is the French word for the number 20?",
+    "type": "multiple-choice",
+    "options": [
+      "dix",
+      "vingt",
+      "dix-neuf",
+      "seize"
+    ],
+    "correctAnswer": "vingt",
+    "explanation": "Vingt is the correct French word for the number 20.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q8",
+    "question": "Le nombre 8 en français est _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "huit",
+    "explanation": "Huit is the French word for the number 8.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q9",
+    "question": "Which number corresponds to the French word 'seize'?",
+    "type": "multiple-choice",
+    "options": [
+      "14",
+      "15",
+      "16",
+      "17"
+    ],
+    "correctAnswer": "16",
+    "explanation": "Seize is the French word for the number 16.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q10",
+    "question": "True or False: 'Dix-sept' means the number 17 in French.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Dix-sept (literally 'ten-seven') is the correct French word for 17.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q1",
+    "question": "Quel est le nombre entre 'neuf' et 'onze'?",
+    "type": "multiple-choice",
+    "options": [
+      "huit",
+      "dix",
+      "douze",
+      "neuf"
+    ],
+    "correctAnswer": "dix",
+    "explanation": "Le nombre 10 en français est 'dix', qui vient après 'neuf' (9) et avant 'onze' (11).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q2",
+    "question": "Écrivez le nombre 'seize' en chiffres: _____",
+    "type": "fill-in-blank",
+    "correctAnswer": "16",
+    "explanation": "'Seize' est le nombre 16 en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q3",
+    "question": "Le nombre 'treize' est égal à 13.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "'Treize' signifie 13 en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q4",
+    "question": "Combien font 'sept' + 'neuf'? (Répondez en français)",
+    "type": "fill-in-blank",
+    "correctAnswer": "seize",
+    "explanation": "7 + 9 = 16, et 16 en français est 'seize'.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q5",
+    "question": "Quel nombre vient après 'dix-neuf'?",
+    "type": "multiple-choice",
+    "options": [
+      "dix-huit",
+      "vingt",
+      "dix-sept",
+      "zéro"
+    ],
+    "correctAnswer": "vingt",
+    "explanation": "'Dix-neuf' (19) est suivi de 'vingt' (20).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q6",
+    "question": "Le nombre 'douze' vient avant 'onze'.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'Onze' (11) vient avant 'douze' (12), pas l'inverse.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q7",
+    "question": "Écrivez le nombre 'dix-huit' en chiffres: _____",
+    "type": "fill-in-blank",
+    "correctAnswer": "18",
+    "explanation": "'Dix-huit' est composé de 'dix' (10) et 'huit' (8), ce qui fait 18.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q8",
+    "question": "Quel est le nombre 'zéro' en chiffres?",
+    "type": "multiple-choice",
+    "options": [
+      "1",
+      "10",
+      "0",
+      "20"
+    ],
+    "correctAnswer": "0",
+    "explanation": "'Zéro' est le mot français pour le nombre 0.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q9",
+    "question": "Complétez la séquence: 'quatorze', 'quinze', '_____', 'dix-sept'",
+    "type": "fill-in-blank",
+    "correctAnswer": "seize",
+    "explanation": "La séquence est 14, 15, 16, 17. Le nombre manquant est 16, qui s'écrit 'seize' en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q10",
+    "question": "Le nombre 'vingt' est le dernier nombre de cette leçon.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "La leçon couvre les nombres 0-20, et 'vingt' (20) est effectivement le dernier nombre.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q1",
+    "question": "Si vous ajoutez dix et dix, quel nombre obtenez-vous?",
+    "type": "multiple-choice",
+    "options": [
+      "dix",
+      "vingt",
+      "douze",
+      "treize"
+    ],
+    "correctAnswer": "vingt",
+    "explanation": "10 + 10 = 20. Vingt est le nombre correct.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q2",
+    "question": "Le nombre seize s'écrit _____ en français.",
+    "type": "fill-in-blank",
+    "correctAnswer": "seize",
+    "explanation": "Seize est la forme correcte du nombre 16 en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q3",
+    "question": "Vrai ou faux: Dix-sept (17) est composé de dix + sept.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Dix-sept signifie littéralement 10 + 7, ce qui est correct. La structure des nombres composés français fonctionne ainsi.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q4",
+    "question": "Quel nombre vient après quinze?",
+    "type": "multiple-choice",
+    "options": [
+      "quatorze",
+      "seize",
+      "dix-sept",
+      "douze"
+    ],
+    "correctAnswer": "seize",
+    "explanation": "L'ordre numérique est: quinze (15), seize (16). Seize vient directement après quinze.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q5",
+    "question": "Le nombre qui représente zéro objet est _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "zéro",
+    "explanation": "Zéro est le nombre français qui représente l'absence ou aucun objet (0).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q6",
+    "question": "Vrai ou faux: Dix-huit (18) s'écrit 'dix-huit' et non 'dix-et-huit'.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Dix-huit s'écrit avec un trait d'union simple, sans 'et'. Le 'et' n'apparaît que dans 'vingt-et-un' (21).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q7",
+    "question": "Si vous soustrayez trois de dix, vous obtenez _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "sept",
+    "explanation": "10 - 3 = 7. Sept est la réponse correcte en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q8",
+    "question": "Quel nombre correspond à la moitié de vingt?",
+    "type": "multiple-choice",
+    "options": [
+      "neuf",
+      "onze",
+      "dix",
+      "douze"
+    ],
+    "correctAnswer": "dix",
+    "explanation": "20 ÷ 2 = 10. Dix est la moitié de vingt.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q9",
+    "question": "Vrai ou faux: Les nombres de onze à dix-neuf sont considérés comme des nombres simples (non composés) en français.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Bien que onze à seize soient des mots uniques, dix-sept (17), dix-huit (18) et dix-neuf (19) sont composés avec un trait d'union (10 + 7, 10 + 8, 10 + 9).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q10",
+    "question": "Classez ces nombres du plus petit au plus grand: quatorze, neuf, vingt, trois",
+    "type": "multiple-choice",
+    "options": [
+      "trois, neuf, quatorze, vingt",
+      "neuf, trois, vingt, quatorze",
+      "trois, quatorze, neuf, vingt",
+      "vingt, quatorze, neuf, trois"
+    ],
+    "correctAnswer": "trois, neuf, quatorze, vingt",
+    "explanation": "L'ordre croissant est: 3 (trois), 9 (neuf), 14 (quatorze), 20 (vingt).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q1",
+    "question": "What is the name of your French I teacher?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur Aston",
+      "Monsieur ",
+      "Monsieur Ayden",
+      "Monsieur Alain"
+    ],
+    "correctAnswer": "Monsieur ",
+    "explanation": "According to Slide 2, the teacher's name is Monsieur .",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q2",
+    "question": "How many languages does Monsieur  speak?",
+    "type": "multiple-choice",
+    "options": [
+      "2 languages",
+      "3 languages",
+      "4 languages",
+      "5 languages"
+    ],
+    "correctAnswer": "3 languages",
+    "explanation": "Slide 8 states that Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q3",
+    "question": "Monsieur  has lived in France for over _____ years.",
+    "type": "fill-in-blank",
+    "correctAnswer": "7",
+    "explanation": "According to Slide 8, Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q4",
+    "question": "True or False: Phones are allowed in the classroom.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 5 clearly states 'No Phones.' Phones are not allowed in the classroom.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q5",
+    "question": "What percentage of the class grade is based on participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "30%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 emphasizes that 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!'",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q6",
+    "question": "True or False: It is not okay to make mistakes when learning French.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 9 has an important reminder titled 'It's OKAY to Make Mistakes' and explains that mistakes are part of the learning process.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q7",
+    "question": "Which of the following is NOT mentioned as a daily material needed for class?",
+    "type": "multiple-choice",
+    "options": [
+      "Writing Journal",
+      "Pencil or Pen",
+      "Calculator",
+      "Willingness to learn"
+    ],
+    "correctAnswer": "Calculator",
+    "explanation": "Slide 4 lists the daily materials needed as: Writing Journal, Pencil or Pen, Willingness to learn, and Chromebook (when requested). A calculator is not mentioned.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q8",
+    "question": "Chromebooks are only to be taken out when the _____ asks for them.",
+    "type": "fill-in-blank",
+    "correctAnswer": "teacher",
+    "explanation": "Slide 2, Rule 4 states that Chromebooks should only be taken out when the teacher asks for them.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q9",
+    "question": "Which cartoon does Monsieur  NOT mention liking?",
+    "type": "multiple-choice",
+    "options": [
+      "The Simpsons",
+      "Rick & Morty",
+      "South Park",
+      "Bob's Burgers"
+    ],
+    "correctAnswer": "South Park",
+    "explanation": "Slide 8 mentions that Mr.  loves cartoons like Bob's Burgers, The Simpsons, Futurama, and Rick & Morty. South Park is not mentioned.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q10",
+    "question": "True or False: Monsieur  has already completed his teaching license exams in France.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 8 states that 'Mr.  is in the process of getting his teaching license in France. His exams are next March!' This means he has not yet completed them.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q1",
+    "question": "Combien de langues est-ce que Monsieur  parle?",
+    "type": "multiple-choice",
+    "options": [
+      "Deux langues",
+      "Trois langues",
+      "Quatre langues",
+      "Cinq langues"
+    ],
+    "correctAnswer": "Trois langues",
+    "explanation": "According to the materials, Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q2",
+    "question": "Monsieur  a habité en France pendant _____ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de sept / sept / 7",
+    "explanation": "The materials state that Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q3",
+    "question": "Quel pourcentage de la classe est basé sur la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "40%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "The materials explicitly state that participation accounts for 50% of the class grade.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q4",
+    "question": "Vrai ou Faux: Les téléphones sont autorisés en classe.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The classroom rules clearly state 'No Phones' as rule number 5.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q5",
+    "question": "Quels sont les quatre compétences clés dans ce cours?",
+    "type": "multiple-choice",
+    "options": [
+      "Lecture, écriture, grammaire, vocabulaire",
+      "Parler, comprendre à l'écoute, lire, écrire",
+      "Écouter, parler, danser, chanter",
+      "Grammaire, conjugaison, prononciation, culture"
+    ],
+    "correctAnswer": "Parler, comprendre à l'écoute, lire, écrire",
+    "explanation": "The materials list the Four Key Skills as Speaking, Listening Comprehension, Reading, and Writing.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q6",
+    "question": "Combien d'offenses en un jour résultent en un appel à la maison?",
+    "type": "fill-in-blank",
+    "correctAnswer": "trois / 3",
+    "explanation": "The classroom rules state that 3 or more offenses in one day will result in a parent/guardian call home.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q7",
+    "question": "Vrai ou Faux: Les Chromebooks doivent être sortis à tout moment pendant le cours.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The rules state that Chromebooks should only be taken out when the teacher asks for them.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q8",
+    "question": "Quels dessins animés est-ce que Monsieur  aime?",
+    "type": "multiple-choice",
+    "options": [
+      "Family Guy, South Park, The Office",
+      "Bob's Burgers, The Simpsons, Futurama, Rick & Morty",
+      "Anime, Dragon Ball, Naruto",
+      "Adventure Time, The Regular Show, Gravity Falls"
+    ],
+    "correctAnswer": "Bob's Burgers, The Simpsons, Futurama, Rick & Morty",
+    "explanation": "The materials specifically list these four cartoon shows as Mr. 's favorites.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q9",
+    "question": "Quand les réponses du 'Warm Up' sont-elles notées?",
+    "type": "fill-in-blank",
+    "correctAnswer": "hebdomadairement / chaque semaine / par semaine",
+    "explanation": "The materials state that warm ups will be graded weekly.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q10",
+    "question": "Vrai ou Faux: Monsieur  a déjà terminé ses examens pour son diplôme d'enseignant en France.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The materials state that Mr.  is in the process of getting his teaching license in France and his exams are next March, meaning he hasn't taken them yet.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q1",
+    "question": "According to the classroom rules, what is the consequence of receiving 3 or more offenses in one day?",
+    "type": "multiple-choice",
+    "options": [
+      "A student must visit the Jar of Solitude",
+      "A parent/guardian will be called home",
+      "The student loses participation points",
+      "The student must write a reflective essay"
+    ],
+    "correctAnswer": "A parent/guardian will be called home",
+    "explanation": "Slide 2 explicitly states that '3 or more offenses in one day will result in a parent/guardian call home.' This is the stated consequence for repeated rule violations.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q2",
+    "question": "Monsieur  has lived in France for over _____ years.",
+    "type": "fill-in-blank",
+    "correctAnswer": "7",
+    "explanation": "According to Slide 8, Mr.  has lived in France for over 7 years, which demonstrates his deep connection to French culture and language.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q3",
+    "question": "True or False: Chromebooks should be taken out whenever students want to use them during class.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 4 states that 'Chromebooks are only to be taken out when the teacher asks for them. They should not be out at any other moment.'",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q4",
+    "question": "According to the course materials, what percentage of the class grade is based on participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "30%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 clearly states 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!' This emphasizes the critical importance of active engagement in class activities.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q5",
+    "question": "How many languages does Monsieur  speak?",
+    "type": "multiple-choice",
+    "options": [
+      "2 languages",
+      "3 languages",
+      "4 languages",
+      "5 languages"
+    ],
+    "correctAnswer": "3 languages",
+    "explanation": "According to Slide 8, 'Mr.  speaks 3 languages,' which qualifies him as a multilingual educator capable of understanding language acquisition challenges.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q6",
+    "question": "True or False: Warm-up answers can be one-word responses without complete sentences.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 5 explicitly states 'I expect complete sentences not one word answers.' This requirement ensures students practice writing and expressing ideas fully.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q7",
+    "question": "Which of the following is NOT mentioned as a daily material needed for French I class?",
+    "type": "multiple-choice",
+    "options": [
+      "Writing Journal",
+      "Pencil or Pen",
+      "Dictionary",
+      "Willingness to learn"
+    ],
+    "correctAnswer": "Dictionary",
+    "explanation": "Slide 4 lists only four required materials: Writing Journal, Pencil or Pen, Willingness to learn, and Chromebook (when requested). A dictionary is not mentioned.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q8",
+    "question": "Monsieur  is currently in the process of obtaining a teaching license in France, with his exams scheduled for _____ .",
+    "type": "fill-in-blank",
+    "correctAnswer": "March",
+    "explanation": "According to Slide 8, 'Mr.  is in the process of getting his teaching license in France. His exams are next March!' This shows his commitment to teaching in both countries.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q9",
+    "question": "True or False: According to the course materials, making mistakes while learning French should be avoided at all costs.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 9 states that 'Many mistakes will be made, but the important thing is to keep trying' and 'Learning a new language is one of the hardest things one can do.' The course embraces mistakes as part of the learning process.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q10",
+    "question": "Which of the following best describes the structure of French I class based on the course materials?",
+    "type": "multiple-choice",
+    "options": [
+      "Lecture-based with minimal student interaction",
+      "Immersive with role plays, skits, cultural learning, and high participation requirements",
+      "Primarily focused on written assessments",
+      "Individual study with limited peer interaction"
+    ],
+    "correctAnswer": "Immersive with role plays, skits, cultural learning, and high participation requirements",
+    "explanation": "Slide 6 describes the classroom as 'fun and immersive' with 'a lot of time to interact with each other,' including 'Role plays & Skits,' learning about 'French culture,' and various assessments. This contrasts with traditional lecture-based approaches.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q1",
+    "question": "What is the name of your French I teacher?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur Dupont",
+      "Monsieur ",
+      "Monsieur Martin",
+      "Monsieur Bernard"
+    ],
+    "correctAnswer": "Monsieur ",
+    "explanation": "According to Slide 1, the teacher's name is Monsieur .",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q2",
+    "question": "How many languages does Monsieur  speak?",
+    "type": "multiple-choice",
+    "options": [
+      "2 languages",
+      "3 languages",
+      "4 languages",
+      "5 languages"
+    ],
+    "correctAnswer": "3 languages",
+    "explanation": "Slide 8 states that Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q3",
+    "question": "True or False: Students are allowed to use their phones in class whenever they want.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 5 clearly states 'No Phones' are allowed in the classroom.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q4",
+    "question": "What percentage of the class grade is based on participation?",
+    "type": "fill-in-blank",
+    "correctAnswer": "50%",
+    "explanation": "According to Slide 6, participation is key to passing this class and counts for 50% of the class grade.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q5",
+    "question": "True or False: Monsieur  has lived in France for over 7 years.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 8 confirms that Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q6",
+    "question": "When should students take out their Chromebooks?",
+    "type": "multiple-choice",
+    "options": [
+      "Anytime they want",
+      "Only when the teacher asks for them",
+      "During lunch",
+      "At the beginning of class"
+    ],
+    "correctAnswer": "Only when the teacher asks for them",
+    "explanation": "Slide 2, Rule 4 states that Chromebooks should only be taken out when the teacher asks for them.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q7",
+    "question": "What should students write in their journal every day when they enter the classroom?",
+    "type": "multiple-choice",
+    "options": [
+      "A story",
+      "The warm up question answer",
+      "Today's date",
+      "The classroom rules"
+    ],
+    "correctAnswer": "The warm up question answer",
+    "explanation": "Slide 5 explains that students take their journal out and answer the warm up question that will be on the board.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q8",
+    "question": "True or False: Bullying and harassing is tolerated in this French I class.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 2 states that absolutely no bullying or harassing will be tolerated.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q9",
+    "question": "Which of the following is NOT one of the four key skills taught in French I?",
+    "type": "multiple-choice",
+    "options": [
+      "Speaking Skills",
+      "Listening Comprehension Skills",
+      "Dancing Skills",
+      "Writing Skills"
+    ],
+    "correctAnswer": "Dancing Skills",
+    "explanation": "Slide 3 lists the four key skills as Speaking, Listening Comprehension, Reading, and Writing. Dancing is not included.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q10",
+    "question": "How many offenses in one day will result in a parent/guardian call home?",
+    "type": "fill-in-blank",
+    "correctAnswer": "3 or more",
+    "explanation": "According to Slide 2, Rule 7, 3 or more offenses in one day will result in a parent/guardian call home.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q1",
+    "question": "Selon les règles de la classe, combien d'infractions en un jour peuvent résulter en un appel aux parents?",
+    "type": "multiple-choice",
+    "options": [
+      "1 ou plus",
+      "2 ou plus",
+      "3 ou plus",
+      "5 ou plus"
+    ],
+    "correctAnswer": "3 ou plus",
+    "explanation": "Le diapositif 2 indique clairement que 3 infractions ou plus en un jour entraînent un appel aux parents/tuteurs.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q2",
+    "question": "Quel pourcentage de la note finale est basé sur la participation?",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "50%",
+    "explanation": "Le diapositif 6 souligne que la participation représente 50% de la classe et est essentielle pour réussir.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q3",
+    "question": "Monsieur  a vécu en France pendant combien d'années?",
+    "type": "multiple-choice",
+    "options": [
+      "3 ans",
+      "5 ans",
+      "plus de 7 ans",
+      "10 ans"
+    ],
+    "correctAnswer": "plus de 7 ans",
+    "explanation": "Le diapositif 8 mentionne que Monsieur  a vécu en France pendant plus de 7 ans.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q4",
+    "question": "Les chromebooks doivent être sortis uniquement quand le professeur le demande.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Le diapositif 2, règle 4, stipule que les chromebooks ne doivent être sortis que lorsque le professeur le demande.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q5",
+    "question": "Parmi les matériaux quotidiens, lequel n'est PAS nécessaire dans la classe de Français I?",
+    "type": "multiple-choice",
+    "options": [
+      "Un journal d'écriture",
+      "Un téléphone portable",
+      "Un cr ou un stylo",
+      "Un chromebook (quand demandé)"
+    ],
+    "correctAnswer": "Un téléphone portable",
+    "explanation": "Le diapositif 2 interdit explicitement les téléphones, et le diapositif 4 ne les mentionne pas parmi les matériaux nécessaires.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q6",
+    "question": "Quel est le sujet de la question d'échauffement (warm-up) mentionnée sur le diapositif 5?",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "deux faits intéressants sur vous",
+    "explanation": "L'exemple de question d'échauffement demande aux étudiants de partager deux faits intéressants sur eux-mêmes.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q7",
+    "question": "Combien de langues Monsieur  parle-t-il?",
+    "type": "multiple-choice",
+    "options": [
+      "2 langues",
+      "3 langues",
+      "4 langues",
+      "5 langues"
+    ],
+    "correctAnswer": "3 langues",
+    "explanation": "Le diapositif 8 indique que Monsieur  parle 3 langues.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q8",
+    "question": "Les quatre compétences clés à développer dans le cours de Français I incluent la parole, la compréhension auditive, la lecture, et _____.",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "l'écriture",
+    "explanation": "Le diapositif 3 énumère quatre compétences clés: la parole (Speaking), la compréhension auditive (Listening), la lecture (Reading), et l'écriture (Writing).",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q9",
+    "question": "Vrai ou faux: Monsieur  a déjà complété ses examens de licence d'enseignement en France.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Le diapositif 8 indique que Monsieur  est EN TRAIN d'obtenir sa licence d'enseignement en France et que ses examens sont prévus pour mars prochain.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q10",
+    "question": "Quels sont deux éléments importants mentionnés sur le diapositif 9 concernant l'apprentissage d'une nouvelle langue?",
+    "type": "multiple-choice",
+    "options": [
+      "La perfection et la rapidité",
+      "Les erreurs et la pratique",
+      "La mémorisation et la vitesse",
+      "La grammaire et l'écriture"
+    ],
+    "correctAnswer": "Les erreurs et la pratique",
+    "explanation": "Le diapositif 9 souligne que faire des erreurs est normal et que la pratique est la clé du succès dans l'apprentissage d'une langue.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q1",
+    "question": "According to the classroom rules, what is the consequence of receiving 3 or more offenses in one day?",
+    "type": "multiple-choice",
+    "options": [
+      "The student must stay after class for detention",
+      "A parent/guardian call home will be made",
+      "The student loses participation points for the week",
+      "The student must write a formal apology letter"
+    ],
+    "correctAnswer": "A parent/guardian call home will be made",
+    "explanation": "Slide 2 explicitly states that '3 or more offenses in one day will results in a parent/guardian call home.' This is the stated disciplinary consequence.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q2",
+    "question": "Monsieur  a vécu en France pendant _____ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de sept / plus de 7 / sept",
+    "explanation": "According to Slide 8, Mr.  has lived in France for over 7 years (plus de 7 ans). The answer can be expressed as 'plus de sept' or simply 'sept' since 'over 7' means at least 7.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q3",
+    "question": "True or False: Chromebooks should be kept out on the desk at all times during class so students are prepared to use them.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "According to Slide 2, Rule 4 states that Chromebooks are only to be taken out when the teacher asks for them and should not be out at any other moment.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q4",
+    "question": "Which of the following is NOT listed as one of the four key skills emphasized in French I?",
+    "type": "multiple-choice",
+    "options": [
+      "Speaking Skills",
+      "Translation Skills",
+      "Listening Comprehension Skills",
+      "Writing Skills"
+    ],
+    "correctAnswer": "Translation Skills",
+    "explanation": "Slide 3 lists exactly four key skills: Speaking, Listening Comprehension, Reading, and Writing. Translation Skills is not mentioned as a key skill.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q5",
+    "question": "Selon les attentes du cours, quel pourcentage de la note finale est basé sur la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "33%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 clearly states in bold: 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!' This emphasizes that half of the grade depends on student participation.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q6",
+    "question": "Monsieur  parle _____ langues différentes.",
+    "type": "fill-in-blank",
+    "correctAnswer": "trois / 3",
+    "explanation": "According to Slide 8, Mr.  speaks 3 languages. The answer can be written as either 'trois' (the word form) or '3' (the numerical form).",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q7",
+    "question": "True or False: Students are allowed to use phones in class as long as they are using them for educational purposes.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 5 explicitly states 'No Phones.' There is no exception mentioned for educational purposes, making this an absolute classroom rule.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q8",
+    "question": "What is the primary purpose of the 'Jar of Solitude' mentioned in the classroom rules?",
+    "type": "multiple-choice",
+    "options": [
+      "To punish students who misbehave during class",
+      "To give students space when they are having a rough day, which is communicated to the teacher beforehand",
+      "To encourage students to work independently on assignments",
+      "To create a quiet study area for advanced learners"
+    ],
+    "correctAnswer": "To give students space when they are having a rough day, which is communicated to the teacher beforehand",
+    "explanation": "Slide 2, Rule 6 explains that if students are having a rough day, they should talk to the teacher before class starts so the teacher knows to give them their space using the 'Jar of Solitude' concept.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q9",
+    "question": "Quel est le calendrier prévu pour les examens de Monsieur  en France?",
+    "type": "multiple-choice",
+    "options": [
+      "Janvier",
+      "Mars",
+      "Septembre",
+      "Décembre"
+    ],
+    "correctAnswer": "Mars",
+    "explanation": "Slide 8 states that Mr.  is in the process of getting his teaching license in France and that his exams are next March (mars).",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q10",
+    "question": "True or False: According to the course expectations, warm-up responses should be detailed complete sentences rather than one-word answers.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 5 explicitly states: 'I expect complete sentences not one word answers.' This is a clear expectation for the daily warm-up activity that is graded weekly.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q1",
+    "question": "Quel est le nom de votre professeur? (What is your teacher's name?)",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur Dupont",
+      "Monsieur ",
+      "Monsieur Bernard",
+      "Monsieur Laurent"
+    ],
+    "correctAnswer": "Monsieur ",
+    "explanation": "According to Slide 2, the teacher's name is Monsieur .",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q2",
+    "question": "Combien de langues parle Monsieur ? (How many languages does Mr.  speak?)",
+    "type": "multiple-choice",
+    "options": [
+      "2 langues",
+      "3 langues",
+      "4 langues",
+      "5 langues"
+    ],
+    "correctAnswer": "3 langues",
+    "explanation": "Slide 8 states that Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q3",
+    "question": "Monsieur  a habité en France pendant 7 ans. (Mr.  lived in France for 7 years.)",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 8 confirms that Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q4",
+    "question": "Qu'est-ce que les étudiants doivent apporter à la classe? (What should students bring to class?)",
+    "type": "multiple-choice",
+    "options": [
+      "Un téléphone",
+      "Un journal et un cr",
+      "Un livre",
+      "Une tablette"
+    ],
+    "correctAnswer": "Un journal et un cr",
+    "explanation": "Slide 4 lists that students need a Writing Journal and a Pencil or Pen as daily materials.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q5",
+    "question": "Quel pourcentage de la classe est la participation? (What percentage of the class is participation?)",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "30%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 emphasizes that PARTICIPATION IS KEY and states that 50% of the class is participation.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q6",
+    "question": "Les téléphones sont _____ en classe. (Phones are _____ in class.)",
+    "type": "fill-in-blank",
+    "correctAnswer": "interdits",
+    "explanation": "Slide 2, Rule 5 states 'No Phones,' meaning phones are forbidden (interdits) in class.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q7",
+    "question": "Monsieur  a écrit deux livres. (Mr.  wrote two books.)",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 8 states that Mr.  is an author and has written two books.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q8",
+    "question": "Quand doit-on faire l'exercice d'échauffement? (When should you do the warm-up exercise?)",
+    "type": "multiple-choice",
+    "options": [
+      "À la fin du cours",
+      "Au milieu du cours",
+      "Quand on entre dans la classe",
+      "Pendant le déjeuner"
+    ],
+    "correctAnswer": "Quand on entre dans la classe",
+    "explanation": "Slide 5 explains that every time you come into the room, you take your journal out and answer the warm-up question.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q9",
+    "question": "Monsieur  aime les dessins animés comme Bob's Burgers et The Simpsons. (Mr.  likes cartoons like Bob's Burgers and The Simpsons.)",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 8 lists that Mr.  loves cartoons including Bob's Burgers, The Simpsons, Futurama, and Rick & Morty.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q10",
+    "question": "Quels sont les quatre compétences clés en classe? (What are the four key skills in class?)",
+    "type": "multiple-choice",
+    "options": [
+      "Lecture, écriture, mathématiques, science",
+      "Parler, comprendre, lire, écrire",
+      "Danser, chanter, jouer, courir",
+      "Dessiner, peindre, sculpter, photographier"
+    ],
+    "correctAnswer": "Parler, comprendre, lire, écrire",
+    "explanation": "Slide 3 lists the Four Key Skills as Speaking Skills, Listening Comprehension Skills, Reading Skills, and Writing Skills.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q1",
+    "question": "Combien de langues est-ce que Monsieur  parle?",
+    "type": "multiple-choice",
+    "options": [
+      "2 langues",
+      "3 langues",
+      "4 langues",
+      "5 langues"
+    ],
+    "correctAnswer": "3 langues",
+    "explanation": "Selon les matériaux d'apprentissage, Monsieur  parle 3 langues.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q2",
+    "question": "Monsieur  a vécu en France pendant _____ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de 7 / 7",
+    "explanation": "Le matériel indique que Monsieur  a vécu en France pour plus de 7 ans.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q3",
+    "question": "Quel pourcentage de la classe est basé sur la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "30%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Selon les attentes de la classe, 50% de la note est basée sur la participation.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q4",
+    "question": "Vrai ou Faux: Les téléphones sont autorisés en classe.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Les règles de la classe stipulent clairement 'No Phones' (Pas de téléphones).",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q5",
+    "question": "Monsieur  aime les dessins animés suivants SAUF:",
+    "type": "multiple-choice",
+    "options": [
+      "Bob's Burgers",
+      "The Simpsons",
+      "Game of Thrones",
+      "Rick & Morty"
+    ],
+    "correctAnswer": "Game of Thrones",
+    "explanation": "Monsieur  aime Bob's Burgers, The Simpsons, Futurama et Rick & Morty, mais Game of Thrones n'est pas mentionné.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q6",
+    "question": "Les échauffements quotidiens (warm ups) doivent être écrits en _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "phrases complètes / phrases complètes, pas de réponses d'un seul mot",
+    "explanation": "Le matériel spécifie que des phrases complètes sont attendues, pas des réponses d'un seul mot.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q7",
+    "question": "Vrai ou Faux: Monsieur  a écrit deux livres.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Le matériel confirme que Monsieur  est auteur et a écrit deux livres.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q8",
+    "question": "À quel moment de l'année académique y aura-t-il un potluck français?",
+    "type": "multiple-choice",
+    "options": [
+      "Au printemps",
+      "À l'automne",
+      "À la fin du semestre d'hiver",
+      "Au début de l'année"
+    ],
+    "correctAnswer": "À la fin du semestre d'hiver",
+    "explanation": "Le matériel mentionne un 'Winter potluck (French Style) at the end of the semester'.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q9",
+    "question": "Quand Monsieur  passe-t-il ses examens pour obtenir sa certification d'enseignement en France?",
+    "type": "multiple-choice",
+    "options": [
+      "En décembre",
+      "En mars",
+      "En juin",
+      "En septembre"
+    ],
+    "correctAnswer": "En mars",
+    "explanation": "Selon les informations, les examens de Monsieur  pour sa certification française sont en mars.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q10",
+    "question": "Quel est le matériel ESSENTIEL à apporter en classe? (Sélectionnez deux réponses)",
+    "type": "multiple-choice",
+    "options": [
+      "Un Chromebook et un stylo",
+      "Un journal et la volonté d'apprendre",
+      "Un téléphone et un cahier",
+      "Un livre et des crs"
+    ],
+    "correctAnswer": "Un journal et la volonté d'apprendre",
+    "explanation": "Parmi les matériaux quotidiens listés, le journal et la volonté d'apprendre sont explicitement mentionnés comme essentiels.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q1",
+    "question": "Selon les matériaux d'apprentissage, combien de langues Monsieur  parle-t-il couramment?",
+    "type": "multiple-choice",
+    "options": [
+      "Deux langues",
+      "Trois langues",
+      "Quatre langues",
+      "Cinq langues"
+    ],
+    "correctAnswer": "Trois langues",
+    "explanation": "Le document indique clairement que 'Mr.  speaks 3 languages' (Monsieur  parle 3 langues).",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q2",
+    "question": "Monsieur  a vécu en France pendant _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de 7 ans",
+    "explanation": "Selon la diapositive 8, 'Mr.  has lived in France for over 7 years' (Monsieur  a vécu en France pendant plus de 7 ans).",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q3",
+    "question": "Vrai ou Faux: La participation représente 50% de la note finale dans cette classe.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "La diapositive 6 confirme: 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!' (La participation est essentielle pour réussir ce cours. 50% de la classe est la participation!)",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q4",
+    "question": "Lequel de ces dessins animés n'est PAS mentionné comme un favori de Monsieur ?",
+    "type": "multiple-choice",
+    "options": [
+      "Bob's Burgers",
+      "South Park",
+      "Rick & Morty",
+      "Futurama"
+    ],
+    "correctAnswer": "South Park",
+    "explanation": "Les dessins animés préférés de Monsieur  sont: Bob's Burgers, The Simpsons, Futurama, et Rick & Morty. South Park n'est pas mentionné.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q5",
+    "question": "Quand les examens de certification d'enseignement de Monsieur  en France auront-ils lieu?",
+    "type": "multiple-choice",
+    "options": [
+      "En décembre",
+      "En mars",
+      "En juillet",
+      "En septembre"
+    ],
+    "correctAnswer": "En mars",
+    "explanation": "La diapositive 8 indique: 'His exams are next March!' (Ses examens sont en mars prochain!)",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q6",
+    "question": "Selon le cours, _____ est une clé du succès dans cette classe.",
+    "type": "fill-in-blank",
+    "correctAnswer": "le respect",
+    "explanation": "La première règle de classe déclare: 'RESPECT IS KEY TO SUCCESS IN THIS CLASS.' (Le respect est la clé du succès dans cette classe.)",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q7",
+    "question": "Vrai ou Faux: Les téléphones portables sont autorisés en classe selon les règles établies.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "La règle numéro 5 de la diapositive 2 stipule clairement: 'No Phones.' (Pas de téléphones.)",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q8",
+    "question": "Combien d'infractions dans une journée entraînent un appel aux parents ou tuteurs?",
+    "type": "multiple-choice",
+    "options": [
+      "Une ou plus",
+      "Deux ou plus",
+      "Trois ou plus",
+      "Quatre ou plus"
+    ],
+    "correctAnswer": "Trois ou plus",
+    "explanation": "La diapositive 2 précise: '3 or more offenses in one day will results in a parent/guardian call home' (3 infractions ou plus en un jour entraîneront un appel aux parents/tuteurs).",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q9",
+    "question": "Lequel des accomplissements suivants n'est PAS associé à Monsieur  selon les matériaux?",
+    "type": "multiple-choice",
+    "options": [
+      "Il a écrit deux livres",
+      "Il a participé à un marathon",
+      "Il a obtenu un diplôme d'études supérieures en linguistique",
+      "Il aime voyager"
+    ],
+    "correctAnswer": "Il a obtenu un diplôme d'études supérieures en linguistique",
+    "explanation": "Bien que Monsieur  soit auteur, ait couru un marathon, et aime voyager, aucune mention n'est faite d'un diplôme d'études supérieures en linguistique.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q10",
+    "question": "Les devoirs chauds (warm-ups) seront notés _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "hebdomadairement",
+    "explanation": "La diapositive 5 explique: 'Warm ups will be part of your grade, and they will be graded weekly.' (Les devoirs chauds font partie de votre note, et ils seront notés hebdomadairement.)",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q1",
+    "question": "What is the name of your French I teacher?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur Jean",
+      "Monsieur ",
+      "Monsieur Pierre",
+      "Monsieur Marc"
+    ],
+    "correctAnswer": "Monsieur ",
+    "explanation": "According to Slide 1 and Slide 8, the teacher's name is Monsieur .",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q2",
+    "question": "How many languages does Monsieur  speak?",
+    "type": "multiple-choice",
+    "options": [
+      "2 languages",
+      "3 languages",
+      "4 languages",
+      "5 languages"
+    ],
+    "correctAnswer": "3 languages",
+    "explanation": "Slide 8 states that Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q3",
+    "question": "How long has Monsieur  lived in France?",
+    "type": "fill-in-blank",
+    "correctAnswer": "over 7 years",
+    "explanation": "Slide 8 clearly states that Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q4",
+    "question": "True or False: Phones are allowed in the French I classroom.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 5, states 'No Phones.' Phones are not permitted in this classroom.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q5",
+    "question": "What percentage of the class grade is based on participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "40%",
+      "50%",
+      "60%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 clearly states: 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!'",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q6",
+    "question": "True or False: Monsieur  has written two books.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 8 states that Monsieur  is an author and has written two books.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q7",
+    "question": "What should students bring to class every day?",
+    "type": "multiple-choice",
+    "options": [
+      "Only a pencil",
+      "A writing journal and writing tool",
+      "Only a Chromebook",
+      "A textbook and notebook"
+    ],
+    "correctAnswer": "A writing journal and writing tool",
+    "explanation": "Slide 4 lists the daily materials needed, which include a writing journal and a pencil or pen.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q8",
+    "question": "The warm-up questions should be answered with _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "complete sentences",
+    "explanation": "Slide 5 states 'I expect complete sentences not one word answers' for warm-up responses.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q9",
+    "question": "True or False: Students can use their Chromebooks whenever they want in this class.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 4, states that Chromebooks should only be taken out when the teacher asks for them.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q10",
+    "question": "What activity will happen at the end of the semester in French I?",
+    "type": "multiple-choice",
+    "options": [
+      "A written exam",
+      "A winter potluck in French style",
+      "A solo presentation",
+      "A field trip to France"
+    ],
+    "correctAnswer": "A winter potluck in French style",
+    "explanation": "Slide 6 lists 'Winter potluck (French Style) at the end of the semester' as part of the class structure.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q1",
+    "question": "Selon les règles de la classe, combien d'infractions en un jour résultent en un appel à la maison?",
+    "type": "multiple-choice",
+    "options": [
+      "1 infraction",
+      "2 infractions",
+      "3 ou plus d'infractions",
+      "5 infractions"
+    ],
+    "correctAnswer": "3 ou plus d'infractions",
+    "explanation": "D'après la Slide 2, 3 ou plus d'infractions en un jour résultent en un appel parent/tuteur à la maison.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q2",
+    "question": "Monsieur  a vécu en France pendant ___________ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de 7 / 7 / sept",
+    "explanation": "Selon la Slide 8, Monsieur  a vécu en France pour plus de 7 ans.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q3",
+    "question": "Vrai ou Faux: Les téléphones portables sont autorisés en classe de Français I.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "La Slide 2 établit clairement une règle: 'No Phones.' (Pas de téléphones)",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q4",
+    "question": "Quel pourcentage de la note finale dépend de la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "30%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "La Slide 6 indique que 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!'",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q5",
+    "question": "Les Chromebooks doivent être sortis ___________.",
+    "type": "fill-in-blank",
+    "correctAnswer": "quand le professeur le demande / lorsque le professeur les demande / quand le professeur les demande",
+    "explanation": "Selon la Slide 2, les Chromebooks ne doivent être sortis que 'when the teacher asks for them.'",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q6",
+    "question": "Vrai ou Faux: Monsieur  a écrit trois livres.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "La Slide 8 indique que Monsieur  'has written two books' (deux livres), non trois.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q7",
+    "question": "Lequel de ces dessins animés n'est PAS mentionné comme une favorite de Monsieur ?",
+    "type": "multiple-choice",
+    "options": [
+      "Bob's Burgers",
+      "The Simpsons",
+      "Family Guy",
+      "Rick & Morty"
+    ],
+    "correctAnswer": "Family Guy",
+    "explanation": "La Slide 8 mentionne Bob's Burgers, The Simpsons, Futurama, et Rick & Morty, mais pas Family Guy.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q8",
+    "question": "Les réponses du 'Warm Up' doivent être ___________.",
+    "type": "fill-in-blank",
+    "correctAnswer": "des phrases complètes / en phrases complètes / complètes",
+    "explanation": "La Slide 5 stipule: 'I expect complete sentences not one word answers.' (Je m'attends à des phrases complètes, pas à des réponses d'un seul mot.)",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q9",
+    "question": "Combien de langues Monsieur  parle-t-il?",
+    "type": "multiple-choice",
+    "options": [
+      "2 langues",
+      "3 langues",
+      "4 langues",
+      "5 langues"
+    ],
+    "correctAnswer": "3 langues",
+    "explanation": "La Slide 8 indique que 'Mr.  speaks 3 languages.'",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q10",
+    "question": "Vrai ou Faux: Les examens de licence d'enseignement de Monsieur  en France sont prévus pour juin.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "La Slide 8 indique que ses examens sont 'next March' (mars prochain), pas juin.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q1",
+    "question": "According to the classroom rules, what is the consequence of accumulating three or more offenses in one day?",
+    "type": "multiple-choice",
+    "options": [
+      "The student receives a detention after school",
+      "A parent or guardian is called home",
+      "The student must write a 500-word essay",
+      "The student loses participation points for the week"
+    ],
+    "correctAnswer": "A parent or guardian is called home",
+    "explanation": "Slide 2 explicitly states that '3 or more offenses in one day will result in a parent/guardian call home.'",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q2",
+    "question": "Monsieur  a vécu en France pendant _____ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de sept (or sept or more than seven)",
+    "explanation": "Slide 8 states 'Mr.  has lived in France for over 7 years.' The French phrasing requires 'plus de sept ans.'",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q3",
+    "question": "True or False: According to Mr. 's expectations, warm-up responses should be one-word answers to save time.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 5 explicitly states 'I expect complete sentences not one word answers.' Therefore, the statement is false.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q4",
+    "question": "What percentage of the class grade is directly attributed to participation according to Mr. ?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "33%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 emphasizes 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!'",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q5",
+    "question": "Monsieur  a écrit _____ livres.",
+    "type": "fill-in-blank",
+    "correctAnswer": "deux (or 2)",
+    "explanation": "Slide 8 states 'Mr.  is an author, and has written two books.' The French translation requires 'deux livres.'",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q6",
+    "question": "True or False: According to the course materials, listening comprehension is emphasized less than speaking skills in this French I class.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 6 states 'A lot of speaking, but also an equal amount of listening,' indicating they receive equal emphasis, not less.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q7",
+    "question": "Which of the following is NOT mentioned as a daily material needed for the French I class?",
+    "type": "multiple-choice",
+    "options": [
+      "A writing journal",
+      "A pencil or pen",
+      "A French-English dictionary",
+      "A Chromebook when requested"
+    ],
+    "correctAnswer": "A French-English dictionary",
+    "explanation": "Slide 4 lists only four materials: Writing Journal, Pencil or Pen, Willingness to learn, and Chromebook (when requested). A dictionary is not mentioned.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q8",
+    "question": "Monsieur  parlera des examens pour sa licence d'enseignement en France en _____ prochain.",
+    "type": "fill-in-blank",
+    "correctAnswer": "mars (or March)",
+    "explanation": "Slide 8 states 'His exams are next March!' Therefore, the answer is 'mars' in French.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q9",
+    "question": "Which of the following is explicitly mentioned as a classroom activity or event in the course structure?",
+    "type": "multiple-choice",
+    "options": [
+      "A summer trip to France",
+      "Weekly vocabulary quizzes every Friday",
+      "Role plays and skits",
+      "Monthly film festivals in French"
+    ],
+    "correctAnswer": "Role plays and skits",
+    "explanation": "Slide 6 specifically mentions 'Role plays & Skits' as part of the class structure. The other options are not mentioned in the materials.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q10",
+    "question": "True or False: According to Slide 9, making mistakes while learning French is considered a negative aspect that students should avoid at all costs.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 9 encourages students by stating 'Many mistakes will be made, but the important thing is to keep trying' and emphasizes that 'Practice is key to success,' indicating mistakes are a normal and acceptable part of learning.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q1",
+    "question": "Quel est le nom du professeur de français?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur Dupont",
+      "Monsieur ",
+      "Monsieur Martin",
+      "Monsieur Leclerc"
+    ],
+    "correctAnswer": "Monsieur ",
+    "explanation": "According to Slide 2, the teacher's name is Monsieur .",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q2",
+    "question": "Combien de langues parle Monsieur ?",
+    "type": "multiple-choice",
+    "options": [
+      "2 langues",
+      "3 langues",
+      "4 langues",
+      "5 langues"
+    ],
+    "correctAnswer": "3 langues",
+    "explanation": "Slide 8 states that Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q3",
+    "question": "Monsieur  a vécu en France pendant combien d'années?",
+    "type": "fill-in-blank",
+    "correctAnswer": "7 ans (ou plus de 7 ans)",
+    "explanation": "According to Slide 8, Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q4",
+    "question": "Vrai ou Faux: Les téléphones portables sont permis en classe.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 5 clearly states 'No Phones' in the classroom.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q5",
+    "question": "Quel pourcentage de la classe est la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "30%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 emphasizes that 50% of the class grade is participation.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q6",
+    "question": "Quels sont les quatre compétences clés dans ce cours?",
+    "type": "multiple-choice",
+    "options": [
+      "Lire, écrire, danser, chanter",
+      "Parler, écouter, lire, écrire",
+      "Lire, parler, danser, jouer",
+      "Écouter, chanter, lire, parler"
+    ],
+    "correctAnswer": "Parler, écouter, lire, écrire",
+    "explanation": "Slide 3 lists the four key skills: Speaking, Listening Comprehension, Reading, and Writing.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q7",
+    "question": "Vrai ou Faux: Les Chromebooks peuvent être utilisés à tout moment en classe.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 4 states that Chromebooks should only be taken out when the teacher asks for them.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q8",
+    "question": "Combien de livres Monsieur  a-t-il écrits?",
+    "type": "fill-in-blank",
+    "correctAnswer": "deux (ou 2)",
+    "explanation": "Slide 8 mentions that Mr.  is an author and has written two books.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q9",
+    "question": "Qu'est-ce qui doit être complété chaque jour au début du cours?",
+    "type": "multiple-choice",
+    "options": [
+      "Un examen",
+      "Un exercice de vocabulaire",
+      "Une question de 5 minutes (warm up)",
+      "Une présentation"
+    ],
+    "correctAnswer": "Une question de 5 minutes (warm up)",
+    "explanation": "Slide 5 explains that a 5-minute warm up is a daily task completed when students enter the room.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q10",
+    "question": "Vrai ou Faux: Faire des erreurs est normal et acceptable quand on apprend une langue.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 9 emphasizes that making mistakes is okay and normal when learning a new language, and the important thing is to keep trying.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q1",
+    "question": "Combien de langues parle Monsieur ?",
+    "type": "multiple-choice",
+    "options": [
+      "Deux langues",
+      "Trois langues",
+      "Quatre langues",
+      "Cinq langues"
+    ],
+    "correctAnswer": "Trois langues",
+    "explanation": "According to Slide 8, Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q2",
+    "question": "Pendant combien d'années Monsieur  a-t-il vécu en France?",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "plus de 7 ans (or: 7 ans)",
+    "explanation": "Slide 8 states that Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q3",
+    "question": "Quel pourcentage de la classe est basé sur la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "40%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 emphasizes that PARTICIPATION IS KEY TO PASSING THIS CLASS and that 50% of the class is participation.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q4",
+    "question": "Vrai ou Faux: Les téléphones portables sont autorisés en classe.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 5 clearly states 'No Phones' are allowed in the classroom.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q5",
+    "question": "Monsieur  a écrit _____ livres.",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "deux",
+    "explanation": "Slide 8 indicates that Mr.  is an author and has written two books.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q6",
+    "question": "Quels sont les quatre compétences clés enseignées dans ce cours?",
+    "type": "multiple-choice",
+    "options": [
+      "Lecture, écriture, grammaire et vocabulaire",
+      "Écoute, grammaire, prononciation et culture",
+      "Compréhension orale, compétences orales, lecture et écriture",
+      "Conversation, traduction, littérature et histoire"
+    ],
+    "correctAnswer": "Compréhension orale, compétences orales, lecture et écriture",
+    "explanation": "Slide 3 lists the Four Key Skills: Speaking, Listening Comprehension, Reading, and Writing.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q7",
+    "question": "Vrai ou Faux: Les Chromebooks peuvent être utilisés à tout moment pendant le cours.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 4 states that Chromebooks should only be taken out when the teacher asks for them.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q8",
+    "question": "Quand les examens de Monsieur  pour son diplôme français auront-ils lieu?",
+    "type": "multiple-choice",
+    "options": [
+      "En janvier",
+      "En février",
+      "En mars",
+      "En avril"
+    ],
+    "correctAnswer": "En mars",
+    "explanation": "Slide 8 states that Mr. 's exams for his teaching license in France are next March.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q9",
+    "question": "Les devoirs à chaud (warm-ups) seront notés _____.",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "chaque semaine (or: hebdomadairement)",
+    "explanation": "Slide 5 indicates that warm-ups will be graded weekly.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q10",
+    "question": "Combien d'infractions en un jour résultent en un appel aux parents/tuteurs?",
+    "type": "multiple-choice",
+    "options": [
+      "1 infraction",
+      "2 infractions",
+      "3 infractions ou plus",
+      "5 infractions"
+    ],
+    "correctAnswer": "3 infractions ou plus",
+    "explanation": "Slide 2, Rule 7 states that '3 or more offenses in one day will result in a parent/guardian call home.'",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q1",
+    "question": "Selon les règles de classe, quel est le nombre minimum d'infractions en une journée qui entraînera un appel téléphonique aux parents ou tuteurs?",
+    "type": "multiple-choice",
+    "options": [
+      "2 infractions",
+      "3 infractions",
+      "4 infractions",
+      "5 infractions"
+    ],
+    "correctAnswer": "3 infractions",
+    "explanation": "Selon la diapositive 2, '3 or more offenses in one day will results in a parent/guardian call home.' (3 infractions ou plus en une journée entraîneront un appel à la maison)",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q2",
+    "question": "Monsieur  a vécu en France pendant _____ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de 7 / 7 / sept",
+    "explanation": "La diapositive 8 indique 'Mr.  has lived in France for over 7 years.' (Monsieur  a vécu en France pendant plus de 7 ans)",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q3",
+    "question": "Quel pourcentage de la note finale est basé sur la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "30%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "La diapositive 6 stipule clairement 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!' (La participation représente 50% de la classe)",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q4",
+    "question": "Vrai ou Faux: Les Chromebooks doivent être sortis à tout moment pendant le cours.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Selon la diapositive 2, 'Chromebooks are only to be taken out when the teacher asks for them.' (Les Chromebooks ne doivent être sortis que lorsque l'enseignant le demande)",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q5",
+    "question": "Combien de langues Monsieur  parle-t-il?",
+    "type": "fill-in-blank",
+    "correctAnswer": "3 / trois",
+    "explanation": "La diapositive 8 précise 'Mr.  speaks 3 languages.' (Monsieur  parle 3 langues)",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q6",
+    "question": "Lequel des éléments suivants n'est PAS listé comme matériel quotidien nécessaire pour la classe?",
+    "type": "multiple-choice",
+    "options": [
+      "Un journal d'écriture",
+      "Un dictionnaire français",
+      "Un cr ou un stylo",
+      "Une volonté d'apprendre"
+    ],
+    "correctAnswer": "Un dictionnaire français",
+    "explanation": "La diapositive 4 énumère les matériaux nécessaires: Writing Journal, Pencil or Pen, Willingness to learn, et Chromebook (when requested). Un dictionnaire n'est pas mentionné.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q7",
+    "question": "Vrai ou Faux: Monsieur  a déjà obtenu sa licence d'enseignement en France.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "La diapositive 8 indique 'Mr.  is in the process of getting his teaching license in France.' (Monsieur  est en train d'obtenir sa licence d'enseignement en France, ce qu'il n'a pas encore obtenue)",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q8",
+    "question": "Selon la structure de la classe, quel pourcentage approximatif du temps sera consacré à la parole par rapport à l'écoute?",
+    "type": "multiple-choice",
+    "options": [
+      "Plus de parole que d'écoute",
+      "Parts égales de parole et d'écoute",
+      "Moins de parole que d'écoute",
+      "Seulement de la parole"
+    ],
+    "correctAnswer": "Parts égales de parole et d'écoute",
+    "explanation": "La diapositive 6 affirme 'A lot of speaking, but also an equal amount of listening.' (Beaucoup de parole, mais aussi une quantité égale d'écoute)",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q9",
+    "question": "Quels sont les quatre domaines clés de compétences linguistiques enseignés dans ce cours? Énumérez-les dans l'ordre indiqué sur la diapositive 3.",
+    "type": "fill-in-blank",
+    "correctAnswer": "Speaking / Speaking Skills, Listening Comprehension / Listening Comprehension Skills, Reading / Reading Skills, Writing / Writing Skills",
+    "explanation": "La diapositive 3 énumère les quatre compétences clés: Speaking Skills, Listening Comprehension Skills, Reading Skills, et Writing Skills",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q10",
+    "question": "Quel événement culturel Monsieur  prévoit-il à la fin du semestre?",
+    "type": "multiple-choice",
+    "options": [
+      "Un dîner français à un restaurant",
+      "Un potluck français en classe",
+      "Un voyage en France",
+      "Une compétition de cuisine française"
+    ],
+    "correctAnswer": "Un potluck français en classe",
+    "explanation": "La diapositive 6 mentionne 'Winter potluck (French Style) at the end of the semester' (Un potluck d'hiver de style français à la fin du semestre)",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q1",
+    "question": "What is the French title for 'Mr.' used before a man's name?",
+    "type": "multiple-choice",
+    "options": [
+      "Madame",
+      "Monsieur",
+      "Mademoiselle",
+      "Maître"
+    ],
+    "correctAnswer": "Monsieur",
+    "explanation": "Monsieur is the French title used to address or refer to a man, similar to 'Mr.' in English.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q2",
+    "question": "What is the French title for 'Mrs.' or 'Ms.' used before a woman's name?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur",
+      "Madame",
+      "Mademoiselle",
+      "Professeur"
+    ],
+    "correctAnswer": "Madame",
+    "explanation": "Madame is the French title used to address or refer to a woman, similar to 'Mrs.' or 'Ms.' in English.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q3",
+    "question": "True or False: 'Monsieur' can be used for both men and women.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Monsieur is used only for men. Madame is used for women.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q4",
+    "question": "Your French teacher's name is _____ .",
+    "type": "fill-in-blank",
+    "correctAnswer": "Monsieur",
+    "explanation": "The teacher is referred to as Monsieur , using the French title for a man.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q5",
+    "question": "How many languages does Monsieur  speak?",
+    "type": "multiple-choice",
+    "options": [
+      "2 languages",
+      "3 languages",
+      "4 languages",
+      "5 languages"
+    ],
+    "correctAnswer": "3 languages",
+    "explanation": "According to the course materials, Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q6",
+    "question": "True or False: Monsieur  has lived in France for over 7 years.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The course materials state that Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q7",
+    "question": "When addressing a male teacher in French class, you would use _____ before his name.",
+    "type": "fill-in-blank",
+    "correctAnswer": "Monsieur",
+    "explanation": "The proper French title for a male teacher is Monsieur, placed before the name.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q8",
+    "question": "In French, 'Madame' is the female equivalent of which title?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur",
+      "Mademoiselle",
+      "Professeur",
+      "Docteur"
+    ],
+    "correctAnswer": "Monsieur",
+    "explanation": "Madame is the female title that corresponds to Monsieur, which is the male title.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q9",
+    "question": "True or False: Monsieur  has written three books.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "According to the materials, Monsieur  has written two books, not three.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q10",
+    "question": "Which title would you use when addressing a French woman named Marie?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur Marie",
+      "Madame Marie",
+      "Professor Marie",
+      "Doctor Marie"
+    ],
+    "correctAnswer": "Madame Marie",
+    "explanation": "Madame is the proper French title to use when addressing or referring to a woman, placed before her name.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q1",
+    "question": "Combien de langues parle Monsieur ?",
+    "type": "multiple-choice",
+    "options": [
+      "2 langues",
+      "3 langues",
+      "4 langues",
+      "5 langues"
+    ],
+    "correctAnswer": "3 langues",
+    "explanation": "According to the materials, Monsieur  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q2",
+    "question": "Monsieur  a vécu en France pendant _____ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de 7 (or sept)",
+    "explanation": "The materials state that Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q3",
+    "question": "Vrai ou Faux: Monsieur  a écrit trois livres.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The materials indicate that Mr.  has written two books, not three.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q4",
+    "question": "Quel pourcentage de la classe est basé sur la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "40%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "The materials clearly state that participation is 50% of the class grade.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q5",
+    "question": "Monsieur  aime les dessins animés comme _____, Les Simpsons, et Futurama.",
+    "type": "fill-in-blank",
+    "correctAnswer": "Bob's Burgers (or Rick & Morty)",
+    "explanation": "The materials list Bob's Burgers, The Simpsons, Futurama, and Rick & Morty as cartoons Mr.  enjoys.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q6",
+    "question": "Vrai ou Faux: Les téléphones sont autorisés en classe de Monsieur .",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The classroom rules explicitly state 'No Phones,' so phones are not allowed.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q7",
+    "question": "Quand les étudiants doivent-ils répondre à la question de réchauffement (warm up)?",
+    "type": "multiple-choice",
+    "options": [
+      "À la fin de la classe",
+      "Quand ils entrent en classe",
+      "Avant le cours commence",
+      "Après le déjeuner"
+    ],
+    "correctAnswer": "Quand ils entrent en classe",
+    "explanation": "The materials state that every time students come into the room, they take their journal out and answer the warm up question.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q8",
+    "question": "Quand est-ce que Monsieur  passe ses examens pour obtenir sa licence d'enseignement en France?",
+    "type": "fill-in-blank",
+    "correctAnswer": "mars (or en mars / next March)",
+    "explanation": "The materials indicate that Mr. 's exams for his teaching license in France are next March.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q9",
+    "question": "Vrai ou Faux: La structure de la classe comprend des jeux de rôle et des sketches.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The materials explicitly mention 'Role plays & Skits' as part of the class structure.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q10",
+    "question": "Combien d'infractions en un jour résultent en un appel aux parents ou tuteurs?",
+    "type": "multiple-choice",
+    "options": [
+      "2 infractions",
+      "3 ou plus d'infractions",
+      "5 infractions",
+      "Plus de 10 infractions"
+    ],
+    "correctAnswer": "3 ou plus d'infractions",
+    "explanation": "The classroom rules state that 3 or more offenses in one day will result in a parent/guardian call home.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q1",
+    "question": "According to Monsieur 's classroom expectations, what percentage of the class grade is based on participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "50%",
+      "75%",
+      "100%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 explicitly states that 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!'",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q2",
+    "question": "Monsieur  a vécu en France pendant _____ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de sept / plus de 7 / sept / 7",
+    "explanation": "Slide 8 states that 'Mr.  has lived in France for over 7 years' (plus de sept ans).",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q3",
+    "question": "True or False: According to the classroom rules, students can use their phones during class if they are checking the time.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2 clearly states 'No Phones' with no exceptions mentioned in the classroom rules.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q4",
+    "question": "Which of the following is NOT one of Monsieur 's hobbies or interests as mentioned in the course materials?",
+    "type": "multiple-choice",
+    "options": [
+      "Playing football professionally",
+      "Traveling",
+      "Writing books",
+      "Watching cartoons"
+    ],
+    "correctAnswer": "Playing football professionally",
+    "explanation": "Slide 8 mentions that Mr.  loves sports and has done a marathon, but does not indicate he plays football professionally. The other options are explicitly mentioned in the materials.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q5",
+    "question": "Combien de langues est-ce que Monsieur  parle?",
+    "type": "multiple-choice",
+    "options": [
+      "Deux langues",
+      "Trois langues",
+      "Quatre langues",
+      "Cinq langues"
+    ],
+    "correctAnswer": "Trois langues",
+    "explanation": "Slide 8 states that 'Mr.  speaks 3 languages' (Monsieur  parle 3 langues).",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q6",
+    "question": "If a student receives 3 or more offenses in one day, what consequence will result?",
+    "type": "multiple-choice",
+    "options": [
+      "Loss of Chromebook privileges",
+      "A parent/guardian call home",
+      "Detention after school",
+      "Mandatory meeting with administration"
+    ],
+    "correctAnswer": "A parent/guardian call home",
+    "explanation": "Slide 2, Classroom Rules, section 7 states: '3 or more offenses in one day will results in a parent/guardian call home.'",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q7",
+    "question": "True or False: Warm-up questions in this class expect only one-word answers.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 5 explicitly states 'I expect complete sentences not one word answers' regarding warm-up responses.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q8",
+    "question": "Selon les matériels de cours, Monsieur  _____ deux livres.",
+    "type": "fill-in-blank",
+    "correctAnswer": "a écrit / écrit",
+    "explanation": "Slide 8 states that 'Mr.  is an author, and has written two books' (Monsieur  a écrit deux livres).",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q9",
+    "question": "Which of the following best represents the main philosophy Monsieur  emphasizes about language learning?",
+    "type": "multiple-choice",
+    "options": [
+      "Perfection is achieved on the first attempt",
+      "Making mistakes is unacceptable in this class",
+      "Mistakes are part of the process and consistent practice leads to progress",
+      "Only native speakers can truly learn French"
+    ],
+    "correctAnswer": "Mistakes are part of the process and consistent practice leads to progress",
+    "explanation": "Slide 9 emphasizes that mistakes will be made while learning, but the important thing is to keep trying, and practice is key to success.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q10",
+    "question": "True or False: Monsieur  is currently preparing for his teaching license exams in France, which are scheduled for March.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 8 states that 'Mr.  is in the process of getting his teaching license in France. His exams are next March!'",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q1",
+    "question": "What is the name of your French I teacher?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur Dupont",
+      "Monsieur ",
+      "Monsieur Martin",
+      "Monsieur Pierre"
+    ],
+    "correctAnswer": "Monsieur ",
+    "explanation": "According to Slide 2, the teacher's name is Monsieur .",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q2",
+    "question": "How many languages does Monsieur  speak?",
+    "type": "multiple-choice",
+    "options": [
+      "2 languages",
+      "3 languages",
+      "4 languages",
+      "5 languages"
+    ],
+    "correctAnswer": "3 languages",
+    "explanation": "Slide 8 states that Monsieur  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q3",
+    "question": "True or False: Phones are allowed in the classroom.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2, Rule 5 clearly states 'No Phones' are allowed in the classroom.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q4",
+    "question": "Which of the following is NOT a daily material needed for class?",
+    "type": "multiple-choice",
+    "options": [
+      "Writing Journal",
+      "Pencil or Pen",
+      "Calculator",
+      "Willingness to learn"
+    ],
+    "correctAnswer": "Calculator",
+    "explanation": "Slide 4 lists the daily materials needed as: Writing Journal, Pencil or Pen, Willingness to learn, and Chromebook (when requested). A calculator is not mentioned.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q5",
+    "question": "True or False: Monsieur  has lived in France for over 7 years.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 8 states that Monsieur  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q6",
+    "question": "Complete the sentence: The warm-up will be graded _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "weekly",
+    "explanation": "According to Slide 5, warm-ups will be graded weekly.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q7",
+    "question": "What percentage of the class grade is based on participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "33%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 emphasizes that 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!'",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q8",
+    "question": "How many offenses in one day will result in a parent/guardian call home?",
+    "type": "multiple-choice",
+    "options": [
+      "1 offense",
+      "2 offenses",
+      "3 or more offenses",
+      "5 offenses"
+    ],
+    "correctAnswer": "3 or more offenses",
+    "explanation": "Slide 2, Rule 7 states that '3 or more offenses in one day will results in a parent/guardian call home.'",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q9",
+    "question": "True or False: Making mistakes is not acceptable in this French class.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 9 clearly states that 'It's OKAY to Make Mistakes' and that learning a new language involves many mistakes, but the important thing is to keep trying.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q10",
+    "question": "Complete the sentence: The class will include role plays, _____, and cultural learning about France.",
+    "type": "fill-in-blank",
+    "correctAnswer": "skits",
+    "explanation": "Slide 6 describes the class structure as including 'Role plays & Skits' as well as learning about French culture.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q1",
+    "question": "Selon les règles de la classe, combien d'infractions en un jour résultent en un appel aux parents?",
+    "type": "multiple-choice",
+    "options": [
+      "1 infraction",
+      "2 infractions",
+      "3 ou plus d'infractions",
+      "5 infractions"
+    ],
+    "correctAnswer": "3 ou plus d'infractions",
+    "explanation": "D'après la diapositive 2, 3 ou plus d'infractions en un jour résultent en un appel aux parents/tuteurs.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q2",
+    "question": "Monsieur  a vécu en France pendant _____ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "plus de 7",
+    "explanation": "La diapositive 8 indique que Monsieur  a vécu en France pendant plus de 7 ans.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q3",
+    "question": "Quel pourcentage de la note finale dépend de la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "40%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "La diapositive 6 affirme clairement que 50% de la classe est basée sur la participation.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q4",
+    "question": "Les Chromebooks doivent être utilisés seulement quand le professeur les demande.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "La règle 4 de la diapositive 2 stipule que les Chromebooks ne doivent être sortis que lorsque le professeur les demande.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q5",
+    "question": "Combien de langues est-ce que Monsieur  parle?",
+    "type": "multiple-choice",
+    "options": [
+      "2 langues",
+      "3 langues",
+      "4 langues",
+      "5 langues"
+    ],
+    "correctAnswer": "3 langues",
+    "explanation": "La diapositive 8 indique que Monsieur  parle 3 langues.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q6",
+    "question": "Les devoirs chauds (warm-ups) sont évalués _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "hebdomadairement",
+    "explanation": "La diapositive 5 explique que les devoirs chauds sont notés chaque semaine (hebdomadairement).",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q7",
+    "question": "Vrai ou faux: L'utilisation de téléphones portables est autorisée en classe.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "La règle 5 de la diapositive 2 stipule clairement 'No Phones' (pas de téléphones).",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q8",
+    "question": "Quels éléments sont inclus dans les évaluations du cours?",
+    "type": "multiple-choice",
+    "options": [
+      "Seulement écrit",
+      "Oral, écrit, écoute et expression orale",
+      "Seulement expression orale",
+      "Seulement écoute"
+    ],
+    "correctAnswer": "Oral, écrit, écoute et expression orale",
+    "explanation": "La diapositive 6 mentionne que les évaluations incluent l'oral, l'écrit, l'écoute et l'expression orale.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q9",
+    "question": "Monsieur  a écrit _____ livres.",
+    "type": "fill-in-blank",
+    "correctAnswer": "deux",
+    "explanation": "La diapositive 8 indique que Monsieur  est auteur et a écrit deux livres.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q10",
+    "question": "Quand Monsieur  passe ses examens pour obtenir sa licence d'enseignement en France?",
+    "type": "multiple-choice",
+    "options": [
+      "En décembre",
+      "En mars",
+      "En juillet",
+      "En septembre"
+    ],
+    "correctAnswer": "En mars",
+    "explanation": "La diapositive 8 précise que les examens de Monsieur  pour sa licence d'enseignement en France sont le mois prochain de mars.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q1",
+    "question": "According to the classroom rules, what is the consequence of having 3 or more offenses in one day?",
+    "type": "multiple-choice",
+    "options": [
+      "A detention after school",
+      "A parent/guardian call home",
+      "Expulsion from the class",
+      "A written warning"
+    ],
+    "correctAnswer": "A parent/guardian call home",
+    "explanation": "The learning materials explicitly state on Slide 2 that '3 or more offenses in one day will results in a parent/guardian call home'",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q2",
+    "question": "Monsieur  a vécu en France pendant plus de _____ ans.",
+    "type": "fill-in-blank",
+    "correctAnswer": "sept",
+    "explanation": "According to Slide 8, Mr.  has lived in France for over 7 years (plus de 7 ans)",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q3",
+    "question": "Vrai ou Faux: Les téléphones sont autorisés en classe si l'étudiant les utilise discrètement.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2 clearly states 'No Phones' as a classroom rule with no exceptions mentioned",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q4",
+    "question": "Quel pourcentage de la note finale dans cette classe est basé sur la participation?",
+    "type": "multiple-choice",
+    "options": [
+      "25%",
+      "30%",
+      "50%",
+      "75%"
+    ],
+    "correctAnswer": "50%",
+    "explanation": "Slide 6 explicitly states 'PARTICIPATION IS KEY TO PASSING THIS CLASS. 50% OF THE CLASS IS PARTICIPATION!'",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q5",
+    "question": "Combien de livres Monsieur  a-t-il écrits?",
+    "type": "fill-in-blank",
+    "correctAnswer": "deux",
+    "explanation": "Slide 8 states that Mr.  'has written two books' (a écrit deux livres)",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q6",
+    "question": "Vrai ou Faux: Les Chromebooks doivent rester sur le bureau pendant toute la classe.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Slide 2 states that 'Chromebooks are only to be taken out when the teacher asks for them,' implying they should not be out at other times",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q7",
+    "question": "Lequel de ces éléments N'EST PAS mentionné comme une compétence clé dans ce cours de français?",
+    "type": "multiple-choice",
+    "options": [
+      "Les compétences orales",
+      "La compréhension écrite",
+      "La grammaire avancée",
+      "Les compétences d'écoute"
+    ],
+    "correctAnswer": "La grammaire avancée",
+    "explanation": "Slide 3 lists four key skills: Speaking, Listening Comprehension, Reading, and Writing. Grammar is not explicitly mentioned as a separate key skill",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q8",
+    "question": "À quelle date Monsieur  doit-il passer ses examens pour obtenir sa certification d'enseignant en France?",
+    "type": "fill-in-blank",
+    "correctAnswer": "mars",
+    "explanation": "Slide 8 states 'His exams are next March' (Ses examens sont en mars prochain)",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q9",
+    "question": "Vrai ou Faux: Les erreurs sont acceptées et encouragées dans cette classe de français.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Slide 9 has a section titled 'It's OKAY to Make Mistakes' and emphasizes that 'Many mistakes will be made, but the important thing is to keep trying'",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q10",
+    "question": "Laquelle des activités suivantes est spécifiquement mentionnée comme partie de la structure de la classe?",
+    "type": "multiple-choice",
+    "options": [
+      "Des voyages en France",
+      "Des jeux vidéo éducatifs",
+      "Un potluck français à la fin du semestre",
+      "Des examens hebdomadaires"
+    ],
+    "correctAnswer": "Un potluck français à la fin du semestre",
+    "explanation": "Slide 6 mentions 'Winter potluck (French Style) at the end of the semester' as part of the class structure",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  }
+]

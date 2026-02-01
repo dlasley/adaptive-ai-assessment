@@ -1,0 +1,3588 @@
+[
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q1",
+    "question": "What does 'Bienvenue' mean in English?",
+    "type": "multiple-choice",
+    "options": [
+      "Goodbye",
+      "Welcome",
+      "Thank you",
+      "Please"
+    ],
+    "correctAnswer": "Welcome",
+    "explanation": "'Bienvenue' is the French word for 'welcome' and is commonly used as a greeting.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q2",
+    "question": "Fill in the blank: Je parle _____. (I speak French.)",
+    "type": "fill-in-blank",
+    "correctAnswer": "français",
+    "explanation": "'Français' is the French word for the French language. When stating what language you speak, you use the masculine singular form.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q3",
+    "question": "True or False: 'Monsieur' is a formal title used before a man's name in French.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "'Monsieur' (Mr.) is indeed a formal title used before a man's name in French, similar to 'Mr.' in English.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q4",
+    "question": "Which greeting is appropriate to use with someone you know well in an informal setting?",
+    "type": "multiple-choice",
+    "options": [
+      "Bonjour, Madame",
+      "Salut, ça va?",
+      "Enchanté(e)",
+      "Bonsoir, Monsieur"
+    ],
+    "correctAnswer": "Salut, ça va?",
+    "explanation": "'Salut' is an informal greeting meaning 'hi,' and 'ça va?' means 'how are you?' This is appropriate for friends and informal situations.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q5",
+    "question": "Fill in the blank: Au revoir means _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "goodbye",
+    "explanation": "'Au revoir' literally means 'until we see each other again' and is the standard formal way to say goodbye in French.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q6",
+    "question": "True or False: 'Merci' is the French word for 'please.'",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'Merci' means 'thank you.' The French word for 'please' is 's'il vous plaît' (formal) or 's'il te plaît' (informal).",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q7",
+    "question": "Which phrase would you use to formally greet someone you've just met?",
+    "type": "multiple-choice",
+    "options": [
+      "Ça va?",
+      "Enchanté(e)",
+      "À bientôt",
+      "Coucou"
+    ],
+    "correctAnswer": "Enchanté(e)",
+    "explanation": "'Enchanté(e)' means 'delighted/pleased to meet you' and is a formal greeting used when meeting someone for the first time.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q8",
+    "question": "Fill in the blank: S'il vous plaît means _____ (formal).",
+    "type": "fill-in-blank",
+    "correctAnswer": "please",
+    "explanation": "'S'il vous plaît' is the formal way to say 'please' in French, used with people you don't know well or in formal situations.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q9",
+    "question": "True or False: 'Bonsoir' is used as a greeting only in the morning.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'Bonsoir' means 'good evening' and is used in the evening and at night, not in the morning. 'Bonjour' is used during the day.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_beginner_q10",
+    "question": "Which response is appropriate when someone says 'Ça va?' to you?",
+    "type": "multiple-choice",
+    "options": [
+      "Au revoir",
+      "Ça va bien, merci",
+      "Enchanté",
+      "S'il vous plaît"
+    ],
+    "correctAnswer": "Ça va bien, merci",
+    "explanation": "'Ça va bien, merci' means 'I'm doing well, thank you.' This is an appropriate response to the informal greeting 'Ça va?' (How are you?).",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q1",
+    "question": "Which greeting is appropriate to use with a friend in an informal setting?",
+    "type": "multiple-choice",
+    "options": [
+      "Bonjour, Monsieur",
+      "Salut, ça va?",
+      "Enchanté de faire votre connaissance",
+      "Bonsoir, Madame"
+    ],
+    "correctAnswer": "Salut, ça va?",
+    "explanation": "Salut is an informal greeting used with friends. The other options are either formal greetings or formal introductions.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q2",
+    "question": "When meeting someone formally for the first time, you would say: 'Je suis _____ de faire votre connaissance.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "enchanté",
+    "explanation": "Enchanté (or enchantée for females) means 'delighted/pleased' and is a formal expression used when meeting someone for the first time.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q3",
+    "question": "True or False: 'Au revoir' and 'À bientôt' both mean goodbye, but 'À bientôt' specifically suggests seeing the person again soon.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Au revoir is a general goodbye, while À bientôt means 'see you soon' and implies you will see the person again in the near future.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q4",
+    "question": "Which response is appropriate when someone asks you 'Ça va?' in a casual setting?",
+    "type": "multiple-choice",
+    "options": [
+      "Je suis très heureux de vous rencontrer",
+      "Ça va bien, et toi?",
+      "Enchantée",
+      "Bonne journée"
+    ],
+    "correctAnswer": "Ça va bien, et toi?",
+    "explanation": "This is the appropriate casual response to 'Ça va?' (How are you?). It answers the question and reciprocates by asking how the other person is.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q5",
+    "question": "Fill in the blank: When greeting someone formally during the evening, you say '_____, Monsieur.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "Bonsoir",
+    "explanation": "Bonsoir (good evening) is used as a formal greeting after sunset, whereas Bonjour (good day) is used during daytime hours.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q6",
+    "question": "Which phrase is used to politely introduce yourself in a formal context?",
+    "type": "multiple-choice",
+    "options": [
+      "Yo, je m'appelle...",
+      "Je me présente, je m'appelle...",
+      "Salut, c'est moi!",
+      "Voilà, c'est qui?"
+    ],
+    "correctAnswer": "Je me présente, je m'appelle...",
+    "explanation": "Je me présente means 'I would like to introduce myself' and is the appropriate formal way to introduce yourself. The other options are either too casual or grammatically incorrect.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q7",
+    "question": "True or False: In French, you would use 'tu' when greeting a stranger in a formal business setting.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "You would use 'vous' (formal you) with strangers and in formal business settings. 'Tu' is reserved for friends, family, and people you know well.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q8",
+    "question": "Which of the following is the most appropriate formal greeting when you meet someone during the day?",
+    "type": "multiple-choice",
+    "options": [
+      "Coucou!",
+      "Salut!",
+      "Bonjour, comment allez-vous?",
+      "À plus tard!"
+    ],
+    "correctAnswer": "Bonjour, comment allez-vous?",
+    "explanation": "This combines the formal daytime greeting 'Bonjour' with a polite inquiry using the formal 'vous' form. The other options are either too informal or not greetings.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q9",
+    "question": "Fill in the blank: 'Bonsoir, je _____ Jean. Enchanté de vous rencontrer.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "suis",
+    "explanation": "The verb être (to be) conjugated in first person singular is 'suis'. The sentence means 'Good evening, I am Jean. Pleased to meet you.'",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_intermediate_q10",
+    "question": "When saying goodbye to a friend informally, which would be the most natural response?",
+    "type": "multiple-choice",
+    "options": [
+      "Très heureux de vous avoir rencontré",
+      "À bientôt, mon ami! Bisous!",
+      "Je vous présente mes respects",
+      "Enchanté de notre conversation"
+    ],
+    "correctAnswer": "À bientôt, mon ami! Bisous!",
+    "explanation": "This is an informal, friendly goodbye. 'À bientôt' (see you soon) and 'bisous' (kisses/hugs) are appropriate for casual relationships, while the other options are either too formal or not relevant.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q1",
+    "question": "When greeting someone formally in French, which expression would be most appropriate in a professional business setting?",
+    "type": "multiple-choice",
+    "options": [
+      "Salut, ça va?",
+      "Bonjour, Monsieur/Madame. Comment allez-vous?",
+      "Coucou! Ça va bien?",
+      "Yo, quoi de neuf?"
+    ],
+    "correctAnswer": "Bonjour, Monsieur/Madame. Comment allez-vous?",
+    "explanation": "This is the correct formal greeting. It uses 'Bonjour' (appropriate for any time of day), the formal titles 'Monsieur/Madame', and the formal 'vous' form of 'aller', showing respect and professionalism.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q2",
+    "question": "Fill in the blank with the appropriate informal greeting: '_____, mon ami! Ça va?'",
+    "type": "fill-in-blank",
+    "correctAnswer": "Salut",
+    "explanation": "'Salut' is the informal way to greet a friend. Combined with 'mon ami' (my friend) and 'Ça va?', this creates a casual, friendly greeting appropriate for peers.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q3",
+    "question": "What is the difference between 'Bonjour' and 'Bonsoir' in French greetings?",
+    "type": "multiple-choice",
+    "options": [
+      "'Bonjour' is used only in the morning, 'Bonsoir' is used only at night",
+      "'Bonjour' is used throughout the day until evening (typically around 6-7 PM), then 'Bonsoir' is used",
+      "'Bonjour' is formal and 'Bonsoir' is informal",
+      "They are interchangeable and mean the same thing"
+    ],
+    "correctAnswer": "'Bonjour' is used throughout the day until evening (typically around 6-7 PM), then 'Bonsoir' is used",
+    "explanation": "The distinction between 'Bonjour' and 'Bonsoir' is based on the time of day. 'Bonjour' covers morning and afternoon, while 'Bonsoir' is used in the evening and night, approximately after 6-7 PM.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q4",
+    "question": "True or False: In French formal etiquette, it is acceptable to use the 'tu' form when greeting someone you have just met in a professional context.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "False. In French, when meeting someone for the first time in a professional or formal context, you should always use the formal 'vous' form. The 'tu' form is reserved for friends, family, and people you know well or are of similar age/status.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q5",
+    "question": "When saying goodbye formally, which phrase would be most appropriate?",
+    "type": "multiple-choice",
+    "options": [
+      "À plus tard!",
+      "Adieu, Madame. Bonne journée!",
+      "Tchao!",
+      "Bye bye, mon pote!"
+    ],
+    "correctAnswer": "Adieu, Madame. Bonne journée!",
+    "explanation": "This is the formal farewell. 'Adieu' (goodbye) or 'Au revoir' with a formal title and a polite closing wish like 'Bonne journée' (have a good day) demonstrates proper formal French etiquette. Note: 'Adieu' literally means 'to God' and suggests a longer separation, while 'Au revoir' is more common.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q6",
+    "question": "Fill in the blank: 'Enchanté(e) de vous _____, Monsieur Martin.' (Pleased to meet you, Mr. Martin.)",
+    "type": "fill-in-blank",
+    "correctAnswer": "rencontrer",
+    "explanation": "'Rencontrer' means 'to meet'. The phrase 'Enchanté(e) de vous rencontrer' is a formal, polite way to express that you are pleased to meet someone for the first time.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q7",
+    "question": "What is the correct way to respond when someone asks 'Comment allez-vous?' in a formal setting?",
+    "type": "multiple-choice",
+    "options": [
+      "Yo, je suis cool!",
+      "Je vais bien, merci. Et vous?",
+      "Pas mal.",
+      "Ça va?"
+    ],
+    "correctAnswer": "Je vais bien, merci. Et vous?",
+    "explanation": "This is the appropriate formal response. 'Je vais bien' (I'm doing well) + 'merci' (thank you) + 'Et vous?' (And you?) shows politeness and reciprocates the question, which is expected in formal French conversation.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q8",
+    "question": "True or False: The phrase 'À bientôt!' (See you soon!) should only be used with close friends and family, never in professional contexts.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "False. 'À bientôt!' is a neutral farewell that can be used in both informal and professional contexts when you expect to see the person again soon. It is not exclusively reserved for close relationships.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q9",
+    "question": "Which greeting acknowledges both hello and how are you in an informal context?",
+    "type": "multiple-choice",
+    "options": [
+      "Bon matin!",
+      "Salut, ça va?",
+      "Comment t'appelles-tu?",
+      "Enchanté(e)!"
+    ],
+    "correctAnswer": "Salut, ça va?",
+    "explanation": "'Salut' is an informal hello, and 'ça va?' (how are you?) combines both greeting and inquiry about well-being in one casual phrase. This is typical of informal French greetings among friends.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Greetings_(Formal_&_Informal)_advanced_q10",
+    "question": "Fill in the blank with the appropriate formal title and greeting: 'Bonjour _____, comment allez-vous aujourd'hui?' (when addressing a female professional)",
+    "type": "fill-in-blank",
+    "correctAnswer": "Madame",
+    "explanation": "'Madame' is the appropriate formal title for addressing a woman in a professional or formal context. Combined with 'Bonjour' and the formal 'vous' form, this creates a respectful, polite greeting.",
+    "unitId": "introduction",
+    "topic": "Greetings (Formal & Informal)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q1",
+    "question": "What is the French word for the number 7?",
+    "type": "multiple-choice",
+    "options": [
+      "six",
+      "sept",
+      "huit",
+      "neuf"
+    ],
+    "correctAnswer": "sept",
+    "explanation": "Sept is the French word for 7. Six is 6, huit is 8, and neuf is 9.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q2",
+    "question": "Complete the sentence: Le nombre après dix est _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "onze",
+    "explanation": "Onze (11) comes after dix (10). This teaches number sequence in French.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q3",
+    "question": "Which number is 'treize' in English?",
+    "type": "multiple-choice",
+    "options": [
+      "12",
+      "13",
+      "14",
+      "15"
+    ],
+    "correctAnswer": "13",
+    "explanation": "Treize is the French word for 13. Douze is 12, quatorze is 14, and quinze is 15.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q4",
+    "question": "Vrai ou Faux: Vingt means 30?",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Vingt means 20, not 30. It is the last number in this sequence.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q5",
+    "question": "Fill in the blank: Zéro, un, deux, trois, quatre, cinq, six, sept, huit, neuf, _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "dix",
+    "explanation": "Dix (10) is the next number in the sequence from 0 to 20.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q6",
+    "question": "What is the French number for 16?",
+    "type": "multiple-choice",
+    "options": [
+      "quinze",
+      "seize",
+      "dix-sept",
+      "dix-huit"
+    ],
+    "correctAnswer": "seize",
+    "explanation": "Seize is 16. Quinze is 15, dix-sept is 17, and dix-huit is 18.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q7",
+    "question": "Complete: Le nombre 0 en français est _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "zéro",
+    "explanation": "Zéro is the French word for zero, the lowest number in this sequence.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q8",
+    "question": "Vrai ou Faux: Quatre is the French word for 5?",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Quatre means 4, not 5. Cinq is the French word for 5.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q9",
+    "question": "Which French number comes between 'quatorze' and 'seize'?",
+    "type": "multiple-choice",
+    "options": [
+      "treize",
+      "quinze",
+      "dix-sept",
+      "douze"
+    ],
+    "correctAnswer": "quinze",
+    "explanation": "Quinze (15) is between quatorze (14) and seize (16).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_beginner_q10",
+    "question": "What are the French words for 18 and 19?",
+    "type": "multiple-choice",
+    "options": [
+      "dix-sept and dix-huit",
+      "dix-huit and dix-neuf",
+      "dix-neuf and vingt",
+      "seize and dix-sept"
+    ],
+    "correctAnswer": "dix-huit and dix-neuf",
+    "explanation": "Dix-huit is 18 and dix-neuf is 19. These compound numbers follow the pattern of dix (10) + the units number.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q1",
+    "question": "Quel nombre vient après quinze?",
+    "type": "multiple-choice",
+    "options": [
+      "quatorze",
+      "seize",
+      "dix-sept",
+      "vingt"
+    ],
+    "correctAnswer": "seize",
+    "explanation": "Seize (16) vient directement après quinze (15) dans la séquence des nombres.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q2",
+    "question": "Le nombre 19 en français est _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "dix-neuf",
+    "explanation": "Dix-neuf est la forme correcte du nombre 19 en français, composé de dix (10) + neuf (9).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q3",
+    "question": "Vrai ou faux: 'Douze' signifie le nombre 11?",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Douze signifie 12. Onze signifie 11.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q4",
+    "question": "Quel nombre correspond à 'sept'?",
+    "type": "multiple-choice",
+    "options": [
+      "5",
+      "6",
+      "7",
+      "8"
+    ],
+    "correctAnswer": "7",
+    "explanation": "Sept correspond au nombre 7 en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q5",
+    "question": "Écrivez le nombre 13 en français: _____",
+    "type": "fill-in-blank",
+    "correctAnswer": "treize",
+    "explanation": "Treize est la forme correcte du nombre 13 en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q6",
+    "question": "Vrai ou faux: 'Zéro' est le nombre 0?",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Zéro signifie 0 en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q7",
+    "question": "Quel est le nombre qui vient avant 'seize'?",
+    "type": "multiple-choice",
+    "options": [
+      "quatorze",
+      "quinze",
+      "dix-sept",
+      "dix-huit"
+    ],
+    "correctAnswer": "quinze",
+    "explanation": "Quinze (15) vient directement avant seize (16).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q8",
+    "question": "Le nombre 18 se dit _____ en français.",
+    "type": "fill-in-blank",
+    "correctAnswer": "dix-huit",
+    "explanation": "Dix-huit est la forme correcte du nombre 18, composé de dix (10) + huit (8).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q9",
+    "question": "Vrai ou faux: 'Neuf' signifie le nombre 9?",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Neuf signifie 9 en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_intermediate_q10",
+    "question": "Quel nombre est entre 'dix' et 'douze'?",
+    "type": "multiple-choice",
+    "options": [
+      "neuf",
+      "onze",
+      "treize",
+      "quatorze"
+    ],
+    "correctAnswer": "onze",
+    "explanation": "Onze (11) vient entre dix (10) et douze (12).",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q1",
+    "question": "Quel nombre vient après seize?",
+    "type": "multiple-choice",
+    "options": [
+      "dix-huit",
+      "dix-sept",
+      "quinze",
+      "dix-neuf"
+    ],
+    "correctAnswer": "dix-sept",
+    "explanation": "Seize (16) + 1 = dix-sept (17). Dix-sept est composé de 'dix' (10) + 'sept' (7), ce qui fait 17.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q2",
+    "question": "En français, le nombre qui se situe entre quatorze et seize est _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "quinze",
+    "explanation": "Quatorze (14), quinze (15), seize (16). Quinze est exactement au milieu entre ces deux nombres.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q3",
+    "question": "Vrai ou Faux: 'Vingt' est le nombre 20 en français.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Vingt signifie 20 en français. C'est le dernier nombre de cette série de 0 à 20.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q4",
+    "question": "Combien de nombres se terminent par le son 'z' (zéro, deux, six, dix)?",
+    "type": "multiple-choice",
+    "options": [
+      "deux",
+      "trois",
+      "quatre",
+      "cinq"
+    ],
+    "correctAnswer": "quatre",
+    "explanation": "Les quatre nombres qui se terminent par un son 'z' sont: zéro, deux, six, et dix. Le 'z' final se prononce dans zéro, et le 'x' dans deux, six, et dix se prononce comme 'z' en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q5",
+    "question": "Lequel de ces nombres contient deux mots composés avec 'dix'?",
+    "type": "multiple-choice",
+    "options": [
+      "dix-sept et dix-huit",
+      "dix-neuf et vingt",
+      "seize et dix-sept",
+      "dix-huit et dix-neuf"
+    ],
+    "correctAnswer": "dix-sept et dix-huit",
+    "explanation": "Dix-sept (17) et dix-huit (18) sont tous deux composés avec 'dix'. Dix-neuf (19) est également composé, mais dix-sept et dix-huit sont les deux premiers nombres composés avec dix de la série.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q6",
+    "question": "Si vous additionnez trois et quatre en français, vous obtenez _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "sept",
+    "explanation": "Trois (3) + quatre (4) = sept (7). C'est une opération mathématique basique en français.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q7",
+    "question": "Vrai ou Faux: 'Neuf' et 'neuve' ont exactement la même prononciation en français.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "'Neuf' (9 ou nouvel/nouveau) et 'neuve' (forme féminine de neuf/nouveau) se prononcent identiquement: /nœf/.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q8",
+    "question": "Quel est le nombre dont la traduction en français commence par la lettre 'z'?",
+    "type": "multiple-choice",
+    "options": [
+      "dix",
+      "un",
+      "zéro",
+      "cinq"
+    ],
+    "correctAnswer": "zéro",
+    "explanation": "Zéro est le seul nombre de 0 à 20 qui commence par la lettre 'z'. Il représente le nombre 0.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q9",
+    "question": "Ordonnez ces trois nombres du plus petit au plus grand: treize, dix, quinze.",
+    "type": "multiple-choice",
+    "options": [
+      "dix, treize, quinze",
+      "treize, dix, quinze",
+      "quinze, treize, dix",
+      "dix, quinze, treize"
+    ],
+    "correctAnswer": "dix, treize, quinze",
+    "explanation": "Dix (10) < treize (13) < quinze (15). L'ordre correct du plus petit au plus grand est: dix, treize, quinze.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Numbers_0-20_advanced_q10",
+    "question": "Lequel de ces nombres en français contient la même racine que 'quatre'?",
+    "type": "multiple-choice",
+    "options": [
+      "quatorze",
+      "treize",
+      "douze",
+      "vingt"
+    ],
+    "correctAnswer": "quatorze",
+    "explanation": "Quatorze (14) contient 'quatre' (4) comme racine. Quatorze = quatre + dix (4 + 10 = 14). C'est la seule option qui partage cette même racine.",
+    "unitId": "introduction",
+    "topic": "Numbers 0-20",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q1",
+    "question": "How do you say 'Welcome' in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Au revoir",
+      "Bienvenue",
+      "Bonjour",
+      "S'il vous plaît"
+    ],
+    "correctAnswer": "Bienvenue",
+    "explanation": "'Bienvenue' is the French word for 'welcome'. 'Au revoir' means goodbye, 'Bonjour' means hello/good day, and 'S'il vous plaît' means please.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q2",
+    "question": "What is the correct way to greet someone formally in French in the morning?",
+    "type": "fill-in-blank",
+    "correctAnswer": "Bonjour",
+    "explanation": "'Bonjour' (good day) is the standard formal greeting used in the morning and throughout the day in French.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q3",
+    "question": "True or False: 'Au revoir' means 'Hello'.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'Au revoir' actually means 'goodbye' or 'see you again'. 'Bonjour' is used for hello/good day.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q4",
+    "question": "How do you say 'Please' in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Merci",
+      "S'il vous plaît",
+      "Excusez-moi",
+      "De rien"
+    ],
+    "correctAnswer": "S'il vous plaît",
+    "explanation": "'S'il vous plaît' is the formal way to say 'please'. 'Merci' means thank you, 'Excusez-moi' means excuse me, and 'De rien' means you're welcome.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q5",
+    "question": "What do you say to thank someone in French?",
+    "type": "fill-in-blank",
+    "correctAnswer": "Merci",
+    "explanation": "'Merci' is the French word for 'thank you'. It is one of the most common polite expressions in French.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q6",
+    "question": "True or False: 'De rien' means 'thank you'.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'De rien' means 'you're welcome' (literally 'of nothing'). 'Merci' is the word for 'thank you'.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q7",
+    "question": "Which expression is used to politely excuse yourself in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Pardon",
+      "Oui",
+      "Non",
+      "Peut-être"
+    ],
+    "correctAnswer": "Pardon",
+    "explanation": "'Pardon' or 'Excusez-moi' is used to apologize or excuse yourself. 'Oui' means yes, 'Non' means no, and 'Peut-être' means maybe.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q8",
+    "question": "How do you say 'Yes' in French?",
+    "type": "fill-in-blank",
+    "correctAnswer": "Oui",
+    "explanation": "'Oui' is the French word for 'yes'. It is one of the most fundamental words in the French language.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q9",
+    "question": "What is the French word for 'No'?",
+    "type": "multiple-choice",
+    "options": [
+      "Peut-être",
+      "Non",
+      "Oui",
+      "Jamais"
+    ],
+    "correctAnswer": "Non",
+    "explanation": "'Non' means 'no'. 'Peut-être' means maybe, 'Oui' means yes, and 'Jamais' means never.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_beginner_q10",
+    "question": "True or False: 'Peut-être' means 'yes'.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'Peut-être' means 'maybe' or 'perhaps'. 'Oui' is the word for 'yes'.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q1",
+    "question": "Complétez la phrase: 'Bonjour, je m'appelle Marie et je suis _____.' (Hello, my name is Marie and I am _____.) - Fill in with a profession in French.",
+    "type": "fill-in-blank",
+    "correctAnswer": "professeure (or: avocate, médecin, ingénieure, etc.)",
+    "explanation": "Any appropriate French profession is acceptable. Common examples include 'professeure' (teacher), 'avocate' (lawyer), 'médecin' (doctor), or 'ingénieure' (engineer). Remember to use the feminine form when referring to a female subject.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q2",
+    "question": "Quel est le verbe correct pour compléter cette phrase? 'Je _____ trois langues.'",
+    "type": "multiple-choice",
+    "options": [
+      "parle",
+      "parlent",
+      "parlez",
+      "parlons"
+    ],
+    "correctAnswer": "parle",
+    "explanation": "The correct conjugation is 'parle' (first person singular present tense of 'parler'). The sentence means 'I speak three languages.' The other options are: 'parlent' (they speak), 'parlez' (you speak - formal/plural), and 'parlons' (we speak).",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q3",
+    "question": "Vrai ou Faux: 'La France se trouve en Asie.'",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "This is false. France is located in Europe, specifically in Western Europe. It is not in Asia.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q4",
+    "question": "Complétez: 'Excusez-moi, où sont les _____?' (Excuse me, where are the bathrooms?)",
+    "type": "fill-in-blank",
+    "correctAnswer": "toilettes",
+    "explanation": "The correct French word for 'bathrooms' in this context is 'les toilettes.' This is a common practical phrase used when asking for directions in French-speaking areas.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q5",
+    "question": "Lequel de ces mots n'est PAS un pays francophone?",
+    "type": "multiple-choice",
+    "options": [
+      "La Belgique",
+      "Le Canada",
+      "La Suisse",
+      "La Thaïlande"
+    ],
+    "correctAnswer": "La Thaïlande",
+    "explanation": "Thailand (La Thaïlande) is not a francophone country; it is located in Southeast Asia and the official language is Thai. Belgium (La Belgique), Canada (Le Canada), and Switzerland (La Suisse) are all francophone countries where French is an official or widely spoken language.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q6",
+    "question": "Comment dit-on 'I like to travel' en français?",
+    "type": "multiple-choice",
+    "options": [
+      "Je aime voyager",
+      "J'aime voyager",
+      "Je aime à voyager",
+      "Je aimer voyager"
+    ],
+    "correctAnswer": "J'aime voyager",
+    "explanation": "The correct phrase is 'J'aime voyager' (I like to travel). When a verb follows 'aimer,' it remains in the infinitive form. 'J'aime' combines 'je' + 'aime' with an apostrophe because 'aime' begins with a vowel.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q7",
+    "question": "Quel pronom personnel complète correctement cette phrase? '_____ habitons à Paris depuis 5 ans.'",
+    "type": "multiple-choice",
+    "options": [
+      "Vous",
+      "Nous",
+      "Il",
+      "Elles"
+    ],
+    "correctAnswer": "Nous",
+    "explanation": "The correct pronoun is 'Nous' (we). The sentence means 'We have been living in Paris for 5 years.' The verb 'habitons' is the first-person plural form of 'habiter,' which requires the pronoun 'nous.'",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q8",
+    "question": "Vrai ou Faux: 'En français, tous les noms ont un article défini: le, la, ou les.'",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "This is true. In French, all nouns require a definite article (le for masculine singular, la for feminine singular, les for plural). Even when we don't always express it in English, it is necessary in French.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q9",
+    "question": "Complétez avec le verbe 'être' au présent: 'Nous _____ très heureux de vous rencontrer.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "sommes",
+    "explanation": "The correct form is 'sommes' (we are). This is the first-person plural present tense of the verb 'être.' The sentence means 'We are very happy to meet you.'",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_intermediate_q10",
+    "question": "Quelle est la traduction correcte de 'to make mistakes' en français?",
+    "type": "multiple-choice",
+    "options": [
+      "faire les devoirs",
+      "faire des erreurs",
+      "faire de l'exercice",
+      "faire la cuisine"
+    ],
+    "correctAnswer": "faire des erreurs",
+    "explanation": "The correct translation is 'faire des erreurs' (to make mistakes). The other options mean: 'faire les devoirs' (to do homework), 'faire de l'exercice' (to exercise), and 'faire la cuisine' (to cook).",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q1",
+    "question": "When learning a new language like French, what is considered the most important factor for success according to language acquisition principles?",
+    "type": "multiple-choice",
+    "options": [
+      "Having perfect grammar from the beginning",
+      "Continuous practice and willingness to make mistakes",
+      "Learning only from textbooks without speaking",
+      "Memorizing every word before attempting conversation"
+    ],
+    "correctAnswer": "Continuous practice and willingness to make mistakes",
+    "explanation": "Language learning experts emphasize that consistent practice and a growth mindset that accepts mistakes as part of the learning process are fundamental to language acquisition success.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q2",
+    "question": "In French, the letter 'h' at the beginning of words is typically _____ (silent/pronounced).",
+    "type": "fill-in-blank",
+    "correctAnswer": "silent",
+    "explanation": "In French, the 'h' at the beginning of most words is silent, such as in 'homme' (man), 'heureux' (happy), and 'habiter' (to live).",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q3",
+    "question": "Which of the following French vowels can have an accent mark that changes its pronunciation?",
+    "type": "multiple-choice",
+    "options": [
+      "Only 'e' can have accent marks",
+      "'a', 'e', 'i', 'o', and 'u' can all have accent marks",
+      "Vowels in French never have accent marks",
+      "'e' and 'a' can have accent marks that affect pronunciation"
+    ],
+    "correctAnswer": "'e' and 'a' can have accent marks that affect pronunciation",
+    "explanation": "In French, accent marks (accents) primarily modify the 'e' (é, è, ê, ë) and can appear on 'a', 'i', 'o', 'u', and 'c', but the accent marks most significantly change pronunciation on the letter 'e'.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q4",
+    "question": "True or False: In French, all words ending in 's', 't', 'd', 'p', or 'x' are typically pronounced with those final consonants sounded out.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "In French, final consonants are usually silent unless they are part of common exceptions like 'c', 'r', 'f', and 'l' (remembered by the acronym CaReFuL). Most words ending in 's', 't', 'd', 'p', or 'x' do not pronounce these final consonants.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q5",
+    "question": "The French alphabet contains the same 26 letters as English, but the letter 'w' is primarily used in _____ words borrowed from other languages.",
+    "type": "fill-in-blank",
+    "correctAnswer": "foreign",
+    "explanation": "The 'w' is not native to French and appears mainly in loanwords from English, German, or other languages, such as 'weekend' or 'wagon'.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q6",
+    "question": "Which French letter combination is known as a 'digraph' because it represents a single sound different from its individual letters?",
+    "type": "multiple-choice",
+    "options": [
+      "'ch' which sounds like the 'ch' in 'chat'",
+      "'ph' which sounds like the 'f' sound",
+      "'gn' which sounds like 'ny' in 'mignon'",
+      "All of the above are digraphs with distinct sounds"
+    ],
+    "correctAnswer": "All of the above are digraphs with distinct sounds",
+    "explanation": "French has multiple digraphs where two letters combine to create a single, often unexpected sound: 'ch' (chat), 'ph' (pharmacie - sounds like 'f'), and 'gn' (mignon - sounds like 'ny').",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q7",
+    "question": "In French, the letter 'c' before the vowels 'e' and 'i' is pronounced like the 's' in 'sun', while before 'a', 'o', or 'u' it sounds like a 'k'. Which word demonstrates the soft 'c' sound?",
+    "type": "multiple-choice",
+    "options": [
+      "Cake (cake)",
+      "Cerise (cherry)",
+      "Courage (courage)",
+      "Cuisson (cooking)"
+    ],
+    "correctAnswer": "Cerise (cherry)",
+    "explanation": "In 'cerise', the 'c' comes before the vowel 'e', so it is pronounced with the soft 's' sound, not a hard 'k' sound.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q8",
+    "question": "True or False: The French letter 'j' is always pronounced the same way, similar to the English 'j' in 'jump'.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The French 'j' consistently represents the soft 'zh' sound (like the 's' in 'measure'), as heard in words like 'je', 'jamais', and 'joli'.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q9",
+    "question": "The French 'r' sound is produced from the back of the throat and is quite different from English. This sound is called a _____ 'r'.",
+    "type": "fill-in-blank",
+    "correctAnswer": "guttural",
+    "explanation": "The French 'r' is a guttural sound, produced in the back of the throat, which is why it sounds distinctly different from the English 'r' and requires practice for English speakers to master.",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Alphabet_advanced_q10",
+    "question": "Which of the following best describes the correct pronunciation of the French letter combination 'oi'?",
+    "type": "multiple-choice",
+    "options": [
+      "It sounds like the 'oi' in English 'oil'",
+      "It sounds like 'wa' as in 'moi', 'trois', and 'droit'",
+      "It is pronounced as two separate vowel sounds",
+      "It sounds like the 'oy' in English 'boy'"
+    ],
+    "correctAnswer": "It sounds like 'wa' as in 'moi', 'trois', and 'droit'",
+    "explanation": "In French, the combination 'oi' is consistently pronounced as 'wa', as demonstrated in words like 'moi' (me), 'trois' (three), and 'droit' (right/law).",
+    "unitId": "introduction",
+    "topic": "French Alphabet",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q1",
+    "question": "What does 'Bienvenue' mean in English?",
+    "type": "multiple-choice",
+    "options": [
+      "Goodbye",
+      "Welcome",
+      "Thank you",
+      "Please"
+    ],
+    "correctAnswer": "Welcome",
+    "explanation": "'Bienvenue' is a French greeting that means 'welcome' in English. It is commonly used to greet people warmly.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q2",
+    "question": "Je _____ français. (I speak French)",
+    "type": "fill-in-blank",
+    "correctAnswer": "parle",
+    "explanation": "'Parle' is the third-person singular present tense of the verb 'parler' (to speak). In French, 'Je parle français' means 'I speak French.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q3",
+    "question": "True or False: 'Monsieur' is a French title used for women.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'Monsieur' is the French title used for men, similar to 'Mr.' in English. 'Madame' is used for women.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q4",
+    "question": "Which of the following is a basic French greeting?",
+    "type": "multiple-choice",
+    "options": [
+      "Bonjour",
+      "Merci",
+      "S'il vous plaît",
+      "Excusez-moi"
+    ],
+    "correctAnswer": "Bonjour",
+    "explanation": "'Bonjour' means 'hello' or 'good day' and is one of the most common French greetings used during the day.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q5",
+    "question": "Comment _____ -vous? (How are you? - formal)",
+    "type": "fill-in-blank",
+    "correctAnswer": "allez",
+    "explanation": "'Allez' is the formal second-person plural present tense of 'aller' (to go/to be). 'Comment allez-vous?' is the polite way to ask someone how they are.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q6",
+    "question": "What does 'Merci' mean in English?",
+    "type": "multiple-choice",
+    "options": [
+      "Please",
+      "Thank you",
+      "Excuse me",
+      "Goodbye"
+    ],
+    "correctAnswer": "Thank you",
+    "explanation": "'Merci' is a common French word meaning 'thank you.' It is used to express gratitude.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q7",
+    "question": "True or False: 'Au revoir' means 'hello' in French.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'Au revoir' means 'goodbye' (literally 'until we see each other again'). It is a farewell expression, not a greeting.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q8",
+    "question": "S'il vous _____ , pouvez-vous m'aider? (Please, can you help me? - formal)",
+    "type": "fill-in-blank",
+    "correctAnswer": "plaît",
+    "explanation": "'S'il vous plaît' is the formal polite expression meaning 'please' in French. It literally means 'if it pleases you.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q9",
+    "question": "Which word means 'yes' in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Non",
+      "Oui",
+      "Peut-être",
+      "Je ne sais pas"
+    ],
+    "correctAnswer": "Oui",
+    "explanation": "'Oui' is the French word for 'yes.' It is one of the most basic and commonly used words in French.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_beginner_q10",
+    "question": "Je m'appelle _____ . (My name is...)",
+    "type": "fill-in-blank",
+    "correctAnswer": "Marie",
+    "explanation": "The phrase 'Je m'appelle' means 'My name is...' You would fill in this blank with a person's name. Example: 'Je m'appelle Marie' means 'My name is Marie.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q1",
+    "question": "Complétez la phrase: Je _____ trois langues.",
+    "type": "fill-in-blank",
+    "correctAnswer": "parle",
+    "explanation": "Le verbe 'parler' (to speak) est conjugué à la première personne du singulier présent. 'Je parle trois langues' signifie 'I speak three languages.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q2",
+    "question": "Quel est l'adjectif correct pour décrire quelqu'un qui aime essayer de nouvelles choses malgré les difficultés?",
+    "type": "multiple-choice",
+    "options": [
+      "paresseux",
+      "courageux",
+      "timide",
+      "impatient"
+    ],
+    "correctAnswer": "courageux",
+    "explanation": "'Courageux' (courageous/brave) décrit quelqu'un qui est prêt à relever des défis. C'est l'attitude idéale pour apprendre une langue difficile.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q3",
+    "question": "Vrai ou Faux: En français, 'faire un marathon' signifie participer à une course de 42 kilomètres.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "C'est correct. Un marathon est une course longue distance d'environ 42 kilomètres (26 miles). L'expression 'faire un marathon' signifie 'to run/complete a marathon.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q4",
+    "question": "Traduisez en français: 'He has lived in France for over 7 years.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "Il habite en France depuis plus de 7 ans.",
+    "explanation": "On utilise le présent avec 'depuis' pour une action qui a commencé dans le passé et continue au présent. 'Habiter' (to live) conjugué à la troisième personne du singulier est 'habite.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q5",
+    "question": "Quel verbe signifie 'to try' ou 'to attempt' en français?",
+    "type": "multiple-choice",
+    "options": [
+      "espérer",
+      "essayer",
+      "éviter",
+      "écouter"
+    ],
+    "correctAnswer": "essayer",
+    "explanation": "'Essayer' signifie 'to try' ou 'to attempt.' Par exemple: 'Si vous essayez, vous verrez du progrès' (If you try, you will see progress).",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q6",
+    "question": "Complétez: Apprendre une nouvelle langue est _____ des choses les plus difficiles.",
+    "type": "fill-in-blank",
+    "correctAnswer": "une",
+    "explanation": "'Une' est l'article indéfini féminin singulier. 'Chose' est un nom féminin, donc on utilise 'une.' La phrase signifie 'Learning a new language is one of the most difficult things.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q7",
+    "question": "Vrai ou Faux: La clé du succès dans l'apprentissage des langues est de pratiquer régulièrement.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "C'est vrai. La pratique régulière est essentielle pour apprendre une langue. Les matériaux d'apprentissage soulignent que 'Practice is key to success.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q8",
+    "question": "Quel adjectif décrit un voyageur qui aime découvrir de nouveaux endroits?",
+    "type": "multiple-choice",
+    "options": [
+      "casanier",
+      "aventurier",
+      "ennuyeux",
+      "sedentaire"
+    ],
+    "correctAnswer": "aventurier",
+    "explanation": "'Aventurier' (adventurous) décrit quelqu'un qui aime voyager et explorer. C'est un trait de caractère positif pour quelqu'un qui aime les voyages.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q9",
+    "question": "Traduisez en français: 'The important thing is to keep trying.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "L'important est de continuer à essayer.",
+    "explanation": "'L'important' signifie 'the important thing.' 'Continuer à essayer' signifie 'to keep trying.' C'est une expression motivante pour les apprenants de langue.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_intermediate_q10",
+    "question": "Complétez la phrase avec le verbe correct: Je _____ que vous ferez du progrès si vous essayez.",
+    "type": "fill-in-blank",
+    "correctAnswer": "garantis",
+    "explanation": "Le verbe 'garantir' (to guarantee) conjugué à la première personne du singulier est 'garantis.' La phrase signifie 'I guarantee that you will make progress if you try.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q1",
+    "question": "Complétez la phrase : Je _____ trois langues différentes.",
+    "type": "fill-in-blank",
+    "correctAnswer": "parle",
+    "explanation": "Le verbe 'parler' (to speak) au présent à la première personne du singulier (je) se conjugue en 'parle'. La phrase signifie 'Je parle trois langues différentes.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q2",
+    "question": "Quel est le niveau de maîtrise linguistique le plus avancé selon le cadre CECR?",
+    "type": "multiple-choice",
+    "options": [
+      "A1",
+      "B2",
+      "C1",
+      "C2"
+    ],
+    "correctAnswer": "C2",
+    "explanation": "C2 est le niveau le plus élevé du Cadre Européen Commun de Référence (CECR). Il représente une maîtrise complète de la langue.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q3",
+    "question": "Traduisez en français : 'Making mistakes is an essential part of language learning.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "Faire des erreurs est une partie essentielle de l'apprentissage des langues.",
+    "explanation": "Cette phrase reflète le concept clé que les erreurs sont importantes dans l'apprentissage. 'Faire des erreurs' = making mistakes, 'une partie essentielle' = an essential part.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q4",
+    "question": "Vrai ou Faux : En français formel, on peut utiliser 'tu' en parlant à un supérieur hiérarchique.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "En français formel, il faut utiliser 'vous' (form of address) pour parler à un supérieur hiérarchique. Le 'tu' est réservé aux amis, famille, et pairs.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q5",
+    "question": "Conjuguez le verbe 'avoir' à la troisième personne du pluriel au présent : Ils _____ beaucoup d'expérience.",
+    "type": "fill-in-blank",
+    "correctAnswer": "ont",
+    "explanation": "'Avoir' à la troisième personne du pluriel (ils/elles) se conjugue en 'ont'. La phrase signifie 'Ils ont beaucoup d'expérience' (They have a lot of experience).",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q6",
+    "question": "Quel type de francophonie décrit un pays où le français est parlé comme langue officielle mais pas comme langue maternelle pour la majorité?",
+    "type": "multiple-choice",
+    "options": [
+      "Francophonie historique",
+      "Francophonie institutionnelle",
+      "Francophonie culturelle",
+      "Francophonie native"
+    ],
+    "correctAnswer": "Francophonie institutionnelle",
+    "explanation": "La francophonie institutionnelle décrit les pays où le français a un statut officiel ou administratif mais n'est pas la langue maternelle de la majorité des habitants.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q7",
+    "question": "Complétez avec l'article partitif correct : Je voudrais _____ pain et _____ eau, s'il vous plaît.",
+    "type": "fill-in-blank",
+    "correctAnswer": "du / de l'",
+    "explanation": "Les articles partitifs 'du' (avec pain, nom masculin) et 'de l'' (avec eau, nom féminin commençant par une voyelle) indiquent une partie ou une quantité indéterminée.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q8",
+    "question": "Quelle est la différence entre 'c'est' et 'il/elle est' en français?",
+    "type": "multiple-choice",
+    "options": [
+      "'C'est' s'utilise toujours avec un adjectif, 'il/elle est' s'utilise avec un nom",
+      "'Il/elle est' s'utilise avec un adjectif seul ou suivi d'une profession, 'c'est' s'utilise avant un article + nom",
+      "Il n'y a aucune différence",
+      "'C'est' est plus formel que 'il/elle est'"
+    ],
+    "correctAnswer": "'Il/elle est' s'utilise avec un adjectif seul ou suivi d'une profession, 'c'est' s'utilise avant un article + nom",
+    "explanation": "Exemple: 'Il est médecin' (He is a doctor) vs 'C'est un médecin' (He is a doctor - with emphasis). 'Elle est intelligente' vs 'C'est une femme intelligente.'",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q9",
+    "question": "Transformez la phrase au passé composé : 'Je vais en France pour étudier le français.' Utilisez 'aller'.",
+    "type": "fill-in-blank",
+    "correctAnswer": "Je suis allé(e) en France pour étudier le français.",
+    "explanation": "Le verbe 'aller' au passé composé se conjugue avec 'être' : 'je suis allé(e)'. Le 'e' entre parenthèses est ajouté pour les femmes (accord en genre).",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Classroom_Rules_&_Vocabulary_advanced_q10",
+    "question": "Vrai ou Faux : Le subjonctif français s'utilise toujours après des expressions de doute, d'émotion, ou d'obligation.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Le subjonctif s'utilise après des expressions comme 'je doute que', 'j'ai peur que', 'il faut que', 'je veux que', etc. Ces expressions expriment l'incertitude, l'émotion, ou l'obligation.",
+    "unitId": "introduction",
+    "topic": "Classroom Rules & Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q1",
+    "question": "How many languages does Mr.  speak?",
+    "type": "multiple-choice",
+    "options": [
+      "2 languages",
+      "3 languages",
+      "4 languages",
+      "5 languages"
+    ],
+    "correctAnswer": "3 languages",
+    "explanation": "According to the materials, Mr.  speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q2",
+    "question": "How long has Mr.  lived in France?",
+    "type": "multiple-choice",
+    "options": [
+      "3 years",
+      "5 years",
+      "over 7 years",
+      "10 years"
+    ],
+    "correctAnswer": "over 7 years",
+    "explanation": "The materials state that Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q3",
+    "question": "Mr.  has written two books.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The materials confirm that Mr.  is an author and has written two books.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q4",
+    "question": "Which of the following is NOT mentioned as one of Mr. 's interests?",
+    "type": "multiple-choice",
+    "options": [
+      "Sports",
+      "Food",
+      "Cartoons",
+      "Video games"
+    ],
+    "correctAnswer": "Video games",
+    "explanation": "Mr.  loves sports, food, and cartoons, but video games are not mentioned as his interests.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q5",
+    "question": "When are Mr. 's teaching license exams in France?",
+    "type": "multiple-choice",
+    "options": [
+      "January",
+      "March",
+      "June",
+      "September"
+    ],
+    "correctAnswer": "March",
+    "explanation": "The materials state that Mr. 's exams for his teaching license in France are next March.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q6",
+    "question": "Mr.  wants to teach in which of the following locations?",
+    "type": "multiple-choice",
+    "options": [
+      "Only in France",
+      "Only in the USA",
+      "Both France and the USA",
+      "Canada and France"
+    ],
+    "correctAnswer": "Both France and the USA",
+    "explanation": "Mr.  wants to teach both in France and in the USA.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q7",
+    "question": "Which cartoon is NOT mentioned as one of Mr. 's favorites?",
+    "type": "multiple-choice",
+    "options": [
+      "Bob's Burgers",
+      "Rick & Morty",
+      "The Office",
+      "Futurama"
+    ],
+    "correctAnswer": "The Office",
+    "explanation": "Mr.  loves Bob's Burgers, The Simpsons, Futurama, and Rick & Morty. The Office is not mentioned.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q8",
+    "question": "Mr.  has completed a marathon.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The materials state that Mr.  has done a marathon.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q9",
+    "question": "Learning a new language is considered _____ according to Mr. .",
+    "type": "fill-in-blank",
+    "correctAnswer": "one of the hardest things one can do",
+    "explanation": "Mr.  states that learning a new language is one of the hardest things one can do.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_beginner_q10",
+    "question": "What does Mr.  say is the key to success when learning a language?",
+    "type": "multiple-choice",
+    "options": [
+      "Perfection",
+      "Practice",
+      "Talent",
+      "Speed"
+    ],
+    "correctAnswer": "Practice",
+    "explanation": "Mr.  emphasizes that practice is key to success in learning a language.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q1",
+    "question": "Which of the following is NOT one of the romance languages?",
+    "type": "multiple-choice",
+    "options": [
+      "French",
+      "Spanish",
+      "Portuguese",
+      "German"
+    ],
+    "correctAnswer": "German",
+    "explanation": "German is a Germanic language, not a Romance language. French, Spanish, and Portuguese all derive from Latin and are Romance languages.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q2",
+    "question": "Learning a new language is considered one of the _____ things one can do.",
+    "type": "fill-in-blank",
+    "correctAnswer": "hardest",
+    "explanation": "The learning materials emphasize that learning a new language is one of the hardest things one can do, requiring practice and persistence.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q3",
+    "question": "True or False: Making mistakes while learning French is a normal and acceptable part of the learning process.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The materials explicitly state that it is okay to make mistakes, and that many mistakes will be made, but the important thing is to keep trying.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q4",
+    "question": "What is the key factor that guarantees progress in learning French?",
+    "type": "multiple-choice",
+    "options": [
+      "Having natural talent",
+      "Practicing consistently",
+      "Studying only grammar",
+      "Memorizing vocabulary lists"
+    ],
+    "correctAnswer": "Practicing consistently",
+    "explanation": "The materials state that 'Practice is key to success' and that trying guarantees progress in learning the language.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q5",
+    "question": "If you _____ in French class, you will see progress.",
+    "type": "fill-in-blank",
+    "correctAnswer": "try",
+    "explanation": "The learning materials guarantee that if students try, they will see progress in learning French.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q6",
+    "question": "True or False: The CEFR language levels include A1, A2, B1, B2, C1, and C2.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The materials show a visual representation of CEFR (Common European Framework of Reference for Languages) levels, which includes all six levels from A1 to C2.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q7",
+    "question": "Which of the following is the most important aspect of successfully learning French according to the course materials?",
+    "type": "multiple-choice",
+    "options": [
+      "Having expensive textbooks",
+      "Practicing regularly and trying",
+      "Studying alone in silence",
+      "Memorizing every word"
+    ],
+    "correctAnswer": "Practicing regularly and trying",
+    "explanation": "The materials emphasize that practice is key to success and that trying guarantees progress.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q8",
+    "question": "When learning French, _____ is essential because it helps reinforce vocabulary and grammar in context.",
+    "type": "fill-in-blank",
+    "correctAnswer": "practice",
+    "explanation": "The materials state that 'Practice is key to success' when learning a new language like French.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q9",
+    "question": "True or False: Making mistakes in French language learning should discourage you from continuing to try.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The materials clearly state that mistakes are part of learning, and the important thing is to keep trying, not to become discouraged.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_intermediate_q10",
+    "question": "What is emphasized as the most critical element for success in French language learning?",
+    "type": "multiple-choice",
+    "options": [
+      "Perfect pronunciation",
+      "Never making errors",
+      "Continued effort and practice despite mistakes",
+      "Learning grammar rules by heart"
+    ],
+    "correctAnswer": "Continued effort and practice despite mistakes",
+    "explanation": "The materials emphasize that learning a language is difficult, mistakes will happen, but the key is to keep trying. Practice guarantees progress if you make the effort.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q1",
+    "question": "Conjuguez le verbe 'parler' à la deuxième personne du singulier au présent de l'indicatif.",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "tu parles",
+    "explanation": "Le verbe 'parler' est un verbe régulier du premier groupe. À la deuxième personne du singulier, on ajoute '-es' au radical 'parl-', ce qui donne 'tu parles'.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q2",
+    "question": "Quel est l'équivalent correct de 'I have been living in France for seven years' en français?",
+    "type": "multiple-choice",
+    "options": [
+      "J'habite en France depuis sept ans.",
+      "J'ai habité en France pendant sept ans.",
+      "J'habitais en France pour sept ans.",
+      "J'aurais habité en France depuis sept ans."
+    ],
+    "correctAnswer": "J'habite en France depuis sept ans.",
+    "explanation": "Pour exprimer une action qui a commencé dans le passé et qui continue au présent, on utilise le présent de l'indicatif avec 'depuis' suivi de la durée. Les autres options sont incorrectes grammaticalement ou sémantiquement.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q3",
+    "question": "Vrai ou Faux: En français, l'article défini 'le' s'élide devant un verbe commençant par une voyelle.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "L'article défini 'le' ne s'élide que devant les noms commençant par une voyelle ou un 'h' muet (ex: l'homme, l'amour). Devant un verbe, on ne fait jamais d'élision car les articles ne se placent pas devant les verbes.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q5",
+    "question": "Lequel de ces énoncés démontre correctement l'utilisation du conditionnel présent?",
+    "type": "multiple-choice",
+    "options": [
+      "Si tu étudiais, tu réussirais l'examen.",
+      "Si tu étudies, tu réussirais l'examen.",
+      "Si tu étudierais, tu réussirais l'examen.",
+      "Si tu étudiais, tu réussissais l'examen."
+    ],
+    "correctAnswer": "Si tu étudiais, tu réussirais l'examen.",
+    "explanation": "Dans une phrase conditionnelle au conditionnel, on utilise l'imparfait dans la proposition 'si' et le conditionnel présent dans la proposition principale. Cette structure exprime une hypothèse irreële au présent.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q6",
+    "question": "Vrai ou Faux: Le français utilise la même préposition que l'anglais 'for' pour toutes les expressions de durée.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Le français distingue entre 'pendant' (for a specific duration in the past or future) et 'depuis' (for a duration starting in the past and continuing to the present). L'anglais utilise généralement 'for' dans les deux cas.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q7",
+    "question": "Quel pronon relatif est correct dans cette phrase: 'L'auteur _____ a écrit deux livres vit en France.'",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "qui",
+    "explanation": "Le pronom relatif 'qui' s'utilise comme sujet de la proposition relative. Ici, 'qui' remplace 'l'auteur' qui est le sujet du verbe 'a écrit'. On ne peut pas utiliser 'que' qui s'utilise pour les compléments d'objet direct.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q9",
+    "question": "Quel adjectif ou expression complète correctement cette phrase: 'Apprendre une langue étrangère est _____.'",
+    "type": "multiple-choice",
+    "options": [
+      "un des choses les plus difficiles",
+      "une des choses les plus difficiles",
+      "un des chose les plus difficile",
+      "une de chose les plus difficiles"
+    ],
+    "correctAnswer": "une des choses les plus difficiles",
+    "explanation": "L'expression 'une des choses' requiert: l'article féminin 'une' (accord avec 'chose'), le partitif 'des', le nom féminin 'choses', et l'adjectif 'difficiles' au féminin pluriel (accord avec 'choses').",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Days_of_the_Week_advanced_q10",
+    "question": "Complétez: 'L'erreur est une partie essentielle de _____ nouvelle langue.'",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "l'apprentissage d'une",
+    "explanation": "Cette phrase signifie 'Error is an essential part of learning a new language.' Le substantif 'apprentissage' (learning) est masculin, donc il faut 'l'' (not 'la'). On utilise l'article indéfini 'une' pour 'langue' en début de locution.",
+    "unitId": "introduction",
+    "topic": "Days of the Week",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q1",
+    "question": "What does 'Bienvenue en Français' mean in English?",
+    "type": "multiple-choice",
+    "options": [
+      "Goodbye in French",
+      "Welcome to French",
+      "French language rules",
+      "Learn French quickly"
+    ],
+    "correctAnswer": "Welcome to French",
+    "explanation": "'Bienvenue' means 'welcome' and 'en Français' means 'in French' or 'to French.'",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q2",
+    "question": "Fill in the blank: Je parle _____ langues.",
+    "type": "fill-in-blank",
+    "correctAnswer": "trois",
+    "explanation": "According to the materials, Mr.  speaks 3 languages. 'Trois' is the French word for three.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q3",
+    "question": "True or False: Making mistakes when learning French is discouraged.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The materials state that it's okay to make mistakes and that practice is key to success.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q5",
+    "question": "Fill in the blank: Je _____ français et anglais.",
+    "type": "fill-in-blank",
+    "correctAnswer": "parle",
+    "explanation": "'Parle' is the first-person singular present tense of 'parler' (to speak).",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q6",
+    "question": "True or False: Learning a new language is considered one of the easiest things to do.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The materials clearly state that learning a new language is one of the hardest things one can do.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q7",
+    "question": "What is the French word for 'rules'?",
+    "type": "multiple-choice",
+    "options": [
+      "Régles",
+      "Règles",
+      "Regles",
+      "Reègles"
+    ],
+    "correctAnswer": "Règles",
+    "explanation": "'Règles' is the correct French spelling for 'rules' with proper accent marks.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q9",
+    "question": "Which statement best reflects the attitude toward language learning errors?",
+    "type": "multiple-choice",
+    "options": [
+      "Errors should be avoided at all costs",
+      "Many mistakes will be made, but the important thing is to keep trying",
+      "Mistakes mean you are not learning",
+      "Only advanced students should try"
+    ],
+    "correctAnswer": "Many mistakes will be made, but the important thing is to keep trying",
+    "explanation": "The materials emphasize that mistakes are part of the learning process and that practice and persistence lead to progress.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_beginner_q10",
+    "question": "True or False: Respecting others is mentioned as important for success in language learning.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The materials state 'RESPECT IS KEY TO SUCCESS IN THIS CLASS,' emphasizing respect as fundamental.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q1",
+    "question": "How do you say 'Welcome to French I' in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Bienvenue en Français I",
+      "Bon français premier",
+      "Accueil à Français Un",
+      "Salut Français I"
+    ],
+    "correctAnswer": "Bienvenue en Français I",
+    "explanation": "Bienvenue means 'welcome' and 'en Français I' means 'to French I'. This is the proper way to greet students in a French I class.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q2",
+    "question": "Mr.  speaks _____ languages.",
+    "type": "fill-in-blank",
+    "correctAnswer": "3",
+    "explanation": "According to the learning materials, Mr.  is multilingual and speaks 3 languages.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q3",
+    "question": "How many years has Mr.  lived in France?",
+    "type": "multiple-choice",
+    "options": [
+      "Moins de 5 ans (Less than 5 years)",
+      "Plus de 7 ans (More than 7 years)",
+      "Environ 10 ans (About 10 years)",
+      "15 ans ou plus (15 years or more)"
+    ],
+    "correctAnswer": "Plus de 7 ans (More than 7 years)",
+    "explanation": "The materials state that Mr.  has lived in France for over 7 years.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q4",
+    "question": "Mr.  is an author who has written two books. (Vrai ou Faux?)",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The materials explicitly state that Mr.  is an author and has written two books.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q5",
+    "question": "Which of the following is NOT mentioned as one of Mr. 's interests?",
+    "type": "multiple-choice",
+    "options": [
+      "Sports and food",
+      "Cartoons",
+      "Travel",
+      "Video games"
+    ],
+    "correctAnswer": "Video games",
+    "explanation": "The materials mention sports, food, cartoons (Bob's Burgers, The Simpsons, Futurama, Rick & Morty), and travel as Mr. 's interests, but video games are not listed.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q6",
+    "question": "Learning a new language is described as _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "one of the hardest things one can do",
+    "explanation": "The learning materials emphasize that learning a new language is one of the hardest things one can do, but mistakes are part of the process.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q7",
+    "question": "What is the key to success when learning French according to the materials?",
+    "type": "multiple-choice",
+    "options": [
+      "Having natural talent",
+      "Practice and trying continuously",
+      "Only studying alone",
+      "Avoiding mistakes at all costs"
+    ],
+    "correctAnswer": "Practice and trying continuously",
+    "explanation": "The materials state that practice is key to success and emphasize that if you try, you will see progress despite making mistakes.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q8",
+    "question": "Mr.  wants to teach in both France and the USA. (Vrai ou Faux?)",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The materials clearly state that Mr.  wants to teach both in France and in the USA.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q9",
+    "question": "Which cartoon is mentioned as one of Mr. 's favorites?",
+    "type": "multiple-choice",
+    "options": [
+      "South Park",
+      "Family Guy",
+      "Rick & Morty",
+      "Adventure Time"
+    ],
+    "correctAnswer": "Rick & Morty",
+    "explanation": "The materials list Rick & Morty along with Bob's Burgers, The Simpsons, and Futurama as cartoons Mr.  loves.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_intermediate_q10",
+    "question": "Mr.  will take his teaching license exams in France in _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "March",
+    "explanation": "The materials state that Mr.  is in the process of getting his teaching license in France, with exams scheduled for next March.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q1",
+    "question": "When learning a new language, what is emphasized as the most important factor for success despite making mistakes?",
+    "type": "multiple-choice",
+    "options": [
+      "Memorizing grammar rules perfectly before speaking",
+      "Avoiding all errors at any cost",
+      "Continuing to try and practice consistently",
+      "Only speaking when completely confident"
+    ],
+    "correctAnswer": "Continuing to try and practice consistently",
+    "explanation": "The learning materials emphasize that practice is key to success and that trying despite mistakes leads to progress.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q2",
+    "question": "Complétez la phrase: Learning a new language is one of the _____ things one can do.",
+    "type": "fill-in-blank",
+    "correctAnswer": "hardest",
+    "explanation": "This is directly stated in the 'It's OKAY to Make Mistakes' section of the materials.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q3",
+    "question": "The CEFR (Common European Framework of Reference) language proficiency levels range from which two extremes?",
+    "type": "multiple-choice",
+    "options": [
+      "A1 to B2",
+      "A1 to C2",
+      "A2 to C1",
+      "B1 to C2"
+    ],
+    "correctAnswer": "A1 to C2",
+    "explanation": "The learning materials show the complete CEFR scale includes levels from A1 (beginner) through C2 (mastery level).",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q4",
+    "question": "Vrai ou Faux: Learning a language requires multiple skills including speaking, listening, reading, and writing.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The course materials explicitly list four key language skills that are essential to language learning.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q5",
+    "question": "Which of the following is NOT typically mentioned as a component of comprehensive language learning?",
+    "type": "multiple-choice",
+    "options": [
+      "Speaking Skills",
+      "Listening Comprehension Skills",
+      "Reading Skills",
+      "Cooking Skills"
+    ],
+    "correctAnswer": "Cooking Skills",
+    "explanation": "While French culture and food may be discussed, cooking skills are not listed among the four key language learning skills.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q6",
+    "question": "Complétez la phrase: _____ is key to success in language learning environments.",
+    "type": "fill-in-blank",
+    "correctAnswer": "Respect",
+    "explanation": "This is emphasized in the classroom rules and is fundamental to creating an effective learning environment.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q7",
+    "question": "When approaching language mistakes during the learning process, what mindset is recommended?",
+    "type": "multiple-choice",
+    "options": [
+      "Mistakes should be completely avoided as they damage learning",
+      "Mistakes are acceptable because trying and continued practice lead to progress",
+      "Mistakes should only be made in private, never in front of others",
+      "Mistakes indicate that the student is not capable of learning the language"
+    ],
+    "correctAnswer": "Mistakes are acceptable because trying and continued practice lead to progress",
+    "explanation": "The materials explicitly state that mistakes are normal in language learning and that persistent effort guarantees progress.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q8",
+    "question": "Vrai ou Faux: A person can be fluent in only one language.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The materials demonstrate that multilingualism is possible, showing examples of people who speak multiple languages.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q9",
+    "question": "Which statement best describes the relationship between effort and language acquisition success?",
+    "type": "multiple-choice",
+    "options": [
+      "Effort is not guaranteed to produce results in language learning",
+      "Only natural talent matters; effort is secondary",
+      "The instructor guarantees that consistent effort will result in observable progress",
+      "Some students can learn without any effort at all"
+    ],
+    "correctAnswer": "The instructor guarantees that consistent effort will result in observable progress",
+    "explanation": "The materials explicitly state: 'I guarantee you that if you try you will see progress.'",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Basic_Conversation_Phrases_advanced_q10",
+    "question": "Complétez la phrase: Learning a new language is challenging, but the important thing is to _____ trying.",
+    "type": "fill-in-blank",
+    "correctAnswer": "keep",
+    "explanation": "The materials emphasize persistence and continued effort as essential components of successful language learning.",
+    "unitId": "introduction",
+    "topic": "Basic Conversation Phrases",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q1",
+    "question": "What does 'Bienvenue' mean in English?",
+    "type": "multiple-choice",
+    "options": [
+      "Goodbye",
+      "Welcome",
+      "Thank you",
+      "Please"
+    ],
+    "correctAnswer": "Welcome",
+    "explanation": "'Bienvenue' is a common French greeting that means 'welcome' in English.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q2",
+    "question": "Je m'appelle _____ . (My name is...)",
+    "type": "fill-in-blank",
+    "correctAnswer": "Marie",
+    "explanation": "This is an example of how to introduce yourself in French. You would fill in your own name or any French name.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q3",
+    "question": "How do you say 'How are you?' (formal) in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Ça va?",
+      "Comment allez-vous?",
+      "Au revoir",
+      "Enchanté"
+    ],
+    "correctAnswer": "Comment allez-vous?",
+    "explanation": "'Comment allez-vous?' is the formal way to ask someone how they are in French. 'Ça va?' is informal.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q4",
+    "question": "True or False: 'Au revoir' means 'Hello' in French.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'Au revoir' means 'Goodbye' in French, not 'Hello'. 'Bonjour' means 'Hello'.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q5",
+    "question": "The French word for 'pen' is _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "stylo",
+    "explanation": "'Stylo' is the French word for 'pen', an essential classroom vocabulary word.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q6",
+    "question": "What is the French word for 'book'?",
+    "type": "multiple-choice",
+    "options": [
+      "papier",
+      "livre",
+      "cahier",
+      "stylo"
+    ],
+    "correctAnswer": "livre",
+    "explanation": "'Livre' means 'book' in French. 'Cahier' means notebook and 'papier' means paper.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q7",
+    "question": "Je suis _____ . (I am American)",
+    "type": "fill-in-blank",
+    "correctAnswer": "américain",
+    "explanation": "'Américain' (masculine) or 'américaine' (feminine) is used to describe someone's nationality in French.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q8",
+    "question": "True or False: 'Oui' means 'No' in French.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'Oui' means 'Yes' in French. 'Non' means 'No'.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q9",
+    "question": "What does 'Enchantée' mean?",
+    "type": "multiple-choice",
+    "options": [
+      "Goodbye",
+      "Thank you",
+      "Nice to meet you",
+      "Excuse me"
+    ],
+    "correctAnswer": "Nice to meet you",
+    "explanation": "'Enchanté(e)' is used when meeting someone for the first time and means 'delighted' or 'nice to meet you'.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_beginner_q10",
+    "question": "The French word for 'water' is _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "eau",
+    "explanation": "'Eau' is the French word for 'water'. It's a commonly used vocabulary word.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q1",
+    "question": "Complétez la phrase: Je _____ trois langues.",
+    "type": "fill-in-blank",
+    "correctAnswer": "parle",
+    "explanation": "The verb 'parler' (to speak) conjugated in first person singular present tense is 'parle'. The sentence means 'I speak three languages.'",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q2",
+    "question": "Quel est le niveau le plus avancé selon le cadre CEFR?",
+    "type": "multiple-choice",
+    "options": [
+      "A1",
+      "B2",
+      "C2",
+      "C1"
+    ],
+    "correctAnswer": "C2",
+    "explanation": "C2 is the highest proficiency level in the Common European Framework of Reference (CEFR) for Languages. It represents mastery of a language.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q3",
+    "question": "Vrai ou Faux: Faire des erreurs est une partie importante de l'apprentissage d'une langue.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The learning materials emphasize that making mistakes is an essential part of language learning and students should not be discouraged from trying.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q4",
+    "question": "Complétez: La _____ est la clé du succès dans l'apprentissage des langues.",
+    "type": "fill-in-blank",
+    "correctAnswer": "pratique",
+    "explanation": "'Pratique' (practice) is emphasized as the key to success in language learning. The sentence means 'Practice is the key to success in language learning.'",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q5",
+    "question": "Quel est le niveau de français approprié pour les débutants?",
+    "type": "multiple-choice",
+    "options": [
+      "B1",
+      "A2",
+      "A1",
+      "B2"
+    ],
+    "correctAnswer": "A1",
+    "explanation": "A1 is the beginner level according to the CEFR. It represents the most basic level of language proficiency for those just starting to learn.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q6",
+    "question": "Vrai ou Faux: Apprendre une nouvelle langue est l'une des choses les plus faciles qu'on peut faire.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The materials state that learning a new language is one of the hardest things one can do, making this statement false.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q7",
+    "question": "Complétez la phrase: Si vous _____, vous verrez du progrès.",
+    "type": "fill-in-blank",
+    "correctAnswer": "essayez",
+    "explanation": "'Essayez' (you try) is the correct conjugation of 'essayer' in second person plural. The sentence means 'If you try, you will see progress.'",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q8",
+    "question": "Parmi ces niveaux CEFR, lequel est un niveau intermédiaire?",
+    "type": "multiple-choice",
+    "options": [
+      "A1",
+      "C2",
+      "B1",
+      "A2"
+    ],
+    "correctAnswer": "B1",
+    "explanation": "B1 represents an intermediate level of language proficiency. A1-A2 are beginner levels, while B2-C2 are upper-intermediate to advanced levels.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q9",
+    "question": "Vrai ou Faux: L'important dans l'apprentissage est de ne pas faire d'erreurs.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The materials clearly state that making mistakes is normal and acceptable; what matters is continuing to try and practice, not avoiding all errors.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_intermediate_q10",
+    "question": "Complétez: L'apprentissage d'une langue nécessite de la _____ et de la détermination.",
+    "type": "fill-in-blank",
+    "correctAnswer": "patience",
+    "explanation": "'Patience' (patience) is the appropriate noun to complete this sentence about language learning requirements. The sentence means 'Learning a language requires patience and determination.'",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q1",
+    "question": "Conjuguez le verbe 'parler' à la troisième personne du singulier au présent: 'Il _____ français couramment.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "parle",
+    "explanation": "Le verbe 'parler' (to speak) est un verbe régulier du premier groupe. À la troisième personne du singulier au présent, on ajoute 'e' à la racine 'parl-'.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q2",
+    "question": "Quel est le pluriel de 'un château'?",
+    "type": "multiple-choice",
+    "options": [
+      "des châteaus",
+      "des châteaux",
+      "des châtels",
+      "des châteautes"
+    ],
+    "correctAnswer": "des châteaux",
+    "explanation": "Les noms se terminant en '-eau' forment généralement leur pluriel en ajoutant 'x'. 'Château' devient 'châteaux' au pluriel.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q3",
+    "question": "Complétez la phrase avec l'article défini approprié: '_____ France est un pays magnifique en Europe.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "La",
+    "explanation": "'France' est un nom féminin singulier. L'article défini féminin singulier est 'la'. Avant une voyelle, on utiliserait 'l'', mais 'France' commence par une consonne.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q4",
+    "question": "Transformez cette phrase au passé composé: 'Je vais en France pour visiter les châteaux.'",
+    "type": "multiple-choice",
+    "options": [
+      "J'ai allé en France pour visiter les châteaux.",
+      "Je suis allé en France pour visiter les châteaux.",
+      "J'ai été en France pour visiter les châteaux.",
+      "Je vais être en France pour visiter les châteaux."
+    ],
+    "correctAnswer": "Je suis allé en France pour visiter les châteaux.",
+    "explanation": "Le verbe 'aller' est un verbe de mouvement qui utilise l'auxiliaire 'être' au passé composé. La structure est: sujet + être conjugué + participe passé (allé).",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q5",
+    "question": "Vrai ou Faux: En français formel, on utilise 'tu' pour parler à un supérieur hiérarchique.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "En français formel, on utilise 'vous' pour parler à un supérieur hiérarchique ou à quelqu'un qu'on ne connaît pas bien. Le 'tu' est réservé aux amis, à la famille et aux pairs.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q6",
+    "question": "Quel est le subjonctif présent du verbe 'avoir' à la première personne du singulier? 'Il faut que j'_____ de la patience.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "aie",
+    "explanation": "Le subjonctif présent du verbe 'avoir' à la première personne du singulier est 'aie'. Le subjonctif s'utilise après des expressions comme 'il faut que'.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q7",
+    "question": "Complétez avec le pronom relatif approprié: 'La cathédrale _____ nous avons visitée était magnifique.'",
+    "type": "multiple-choice",
+    "options": [
+      "qui",
+      "que",
+      "où",
+      "dont"
+    ],
+    "correctAnswer": "que",
+    "explanation": "On utilise 'que' comme complément d'objet direct après un verbe transitif. 'Nous avons visitée' est une action directe sur 'la cathédrale', donc 'que' est correct.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q8",
+    "question": "Accordez l'adjectif correctement: 'Les monuments français sont très _____ (ancien).'",
+    "type": "fill-in-blank",
+    "correctAnswer": "anciens",
+    "explanation": "L'adjectif 'ancien' doit s'accorder avec le nom pluriel masculin 'monuments'. On ajoute 's' pour former le pluriel masculin: 'anciens'.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q9",
+    "question": "Vrai ou Faux: Le passé simple et le passé composé ont exactement la même signification en français contemporain.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Bien qu'ils expriment tous deux des actions passées, le passé composé s'utilise à l'oral et dans les textes modernes, tandis que le passé simple est littéraire et s'utilise surtout à l'écrit dans les textes formels ou historiques.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_French_Culture_&_Geography_advanced_q10",
+    "question": "Complétez la phrase avec la forme correcte du conditionnel présent: 'Si j'avais plus de temps, je _____ tous les musées de Paris.' (visiter)",
+    "type": "fill-in-blank",
+    "correctAnswer": "visiterais",
+    "explanation": "Au conditionnel présent, le verbe 'visiter' à la première personne du singulier devient 'visiterais'. C'est la structure d'une phrase hypothétique avec 'si' + imparfait + conditionnel.",
+    "unitId": "introduction",
+    "topic": "French Culture & Geography",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q1",
+    "question": "How do you say 'Mr.' in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Madame",
+      "Monsieur",
+      "Mademoiselle",
+      "Professeur"
+    ],
+    "correctAnswer": "Monsieur",
+    "explanation": "Monsieur is the French title for Mr., used to address or refer to a man formally.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q2",
+    "question": "How do you say 'Mrs.' or 'Ms.' in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur",
+      "Madame",
+      "Mademoiselle",
+      "Docteur"
+    ],
+    "correctAnswer": "Madame",
+    "explanation": "Madame is the French title for Mrs. or Ms., used to address or refer to a woman formally.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q3",
+    "question": "Fill in the blank: _____ Martin is a doctor. (Mr. Martin is a doctor.)",
+    "type": "fill-in-blank",
+    "correctAnswer": "Monsieur",
+    "explanation": "Monsieur is used before a man's name in formal introduction or reference.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q4",
+    "question": "Fill in the blank: _____ Dupont teaches French. (Mrs. Dupont teaches French.)",
+    "type": "fill-in-blank",
+    "correctAnswer": "Madame",
+    "explanation": "Madame is used before a woman's name in formal introduction or reference.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q5",
+    "question": "True or False: 'Monsieur' is used to address a woman.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Monsieur is used for men. Madame or Mademoiselle is used for women.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q6",
+    "question": "True or False: 'Madame' is used to address a man.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Madame is used for women. Monsieur is used for men.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q7",
+    "question": "Which title would you use to address your female teacher in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur",
+      "Madame",
+      "Garçon",
+      "Ami"
+    ],
+    "correctAnswer": "Madame",
+    "explanation": "Madame is the appropriate formal title for addressing a female teacher in French.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q8",
+    "question": "Which title would you use to address your male principal in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Madame",
+      "Mademoiselle",
+      "Monsieur",
+      "Docteur"
+    ],
+    "correctAnswer": "Monsieur",
+    "explanation": "Monsieur is the appropriate formal title for addressing a male principal in French.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q9",
+    "question": "Fill in the blank: Bonjour, _____ Bernard. Comment allez-vous?",
+    "type": "fill-in-blank",
+    "correctAnswer": "Monsieur",
+    "explanation": "Monsieur is used before a man's name when greeting him formally in French.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_beginner_q10",
+    "question": "Fill in the blank: Bonsoir, _____ Leclerc. Ça va bien?",
+    "type": "fill-in-blank",
+    "correctAnswer": "Madame",
+    "explanation": "Madame is used before a woman's name when greeting her formally in French. The name 'Leclerc' and context suggest this is a woman.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q1",
+    "question": "When addressing a male teacher formally in French, which title would you use?",
+    "type": "multiple-choice",
+    "options": [
+      "Mademoiselle",
+      "Monsieur",
+      "Madame",
+      "Mister"
+    ],
+    "correctAnswer": "Monsieur",
+    "explanation": "Monsieur is the formal French title for addressing a man, equivalent to 'Mr.' in English.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q2",
+    "question": "Fill in the blank: _____ Dupont est mon professeur de français.",
+    "type": "fill-in-blank",
+    "correctAnswer": "Monsieur",
+    "explanation": "Since Dupont is typically a male surname in French, Monsieur is the appropriate formal title to use before the name.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q3",
+    "question": "True or False: Madame is used to address both married and unmarried women in modern French.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "In contemporary French, Madame is the standard formal title for adult women regardless of marital status, while Mademoiselle is used less frequently.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q4",
+    "question": "Which of the following is the correct formal greeting with a title?",
+    "type": "multiple-choice",
+    "options": [
+      "Bonjour Madame Martin",
+      "Hello Madame Martin",
+      "Hi Mrs. Martin",
+      "Salut Madame Martin"
+    ],
+    "correctAnswer": "Bonjour Madame Martin",
+    "explanation": "This is the proper French formal greeting combining 'Bonjour' (good day) with the appropriate title and name.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q5",
+    "question": "Fill in the blank: When speaking to a female doctor professionally, you would say \"Merci, _____ .\"",
+    "type": "fill-in-blank",
+    "correctAnswer": "Madame",
+    "explanation": "In a professional context, Madame is the appropriate formal title to use when addressing a woman respectfully.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q6",
+    "question": "In formal French correspondence, which title would you use before an unknown female recipient's name?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur",
+      "Mademoiselle",
+      "Madame",
+      "Mademoiselle or Madame"
+    ],
+    "correctAnswer": "Madame",
+    "explanation": "Madame is now the standard formal title for women in French correspondence, as Mademoiselle is considered outdated or potentially offensive in professional contexts.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q7",
+    "question": "True or False: The title 'Monsieur' can only be used for men over the age of 18.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "Monsieur is the formal title for adult men and can be used for any male in a formal or respectful context, not restricted by a specific age requirement.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q8",
+    "question": "Fill in the blank: \"_____ et _____ Leclerc sont nos voisins.\" (Mr. and Mrs. Leclerc are our neighbors.)",
+    "type": "fill-in-blank",
+    "correctAnswer": "Monsieur Madame",
+    "explanation": "When addressing a married couple formally in French, you use Monsieur for the man and Madame for the woman.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q9",
+    "question": "Which response demonstrates proper French formal etiquette when greeting someone?",
+    "type": "multiple-choice",
+    "options": [
+      "Hey! What's up?",
+      "Bonjour, Madame. Comment allez-vous?",
+      "Hi there!",
+      "Salut, ça va?"
+    ],
+    "correctAnswer": "Bonjour, Madame. Comment allez-vous?",
+    "explanation": "This response combines the formal greeting 'Bonjour' with an appropriate title and formal question, demonstrating proper French etiquette.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_intermediate_q10",
+    "question": "True or False: In French business settings, it is acceptable to use first names immediately without using titles.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "In French business and formal settings, it is customary to use titles (Monsieur, Madame) until invited to use first names, as French culture values formal respect in professional contexts.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q1",
+    "question": "When addressing a man formally in French, which title would you use?",
+    "type": "multiple-choice",
+    "options": [
+      "Mademoiselle",
+      "Monsieur",
+      "Madame",
+      "Mister"
+    ],
+    "correctAnswer": "Monsieur",
+    "explanation": "Monsieur is the formal French title used to address a man, equivalent to 'Mr.' in English. Mademoiselle is for unmarried women, and Madame is for married women.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q2",
+    "question": "In formal French correspondence, how would you properly address an unmarried female professional?",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "Mademoiselle",
+    "explanation": "Mademoiselle is the traditional French title for unmarried women. While modern usage increasingly uses Madame for all women regardless of marital status, Mademoiselle remains appropriate in formal contexts when the woman's marital status is known.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q3",
+    "question": "True or False: In contemporary French business settings, 'Madame' is now commonly used to address all women, regardless of marital status.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "Modern French business etiquette increasingly uses 'Madame' for all women in professional contexts, moving away from the traditional distinction based on marital status. This reflects evolving social norms.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q4",
+    "question": "Which of the following would be the most appropriate formal greeting for a married woman in a professional setting?",
+    "type": "multiple-choice",
+    "options": [
+      "Bonjour Mademoiselle",
+      "Bonjour Madame",
+      "Bonjour Mister",
+      "Salut Madame"
+    ],
+    "correctAnswer": "Bonjour Madame",
+    "explanation": "'Bonjour Madame' is the appropriate formal greeting. 'Bonjour' (good day) is more formal than 'Salut' (hello), and Madame is the correct title for a married woman.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q5",
+    "question": "How would you write the abbreviated form of 'Monsieur' in a formal letter?",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "M.",
+    "explanation": "The standard abbreviation for Monsieur is 'M.' (with a period). Similarly, Madame is abbreviated as 'Mme.' and Mademoiselle as 'Mlle.'",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q6",
+    "question": "In French, which title is traditionally used for an unmarried woman?",
+    "type": "multiple-choice",
+    "options": [
+      "Monsieur",
+      "Madame",
+      "Mademoiselle",
+      "Mister"
+    ],
+    "correctAnswer": "Mademoiselle",
+    "explanation": "Mademoiselle is the traditional French title for unmarried women. The prefix 'mademoiselle' literally means 'my young lady.' However, modern usage is shifting toward using Madame for all women.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q7",
+    "question": "True or False: The abbreviation for 'Madame' in written French is 'Mad.'",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The correct abbreviation for Madame is 'Mme.' (not 'Mad.'). Using the correct abbreviation is important in formal French writing and correspondence.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q8",
+    "question": "When writing to a professional woman in French whose marital status you do not know, which title would be most appropriate and respectful in modern French?",
+    "type": "multiple-choice",
+    "options": [
+      "Mademoiselle",
+      "Madame",
+      "Mademoiselle ou Madame",
+      "Madame or Miss"
+    ],
+    "correctAnswer": "Madame",
+    "explanation": "In contemporary French business etiquette, 'Madame' is the safest and most respectful choice when addressing a woman professionally, as it avoids making assumptions about marital status.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q9",
+    "question": "In French formal writing, how would you properly abbreviate 'Mademoiselle'?",
+    "type": "fill-in-blank",
+    "options": [],
+    "correctAnswer": "Mlle.",
+    "explanation": "The standard abbreviation for Mademoiselle is 'Mlle.' (with a period). This abbreviation is commonly used in formal correspondence and official documents.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_Titles_(Monsieur,_Madame)_advanced_q10",
+    "question": "Which of the following represents the correct formal way to address multiple people in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Messieurs et Mesdames",
+      "Monsieur et Madame",
+      "Mister and Madams",
+      "Messieurs Madames"
+    ],
+    "correctAnswer": "Messieurs et Mesdames",
+    "explanation": "'Messieurs et Mesdames' (literally 'Sirs and Madams') is the proper formal greeting for a mixed group of people in French. Messieurs is the plural of Monsieur, and Mesdames is the plural of Madame.",
+    "unitId": "introduction",
+    "topic": "Titles (Monsieur, Madame)",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q1",
+    "question": "What does 'Bienvenue' mean in English?",
+    "type": "multiple-choice",
+    "options": [
+      "Goodbye",
+      "Welcome",
+      "Thank you",
+      "Please"
+    ],
+    "correctAnswer": "Welcome",
+    "explanation": "'Bienvenue' is a common French greeting that means 'Welcome' in English.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q2",
+    "question": "Je _____ français. (I speak French)",
+    "type": "fill-in-blank",
+    "correctAnswer": "parle",
+    "explanation": "'Parle' is the correct conjugation of the verb 'parler' (to speak) for the first person singular 'je' (I).",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q3",
+    "question": "How do you say 'pen' in French?",
+    "type": "multiple-choice",
+    "options": [
+      "un cr",
+      "un stylo",
+      "un livre",
+      "un cahier"
+    ],
+    "correctAnswer": "un stylo",
+    "explanation": "'Un stylo' means 'a pen' in French. 'Un cr' means pencil, 'un livre' means book, and 'un cahier' means notebook.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q4",
+    "question": "True or False: 'Journal' in French means the same as 'journal' in English (a diary or periodical).",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "'Journal' in French does mean journal or diary, similar to English. It can also mean newspaper in French.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q5",
+    "question": "What is the French word for 'pencil'?",
+    "type": "multiple-choice",
+    "options": [
+      "un stylo",
+      "un cr",
+      "une gomme",
+      "un papier"
+    ],
+    "correctAnswer": "un cr",
+    "explanation": "'Un cr' means 'a pencil' in French. 'Un stylo' is a pen, 'une gomme' is an eraser, and 'un papier' is paper.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q6",
+    "question": "How do you say 'to learn' in French?",
+    "type": "multiple-choice",
+    "options": [
+      "écrire",
+      "apprendre",
+      "lire",
+      "parler"
+    ],
+    "correctAnswer": "apprendre",
+    "explanation": "'Apprendre' means 'to learn' in French. 'Écrire' means to write, 'lire' means to read, and 'parler' means to speak.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q7",
+    "question": "Tu _____ français? (Do you speak French?)",
+    "type": "fill-in-blank",
+    "correctAnswer": "parles",
+    "explanation": "'Parles' is the correct conjugation of 'parler' (to speak) for the second person singular 'tu' (you informal).",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q8",
+    "question": "True or False: 'Cahier' is the French word for pen.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "'Cahier' means 'notebook' in French, not pen. The French word for pen is 'stylo'.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q9",
+    "question": "Which of the following is a school supply in French?",
+    "type": "multiple-choice",
+    "options": [
+      "une voiture",
+      "un cr",
+      "un chat",
+      "une maison"
+    ],
+    "correctAnswer": "un cr",
+    "explanation": "'Un cr' (a pencil) is a school supply. 'Une voiture' is a car, 'un chat' is a cat, and 'une maison' is a house.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_beginner_q10",
+    "question": "Je _____ ma volonté d'apprendre. (I have my willingness to learn)",
+    "type": "fill-in-blank",
+    "correctAnswer": "ai",
+    "explanation": "'Ai' is the correct conjugation of the verb 'avoir' (to have) for the first person singular 'je' (I).",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "beginner"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q2",
+    "question": "According to the course materials, learning a new language is described as one of the _____ things one can do.",
+    "type": "fill-in-blank",
+    "correctAnswer": "hardest",
+    "explanation": "The materials emphasize that learning a new language is one of the hardest things one can do, and that making mistakes is a normal part of the process.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q3",
+    "question": "Vrai ou Faux: Making mistakes while learning French is discouraged and should be avoided at all costs.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Faux",
+    "explanation": "The course materials explicitly state that it is okay to make mistakes. Many mistakes will be made, but the important thing is to keep trying and continue practicing.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q5",
+    "question": "According to the learning materials, what is the key to success when learning a language?",
+    "type": "multiple-choice",
+    "options": [
+      "Only studying grammar rules",
+      "Practice",
+      "Memorizing vocabulary lists",
+      "Avoiding all mistakes"
+    ],
+    "correctAnswer": "Practice",
+    "explanation": "The materials state that 'Practice is key to success' and emphasize that with consistent effort and practice, students will see progress in their language learning.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q6",
+    "question": "The CEFR language proficiency levels include A1, A2, B1, B2, C1, and _____.",
+    "type": "fill-in-blank",
+    "correctAnswer": "C2",
+    "explanation": "The CEFR (Common European Framework of Reference) has six levels: A1, A2, B1, B2, C1, and C2, representing increasing levels of language proficiency from beginner to mastery.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q7",
+    "question": "Vrai ou Faux: If you try your best and practice consistently, you will see progress in learning French.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The course materials include a guarantee that 'if you try you will see progress,' emphasizing that consistent effort leads to measurable improvement in language learning.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q8",
+    "question": "Which skill combination is most important for becoming fluent in French?",
+    "type": "multiple-choice",
+    "options": [
+      "Only reading and writing",
+      "Speaking and listening equally",
+      "Only speaking skills",
+      "Memorization without practice"
+    ],
+    "correctAnswer": "Speaking and listening equally",
+    "explanation": "The course emphasizes 'a lot of speaking, but also an equal amount of listening,' indicating that both oral production and comprehension are equally important for language development.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q9",
+    "question": "When learning French, it is important to understand the difference between _____ and informal speech patterns.",
+    "type": "fill-in-blank",
+    "correctAnswer": "formal",
+    "explanation": "Understanding formal versus informal French (tu/vous, expressions, register) is a crucial aspect of proper language usage and communication in different contexts.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_intermediate_q10",
+    "question": "Which of the following best describes the relationship between making mistakes and language learning success?",
+    "type": "multiple-choice",
+    "options": [
+      "Mistakes indicate you should stop learning",
+      "Mistakes are an essential and normal part of the learning process",
+      "Mistakes mean you will never become fluent",
+      "Mistakes should only be made outside of class"
+    ],
+    "correctAnswer": "Mistakes are an essential and normal part of the learning process",
+    "explanation": "The materials emphasize that making mistakes is inevitable and important. The key is to keep trying and learning from errors rather than avoiding them, as practice leads to progress.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "intermediate"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q1",
+    "question": "Which of the following is the correct French phrase to express that learning a language requires dedication and practice?",
+    "type": "multiple-choice",
+    "options": [
+      "La pratique est la clé du succès",
+      "Le succès est facile à obtenir",
+      "La langue est impossible à apprendre",
+      "Les erreurs sont inacceptables"
+    ],
+    "correctAnswer": "La pratique est la clé du succès",
+    "explanation": "The phrase 'La pratique est la clé du succès' (Practice is the key to success) directly reflects the learning materials' emphasis on practice and persistence in language learning.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q2",
+    "question": "Based on the CEFR framework mentioned, which level represents an advanced speaker of a language?",
+    "type": "multiple-choice",
+    "options": [
+      "A1",
+      "B1",
+      "C1",
+      "A2"
+    ],
+    "correctAnswer": "C1",
+    "explanation": "According to the Common European Framework of Reference for Languages (CEFR), C1 represents an advanced proficiency level, while A1-A2 are beginner levels and B1-B2 are intermediate levels.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q3",
+    "question": "Translate the following sentence into French: 'Making mistakes is an important part of learning a language.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "Faire des erreurs est une partie importante de l'apprentissage d'une langue.",
+    "explanation": "This translation captures the key concept from the materials that mistakes are a natural and necessary part of language acquisition, using proper French grammar and vocabulary.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q4",
+    "question": "In French, what is the term for 'willingness to learn'?",
+    "type": "multiple-choice",
+    "options": [
+      "La volonté d'apprendre",
+      "La capacité de parler",
+      "L'absence de motivation",
+      "Le refus d'étudier"
+    ],
+    "correctAnswer": "La volonté d'apprendre",
+    "explanation": "'La volonté d'apprendre' means 'the willingness to learn,' which is a fundamental component for language acquisition mentioned in the materials.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q5",
+    "question": "True or False: According to language learning principles, trying consistently will result in visible progress.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The materials explicitly state 'I guarantee you that if you try you will see progress,' emphasizing that consistent effort leads to measurable improvement in language learning.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q6",
+    "question": "Which French expression best conveys 'It is okay to make mistakes'?",
+    "type": "multiple-choice",
+    "options": [
+      "C'est bien de faire des erreurs",
+      "Il est interdit de faire des erreurs",
+      "Les erreurs sont inévitables et nécessaires",
+      "Both A and C are correct"
+    ],
+    "correctAnswer": "Both A and C are correct",
+    "explanation": "Both expressions accurately convey acceptance of mistakes in learning: 'C'est bien de faire des erreurs' (It's good to make mistakes) and 'Les erreurs sont inévitables et nécessaires' (Mistakes are inevitable and necessary) both reflect the learning philosophy.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q7",
+    "question": "How would you say in French: 'Learning a new language is one of the most difficult things one can do'?",
+    "type": "fill-in-blank",
+    "correctAnswer": "Apprendre une nouvelle langue est l'une des choses les plus difficiles qu'on puisse faire.",
+    "explanation": "This French sentence uses the subjunctive mood ('qu'on puisse faire') which is appropriate for expressing possibility, and accurately conveys the challenging nature of language learning.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q8",
+    "question": "True or False: The CEFR framework includes six different proficiency levels for language learners.",
+    "type": "true-false",
+    "options": [
+      "Vrai",
+      "Faux"
+    ],
+    "correctAnswer": "Vrai",
+    "explanation": "The CEFR (Common European Framework of Reference for Languages) consists of six levels: A1, A2, B1, B2, C1, and C2, ranging from beginner to mastery.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q9",
+    "question": "Which of the following best represents the most advanced level of language proficiency on the CEFR scale?",
+    "type": "multiple-choice",
+    "options": [
+      "Utilisateur élémentaire",
+      "Utilisateur indépendant",
+      "Utilisateur expérimenté",
+      "Apprenant débutant"
+    ],
+    "correctAnswer": "Utilisateur expérimenté",
+    "explanation": "'Utilisateur expérimenté' (Experienced user) corresponds to levels C1-C2 on the CEFR scale and represents mastery-level proficiency in a language.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  },
+  {
+    "id": "introduction_School_Supplies_Vocabulary_advanced_q10",
+    "question": "Complete this French sentence about language learning: 'La clé du succès dans l'apprentissage d'une langue est _____ et la persévérance.'",
+    "type": "fill-in-blank",
+    "correctAnswer": "la pratique",
+    "explanation": "'La pratique' (practice) completes the sentence to mean 'The key to success in language learning is practice and perseverance,' which directly aligns with the core message of the learning materials.",
+    "unitId": "introduction",
+    "topic": "School Supplies Vocabulary",
+    "difficulty": "advanced"
+  }
+]

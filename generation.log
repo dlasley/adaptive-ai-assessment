@@ -1,0 +1,657 @@
+
+> french-assessment-claude@0.1.0 generate-questions
+> tsx scripts/generate-questions.ts
+
+[dotenv@17.2.3] injecting env (1) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+🚀 Starting question generation...
+
+
+📚 Processing French 1 - Introduction...
+  Generating 10 beginner questions for: Greetings (Formal & Informal)
+  ❌ Error generating questions for Greetings (Formal & Informal) (beginner): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFuSK6cy3Q5dmKCU5hP"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb2e7bcfc03c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:21 GMT',
+    'request-id': 'req_011CXgFuSK6cy3Q5dmKCU5hP',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '366',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFuSK6cy3Q5dmKCU5hP',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFuSK6cy3Q5dmKCU5hP'
+  }
+}
+  Generating 10 intermediate questions for: Greetings (Formal & Informal)
+  ❌ Error generating questions for Greetings (Formal & Informal) (intermediate): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFuYrzoPJReDzCe1zFq"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb2f13fc203c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:23 GMT',
+    'request-id': 'req_011CXgFuYrzoPJReDzCe1zFq',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '210',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFuYrzoPJReDzCe1zFq',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFuYrzoPJReDzCe1zFq'
+  }
+}
+  Generating 10 advanced questions for: Greetings (Formal & Informal)
+  ❌ Error generating questions for Greetings (Formal & Informal) (advanced): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFueQcqDfYy78dXVn3a"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb2f968f603c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:24 GMT',
+    'request-id': 'req_011CXgFueQcqDfYy78dXVn3a',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '166',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFueQcqDfYy78dXVn3a',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFueQcqDfYy78dXVn3a'
+  }
+}
+  Generating 10 beginner questions for: Numbers 0-20
+  ❌ Error generating questions for Numbers 0-20 (beginner): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFuji79jQmfSktfp3mx"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb301286f03c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:25 GMT',
+    'request-id': 'req_011CXgFuji79jQmfSktfp3mx',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '138',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFuji79jQmfSktfp3mx',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFuji79jQmfSktfp3mx'
+  }
+}
+  Generating 10 intermediate questions for: Numbers 0-20
+  ❌ Error generating questions for Numbers 0-20 (intermediate): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFupvt8QCKcTwUSSs5P"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb308bee903c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:27 GMT',
+    'request-id': 'req_011CXgFupvt8QCKcTwUSSs5P',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '932',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFupvt8QCKcTwUSSs5P',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFupvt8QCKcTwUSSs5P'
+  }
+}
+  Generating 10 advanced questions for: Numbers 0-20
+  ❌ Error generating questions for Numbers 0-20 (advanced): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFuyZYatzHi7k3Mia1x"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb3156d9a03c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:28 GMT',
+    'request-id': 'req_011CXgFuyZYatzHi7k3Mia1x',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '149',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFuyZYatzHi7k3Mia1x',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFuyZYatzHi7k3Mia1x'
+  }
+}
+  Generating 10 beginner questions for: French Alphabet
+  ❌ Error generating questions for French Alphabet (beginner): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFv4n5PvoJ1LSFNtCs8"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb31d0cb403c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:30 GMT',
+    'request-id': 'req_011CXgFv4n5PvoJ1LSFNtCs8',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '212',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFv4n5PvoJ1LSFNtCs8',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFv4n5PvoJ1LSFNtCs8'
+  }
+}
+  Generating 10 intermediate questions for: French Alphabet
+  ❌ Error generating questions for French Alphabet (intermediate): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFvAfnhJbmnE3XrC3fz"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb3259d1103c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:31 GMT',
+    'request-id': 'req_011CXgFvAfnhJbmnE3XrC3fz',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '176',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFvAfnhJbmnE3XrC3fz',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFvAfnhJbmnE3XrC3fz'
+  }
+}
+  Generating 10 advanced questions for: French Alphabet
+  ❌ Error generating questions for French Alphabet (advanced): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFvGY1RwkinuZsXmBBr"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb32d7b7b03c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:33 GMT',
+    'request-id': 'req_011CXgFvGY1RwkinuZsXmBBr',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '270',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFvGY1RwkinuZsXmBBr',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFvGY1RwkinuZsXmBBr'
+  }
+}
+  Generating 10 beginner questions for: Classroom Rules & Vocabulary
+  ❌ Error generating questions for Classroom Rules & Vocabulary (beginner): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFvNVC7j4WfPrRfHLUh"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb336ed8203c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:34 GMT',
+    'request-id': 'req_011CXgFvNVC7j4WfPrRfHLUh',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '115',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFvNVC7j4WfPrRfHLUh',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFvNVC7j4WfPrRfHLUh'
+  }
+}
+  Generating 10 intermediate questions for: Classroom Rules & Vocabulary
+  ❌ Error generating questions for Classroom Rules & Vocabulary (intermediate): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFvToBA4BftaboiszwQ"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb33eacc903c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:35 GMT',
+    'request-id': 'req_011CXgFvToBA4BftaboiszwQ',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '141',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFvToBA4BftaboiszwQ',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFvToBA4BftaboiszwQ'
+  }
+}
+  Generating 10 advanced questions for: Classroom Rules & Vocabulary
+  ❌ Error generating questions for Classroom Rules & Vocabulary (advanced): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFvYyxq4JJaahrATu7i"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb3463d0703c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:36 GMT',
+    'request-id': 'req_011CXgFvYyxq4JJaahrATu7i',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '154',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFvYyxq4JJaahrATu7i',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFvYyxq4JJaahrATu7i'
+  }
+}
+  Generating 10 beginner questions for: Days of the Week
+  ❌ Error generating questions for Days of the Week (beginner): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFveEyMnzZQWNH61SVC"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb34debed03c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:37 GMT',
+    'request-id': 'req_011CXgFveEyMnzZQWNH61SVC',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '134',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFveEyMnzZQWNH61SVC',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFveEyMnzZQWNH61SVC'
+  }
+}
+  Generating 10 intermediate questions for: Days of the Week
+  ❌ Error generating questions for Days of the Week (intermediate): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFvjRXG6kEJUYKySvNw"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb3558ad903c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:39 GMT',
+    'request-id': 'req_011CXgFvjRXG6kEJUYKySvNw',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '183',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFvjRXG6kEJUYKySvNw',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFvjRXG6kEJUYKySvNw'
+  }
+}
+  Generating 10 advanced questions for: Days of the Week
+  ❌ Error generating questions for Days of the Week (advanced): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFvpnESdeydd4vkc4jZ"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb35d5aab03c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:40 GMT',
+    'request-id': 'req_011CXgFvpnESdeydd4vkc4jZ',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '478',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFvpnESdeydd4vkc4jZ',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFvpnESdeydd4vkc4jZ'
+  }
+}
+  Generating 10 beginner questions for: Basic Conversation Phrases
+  ❌ Error generating questions for Basic Conversation Phrases (beginner): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFvxhV5BkWBxykCZEcR"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb368e9cc03c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:42 GMT',
+    'request-id': 'req_011CXgFvxhV5BkWBxykCZEcR',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '190',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFvxhV5BkWBxykCZEcR',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFvxhV5BkWBxykCZEcR'
+  }
+}
+  Generating 10 intermediate questions for: Basic Conversation Phrases
+  ❌ Error generating questions for Basic Conversation Phrases (intermediate): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFw46BZk64heS9T9den"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb370c9ae03c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:43 GMT',
+    'request-id': 'req_011CXgFw46BZk64heS9T9den',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '188',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFw46BZk64heS9T9den',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFw46BZk64heS9T9den'
+  }
+}
+  Generating 10 advanced questions for: Basic Conversation Phrases
+  ❌ Error generating questions for Basic Conversation Phrases (advanced): NotFoundError: 404 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-7-sonnet-20250219"},"request_id":"req_011CXgFw9V8EQw7EY8gRJNDN"}
+    at APIError.generate (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/error.ts:73:14)
+    at Anthropic.makeStatusError (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:414:21)
+    at Anthropic.makeRequest (/Users/davidlasley/Projects/french-assessment-claude-1/node_modules/@anthropic-ai/sdk/src/core.ts:478:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async generateQuestionsForTopic (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:47:21)
+    at async generateAllQuestions (/Users/davidlasley/Projects/french-assessment-claude-1/scripts/generate-questions.ts:134:27) {
+  status: 404,
+  headers: {
+    'anthropic-organization-id': 'fd0153d3-3ed8-4df9-b94e-027f88b7b66f',
+    'cf-cache-status': 'DYNAMIC',
+    'cf-ray': '9c6cb378b9e203c2-SJC',
+    connection: 'keep-alive',
+    'content-encoding': 'gzip',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'content-type': 'application/json',
+    date: 'Sat, 31 Jan 2026 22:38:44 GMT',
+    'request-id': 'req_011CXgFw9V8EQw7EY8gRJNDN',
+    server: 'cloudflare',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'transfer-encoding': 'chunked',
+    'x-envoy-upstream-service-time': '137',
+    'x-robots-tag': 'none',
+    'x-should-retry': 'false'
+  },
+  request_id: 'req_011CXgFw9V8EQw7EY8gRJNDN',
+  error: {
+    type: 'error',
+    error: {
+      type: 'not_found_error',
+      message: 'model: claude-3-7-sonnet-20250219'
+    },
+    request_id: 'req_011CXgFw9V8EQw7EY8gRJNDN'
+  }
+}
