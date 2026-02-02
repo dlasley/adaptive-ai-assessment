@@ -1,20 +1,20 @@
 /**
- * WritingQuestionHints - Displays progressive hints for superusers
+ * QuestionHints - Displays progressive hints for superusers
+ * Simplified interface that just takes a hints array
  */
 
 import { useState } from 'react';
-import type { WritingQuestion } from '@/lib/writing-questions';
 
-interface WritingQuestionHintsProps {
-  question: WritingQuestion;
+interface QuestionHintsProps {
+  hints: string[];
   isSuperuser: boolean;
   showHints: boolean;
 }
 
-export function WritingQuestionHints({ question, isSuperuser, showHints }: WritingQuestionHintsProps) {
+export function QuestionHints({ hints, isSuperuser, showHints }: QuestionHintsProps) {
   const [showHintIndex, setShowHintIndex] = useState(-1);
 
-  if (!showHints || !isSuperuser || !question.hints || question.hints.length === 0) {
+  if (!showHints || !isSuperuser || !hints || hints.length === 0) {
     return null;
   }
 
@@ -27,7 +27,7 @@ export function WritingQuestionHints({ question, isSuperuser, showHints }: Writi
             Superuser
           </span>
         </h4>
-        {showHintIndex < question.hints.length - 1 && (
+        {showHintIndex < hints.length - 1 && (
           <button
             onClick={() => setShowHintIndex(showHintIndex + 1)}
             className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
@@ -36,7 +36,7 @@ export function WritingQuestionHints({ question, isSuperuser, showHints }: Writi
           </button>
         )}
       </div>
-      {question.hints.slice(0, showHintIndex + 1).map((hint, index) => (
+      {hints.slice(0, showHintIndex + 1).map((hint, index) => (
         <p key={index} className="text-sm text-indigo-800 dark:text-indigo-200 mt-2">
           {index + 1}. {hint}
         </p>
@@ -44,3 +44,6 @@ export function WritingQuestionHints({ question, isSuperuser, showHints }: Writi
     </div>
   );
 }
+
+// Backward compatibility alias
+export { QuestionHints as WritingQuestionHints };

@@ -1,29 +1,41 @@
 /**
- * WritingEvaluationResult - Displays evaluation results and feedback
+ * EvaluationResultDisplay - Displays evaluation results and feedback
+ * Works with both fill-in-blank and writing question types
  */
 
+import type { Question } from '@/types';
 import type { EvaluationResult } from '@/app/api/evaluate-writing/route';
 import { highlightDifferences } from './highlightDifferences';
 
-interface WritingEvaluationResultProps {
+interface EvaluationResultDisplayProps {
   evaluation: EvaluationResult;
   userAnswer: string;
+  correctAnswer?: string;
+  explanation?: string;
   onTryAgain: () => void;
   isSuperuser?: boolean;
-  difficulty?: string;
-  topic?: string;
-  questionType?: string;
+  questionType: Question['type'];
+  writingType?: Question['writingType'];
 }
 
-export function WritingEvaluationResult({
+export function EvaluationResultDisplay({
   evaluation,
   userAnswer,
+  correctAnswer,
+  explanation,
   onTryAgain,
   isSuperuser = false,
-  difficulty,
-  topic,
-  questionType
-}: WritingEvaluationResultProps) {
+  questionType,
+  writingType
+}: EvaluationResultDisplayProps) {
+  // Format question type for display
+  const questionTypeLabel = questionType === 'fill-in-blank'
+    ? 'Fill in Blank'
+    : 'Writing';
+
+  const writingTypeLabel = writingType
+    ? writingType.replace(/_/g, ' ')
+    : null;
   return (
     <div className={`rounded-xl p-6 ${
       evaluation.isCorrect
@@ -97,6 +109,16 @@ export function WritingEvaluationResult({
         </p>
       </div>
 
+      {/* Explanation (if provided) */}
+      {explanation && (
+        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <h5 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-1">
+            Explanation:
+          </h5>
+          <p className="text-blue-800 dark:text-blue-200">{explanation}</p>
+        </div>
+      )}
+
       {/* Corrections */}
       {evaluation.corrections && Object.keys(evaluation.corrections).length > 0 && (
         <div className="space-y-2">
@@ -153,25 +175,21 @@ export function WritingEvaluationResult({
               <div>
                 <span className="font-semibold text-purple-900 dark:text-purple-200">Question Type:</span>
                 <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
-                  writing
+                  {questionTypeLabel}
                 </span>
               </div>
-              <div>
-                <span className="font-semibold text-purple-900 dark:text-purple-200">Writing Type:</span>
-                <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
-                  {questionType?.replace(/_/g, ' ') || 'N/A'}
-                </span>
-              </div>
+              {writingTypeLabel && (
+                <div>
+                  <span className="font-semibold text-purple-900 dark:text-purple-200">Writing Type:</span>
+                  <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
+                    {writingTypeLabel}
+                  </span>
+                </div>
+              )}
               <div>
                 <span className="font-semibold text-purple-900 dark:text-purple-200">Difficulty:</span>
                 <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
-                  {difficulty || 'N/A'}
-                </span>
-              </div>
-              <div>
-                <span className="font-semibold text-purple-900 dark:text-purple-200">Topic:</span>
-                <span className="ml-2 text-purple-800 dark:text-purple-300">
-                  {topic || 'N/A'}
+                  {evaluation.metadata?.difficulty || 'N/A'}
                 </span>
               </div>
             </div>
@@ -245,3 +263,6 @@ export function WritingEvaluationResult({
     </div>
   );
 }
+
+// Backward compatibility alias
+export { EvaluationResultDisplay as WritingEvaluationResult };

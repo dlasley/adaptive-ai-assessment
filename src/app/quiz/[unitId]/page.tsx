@@ -7,7 +7,7 @@ import { units } from '@/lib/units';
 import { FEATURES } from '@/lib/feature-flags';
 import { getStoredStudyCode, getStudyCodeId } from '@/lib/study-codes';
 import { saveQuizResults, saveQuizResultsLocally } from '@/lib/progress-tracking';
-import WritingQuestionComponent from '@/components/WritingQuestion';
+import TypedAnswerQuestion from '@/components/WritingQuestion';
 import type { EvaluationResult } from '@/app/api/evaluate-writing/route';
 
 interface TopicRecommendation {
@@ -41,7 +41,6 @@ export default function QuizPage() {
   const [loadingStudyGuide, setLoadingStudyGuide] = useState(false);
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [studyCodeUuid, setStudyCodeUuid] = useState<string | null>(null);
-  const [isEvaluatingFillInBlank, setIsEvaluatingFillInBlank] = useState(false);
 
   // Initialize study code UUID and check superuser status
   useEffect(() => {
@@ -110,80 +109,8 @@ export default function QuizPage() {
     setUserAnswers({ ...userAnswers, [currentQuestion.id]: answer });
     setShowExplanation(false);
 
-    // For fill-in-blank questions, use tiered evaluation (exact → fuzzy → Claude API)
-    if (currentQuestion.type === 'fill-in-blank') {
-      // Don't evaluate empty answers
-      if (!answer.trim()) return;
-
-      setIsEvaluatingFillInBlank(true);
-      try {
-        const response = await fetch('/api/evaluate-writing', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question: currentQuestion.question,
-            userAnswer: answer,
-            correctAnswer: currentQuestion.correctAnswer,
-            questionType: 'fill_in_blank',
-            difficulty: currentQuestion.difficulty,
-            acceptableVariations: currentQuestion.acceptableVariations || [],
-            studyCodeId: studyCodeUuid
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('Evaluation failed');
-        }
-
-        const evaluationResult = await response.json();
-        setEvaluationResults({
-          ...evaluationResults,
-          [currentQuestion.id]: evaluationResult
-        });
-        // Show explanation immediately after evaluation
-        setShowExplanation(true);
-      } catch (error) {
-        console.error('❌ Error evaluating fill-in-blank answer:', error);
-        console.error('Error details:', error instanceof Error ? error.message : String(error));
-
-        // Fallback to simple exact match on error
-        const isCorrect = answer === currentQuestion.correctAnswer;
-        const evaluationResult: EvaluationResult = {
-          isCorrect,
-          score: isCorrect ? 100 : 0,
-          hasCorrectAccents: true,
-          feedback: isCorrect ? 'Correct!' : `The correct answer is: ${currentQuestion.correctAnswer}`,
-          corrections: {},
-          correctedAnswer: isCorrect ? undefined : currentQuestion.correctAnswer,
-        };
-
-        // Include metadata for superusers even in fallback
-        if (isSuperuser) {
-          evaluationResult.metadata = {
-            difficulty: currentQuestion.difficulty,
-            evaluationTier: 'exact_match',
-            usedClaudeAPI: false,
-            similarityScore: undefined,
-            confidenceScore: undefined,
-            confidenceThreshold: undefined,
-            modelUsed: 'fallback_error'
-          };
-        }
-
-        setEvaluationResults({
-          ...evaluationResults,
-          [currentQuestion.id]: evaluationResult
-        });
-        // Show explanation immediately after evaluation (even in error case)
-        setShowExplanation(true);
-      } finally {
-        setIsEvaluatingFillInBlank(false);
-      }
-      return;
-    }
-
-    // For other non-writing questions (multiple-choice, true-false), use exact match
-    if (currentQuestion.type !== 'writing') {
+    // For non-typed-answer questions (multiple-choice, true-false), use exact match
+    if (currentQuestion.type !== 'writing' && currentQuestion.type !== 'fill-in-blank') {
       const isCorrect = answer === currentQuestion.correctAnswer;
       const evaluationResult: EvaluationResult = {
         isCorrect,
@@ -214,8 +141,8 @@ export default function QuizPage() {
     }
   };
 
-  // Handler for writing question evaluation
-  const handleWritingSubmit = (answer: string, evaluation: EvaluationResult) => {
+  // Handler for typed answer question evaluation (writing and fill-in-blank)
+  const handleTypedAnswerSubmit = (answer: string, evaluation: EvaluationResult) => {
     if (!currentQuestion) return;
     setUserAnswers({ ...userAnswers, [currentQuestion.id]: answer });
     setEvaluationResults({ ...evaluationResults, [currentQuestion.id]: evaluation });
@@ -680,31 +607,18 @@ export default function QuizPage() {
         </div>
       </div>
 
-      {/* Render Writing Question Component for writing type */}
-      {currentQuestion.type === 'writing' ? (
+      {/* Render TypedAnswerQuestion for writing and fill-in-blank types */}
+      {(currentQuestion.type === 'writing' || currentQuestion.type === 'fill-in-blank') ? (
         <div className="space-y-6">
-          <WritingQuestionComponent
-            question={{
-              id: currentQuestion.id,
-              question_en: currentQuestion.question,
-              correct_answer_fr: currentQuestion.correctAnswer,
-              acceptable_variations: currentQuestion.acceptableVariations || [],
-              topic: currentQuestion.topic,
-              difficulty: currentQuestion.difficulty,
-              question_type: currentQuestion.writingType || 'translation',
-              explanation: currentQuestion.explanation || '',
-              hints: currentQuestion.hints || [],
-              unit_id: currentQuestion.unitId,
-              requires_complete_sentence: currentQuestion.requiresCompleteSentence || false,
-              created_at: new Date().toISOString()
-            }}
-            onSubmit={handleWritingSubmit}
+          <TypedAnswerQuestion
+            question={currentQuestion}
+            onSubmit={handleTypedAnswerSubmit}
             showHints={true}
             isSuperuser={isSuperuser}
             studyCodeUuid={studyCodeUuid}
           />
 
-          {/* Navigation for writing questions */}
+          {/* Navigation for typed answer questions */}
           {showExplanation && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
               <button
@@ -761,44 +675,7 @@ export default function QuizPage() {
           </div>
 
           <div className="space-y-3 mb-8">
-            {currentQuestion.type === 'fill-in-blank' ? (
-              <div>
-                <input
-                  type="text"
-                  value={userAnswers[currentQuestion.id] || ''}
-                  onChange={(e) => {
-                    // Only update state, don't evaluate yet
-                    setUserAnswers({ ...userAnswers, [currentQuestion.id]: e.target.value });
-                  }}
-                  onKeyDown={(e) => {
-                    // Evaluate when user presses Enter
-                    if (e.key === 'Enter' && !isEvaluatingFillInBlank) {
-                      handleAnswer(userAnswers[currentQuestion.id] || '');
-                    }
-                  }}
-                  placeholder="Type your answer here..."
-                  disabled={isEvaluatingFillInBlank}
-                  className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-indigo-500 focus:outline-none dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                {isEvaluatingFillInBlank && (
-                  <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-2 flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Evaluating your answer...
-                  </p>
-                )}
-                {!isEvaluatingFillInBlank && !showExplanation && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    {(currentQuestion.question.match(/___+/g) || []).length > 1
-                      ? 'Multiple blanks: type words separated by spaces. Press Enter to submit.'
-                      : 'Press Enter to submit'}
-                  </p>
-                )}
-              </div>
-            ) : (
-              currentQuestion.options?.map((option, idx) => {
+            {currentQuestion.options?.map((option, idx) => {
                 const isSelected = userAnswers[currentQuestion.id] === option;
                 const isCorrect = option === currentQuestion.correctAnswer;
                 const showCorrectness = showExplanation;
@@ -826,8 +703,7 @@ export default function QuizPage() {
                     </div>
                   </button>
                 );
-              })
-            )}
+              })}
           </div>
 
           {showExplanation && (
@@ -950,7 +826,7 @@ export default function QuizPage() {
           )}
 
           <div>
-            {!showExplanation && hasAnswered && currentQuestion.type !== 'fill-in-blank' && (
+            {!showExplanation && hasAnswered && (
               <button
                 onClick={() => setShowExplanation(true)}
                 className="w-full py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"

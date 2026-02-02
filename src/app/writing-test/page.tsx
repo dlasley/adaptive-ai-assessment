@@ -1,12 +1,31 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import WritingQuestionComponent from '@/components/WritingQuestion';
+import TypedAnswerQuestion from '@/components/WritingQuestion';
 import type { WritingQuestion } from '@/lib/writing-questions';
+import type { Question } from '@/types';
 import { getRandomWritingQuestions } from '@/lib/writing-questions';
 import { useQuizProgress } from '@/hooks/useQuizProgress';
 import { useVideoRecommendations } from '@/hooks/useVideoRecommendations';
 import { calculateQuizStats } from '@/lib/quiz-utils';
+
+// Convert WritingQuestion (database format) to Question (component format)
+function toQuestion(wq: WritingQuestion): Question {
+  return {
+    id: wq.id,
+    question: wq.question_en,
+    type: 'writing',
+    correctAnswer: wq.correct_answer_fr || '',
+    explanation: wq.explanation,
+    unitId: wq.unit_id || 'all',
+    topic: wq.topic,
+    difficulty: wq.difficulty,
+    writingType: wq.question_type,
+    acceptableVariations: wq.acceptable_variations,
+    hints: wq.hints,
+    requiresCompleteSentence: wq.requires_complete_sentence
+  };
+}
 
 // Sample questions for testing (before database is populated)
 const SAMPLE_QUESTIONS: WritingQuestion[] = [
@@ -340,8 +359,8 @@ export default function WritingTestPage() {
       </div>
 
       {/* Question */}
-      <WritingQuestionComponent
-        question={questions[quiz.currentQuestion]}
+      <TypedAnswerQuestion
+        question={toQuestion(questions[quiz.currentQuestion])}
         onSubmit={(answer, evaluation) =>
           quiz.handleSubmit(answer, evaluation, questions[quiz.currentQuestion].question_en)
         }

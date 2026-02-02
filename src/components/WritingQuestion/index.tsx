@@ -1,22 +1,22 @@
 /**
- * WritingQuestion - Main component composing all sub-components
- * Refactored for better maintainability and reusability
+ * TypedAnswerQuestion - Unified component for typed answer questions
+ * Supports both fill-in-blank (single-line) and writing (multi-line) questions
  */
 
 'use client';
 
 import { useEffect } from 'react';
-import type { WritingQuestion } from '@/lib/writing-questions';
+import type { Question } from '@/types';
 import type { EvaluationResult } from '@/app/api/evaluate-writing/route';
 import { useQuestionEvaluation } from '@/hooks/useQuestionEvaluation';
 
-import { WritingQuestionDisplay } from './WritingQuestionDisplay';
-import { WritingQuestionHints } from './WritingQuestionHints';
-import { WritingAnswerInput } from './WritingAnswerInput';
-import { WritingEvaluationResult } from './WritingEvaluationResult';
+import { QuestionDisplay } from './WritingQuestionDisplay';
+import { QuestionHints } from './WritingQuestionHints';
+import { AnswerInput } from './WritingAnswerInput';
+import { EvaluationResultDisplay } from './WritingEvaluationResult';
 
-interface WritingQuestionProps {
-  question: WritingQuestion;
+interface TypedAnswerQuestionProps {
+  question: Question;
   onSubmit?: (answer: string, evaluation: EvaluationResult) => void;
   showHints?: boolean;
   disabled?: boolean;
@@ -24,14 +24,14 @@ interface WritingQuestionProps {
   studyCodeUuid?: string | null;
 }
 
-export default function WritingQuestionComponent({
+export default function TypedAnswerQuestion({
   question,
   onSubmit,
   showHints = true,
   disabled = false,
   isSuperuser = false,
   studyCodeUuid = null
-}: WritingQuestionProps) {
+}: TypedAnswerQuestionProps) {
   const {
     userAnswer,
     setUserAnswer,
@@ -46,31 +46,48 @@ export default function WritingQuestionComponent({
     resetAnswer();
   }, [question.id]);
 
+  // Determine input variant based on question type
+  const inputVariant = question.type === 'fill-in-blank' ? 'single-line' : 'multi-line';
+  const questionType = question.type === 'fill-in-blank' ? 'fill_in_blank' : (question.writingType || 'translation');
+
   const handleSubmit = async () => {
     if (!userAnswer.trim() || isEvaluating) return;
 
     await submitAnswer(
-      question.question_en,
-      question.correct_answer_fr,
-      question.question_type,
+      question.question,
+      question.correctAnswer,
+      questionType,
       question.difficulty,
-      question.acceptable_variations || [],
+      question.acceptableVariations || [],
       studyCodeUuid || undefined
     );
+  };
+
+  // Determine placeholder text
+  const getPlaceholder = () => {
+    if (question.type === 'fill-in-blank') {
+      const blankCount = (question.question.match(/___+/g) || []).length;
+      return blankCount > 1
+        ? 'Type words separated by spaces...'
+        : 'Type your answer in French...';
+    }
+    return question.requiresCompleteSentence
+      ? 'Type your complete sentence in French...'
+      : 'Type your answer in French...';
   };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 space-y-4">
       {/* Question Header */}
-      <WritingQuestionDisplay
+      <QuestionDisplay
         question={question}
         showEvaluation={!!evaluation}
       />
 
       {/* Hints - Only for Superusers */}
-      {!evaluation && (
-        <WritingQuestionHints
-          question={question}
+      {!evaluation && question.hints && question.hints.length > 0 && (
+        <QuestionHints
+          hints={question.hints}
           isSuperuser={isSuperuser}
           showHints={showHints}
         />
@@ -78,13 +95,15 @@ export default function WritingQuestionComponent({
 
       {/* Answer Input */}
       {!evaluation && (
-        <WritingAnswerInput
-          question={question}
+        <AnswerInput
           userAnswer={userAnswer}
           onAnswerChange={setUserAnswer}
           onSubmit={handleSubmit}
           disabled={disabled}
           isEvaluating={isEvaluating}
+          variant={inputVariant}
+          placeholder={getPlaceholder()}
+          rows={question.requiresCompleteSentence ? 3 : 2}
         />
       )}
 
@@ -99,15 +118,17 @@ export default function WritingQuestionComponent({
             <div>
               <span className="font-semibold text-purple-900 dark:text-purple-200">Question Type:</span>
               <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
-                writing
+                {question.type === 'fill-in-blank' ? 'Fill in Blank' : 'Writing'}
               </span>
             </div>
-            <div>
-              <span className="font-semibold text-purple-900 dark:text-purple-200">Writing Type:</span>
-              <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
-                {question.question_type?.replace(/_/g, ' ') || 'N/A'}
-              </span>
-            </div>
+            {question.type === 'writing' && question.writingType && (
+              <div>
+                <span className="font-semibold text-purple-900 dark:text-purple-200">Writing Type:</span>
+                <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
+                  {question.writingType.replace(/_/g, ' ')}
+                </span>
+              </div>
+            )}
             <div>
               <span className="font-semibold text-purple-900 dark:text-purple-200">Difficulty:</span>
               <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
@@ -126,16 +147,20 @@ export default function WritingQuestionComponent({
 
       {/* Evaluation Result */}
       {evaluation && (
-        <WritingEvaluationResult
+        <EvaluationResultDisplay
           evaluation={evaluation}
           userAnswer={userAnswer}
+          correctAnswer={question.correctAnswer}
+          explanation={question.explanation}
           onTryAgain={resetAnswer}
           isSuperuser={isSuperuser}
-          difficulty={question.difficulty}
-          topic={question.topic}
-          questionType={question.question_type}
+          questionType={question.type}
+          writingType={question.writingType}
         />
       )}
     </div>
   );
 }
+
+// Backward compatibility alias
+export { TypedAnswerQuestion as WritingQuestionComponent };
