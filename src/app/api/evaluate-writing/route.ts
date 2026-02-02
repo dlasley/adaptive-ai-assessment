@@ -70,6 +70,14 @@ export async function POST(request: NextRequest) {
       studyCodeId
     } = await request.json();
 
+    console.log(`📝 Evaluating ${questionType} question:`, {
+      question: question.substring(0, 50),
+      userAnswer: userAnswer.substring(0, 50),
+      correctAnswer: correctAnswer?.substring(0, 50),
+      difficulty,
+      hasStudyCodeId: !!studyCodeId
+    });
+
     if (!question || !userAnswer) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -79,9 +87,11 @@ export async function POST(request: NextRequest) {
 
     // Check if user is a superuser (for metadata)
     const includeSuperuserMetadata = await isSuperuser(studyCodeId);
+    console.log(`🔬 Superuser metadata: ${includeSuperuserMetadata}`);
 
     // Tier 1: Check if answer is empty or too short
     if (userAnswer.trim().length < 2) {
+      console.log('⚠️  Tier 1: Empty check - answer too short');
       const result: EvaluationResult = {
         isCorrect: false,
         score: 0,
@@ -107,7 +117,14 @@ export async function POST(request: NextRequest) {
     const normalizedUser = normalizeText(userAnswer);
     const normalizedCorrect = correctAnswer ? normalizeText(correctAnswer) : '';
 
+    console.log('🔍 Tier 2: Exact match check:', {
+      normalizedUser,
+      normalizedCorrect,
+      matches: normalizedUser === normalizedCorrect
+    });
+
     if (correctAnswer && normalizedUser === normalizedCorrect) {
+      console.log('✅ Tier 2: Exact match found');
       // Check if accents match (case-insensitive)
       // Only check for diacritical marks, not capitalization
       const hasCorrectAccents = userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
@@ -139,6 +156,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Tier 3: Fuzzy evaluation (if feature flag enabled and confidence is high enough)
+    console.log('🔧 Tier 3: Fuzzy logic check:', {
+      featureFlagEnabled: !FEATURES.API_ONLY_EVALUATION,
+      hasCorrectAnswer: !!correctAnswer
+    });
+
     if (!FEATURES.API_ONLY_EVALUATION && correctAnswer) {
       const similarity = calculateSimilarity(userAnswer, correctAnswer);
       const confidenceScore = Math.round(similarity * 100);
@@ -146,6 +168,12 @@ export async function POST(request: NextRequest) {
       // Get confidence threshold for this difficulty
       const thresholds = { beginner: 70, intermediate: 85, advanced: 95 };
       const threshold = thresholds[difficulty as keyof typeof thresholds] || 85;
+
+      console.log('🔧 Fuzzy logic similarity:', {
+        similarity: confidenceScore,
+        threshold,
+        meetsThreshold: confidenceScore >= threshold
+      });
 
       const fuzzyResult = fuzzyEvaluateAnswer(
         userAnswer,
@@ -157,6 +185,7 @@ export async function POST(request: NextRequest) {
 
       // If fuzzy evaluation succeeded with high confidence, use it
       if (fuzzyResult) {
+        console.log('✅ Tier 3: Fuzzy logic evaluation succeeded');
         if (includeSuperuserMetadata) {
           fuzzyResult.metadata = {
             difficulty,
@@ -171,10 +200,11 @@ export async function POST(request: NextRequest) {
       }
 
       // Otherwise, fall through to Claude API evaluation
-      console.log('Fuzzy evaluation confidence too low, using Claude API');
+      console.log('⚠️  Tier 3: Fuzzy evaluation confidence too low, using Claude API');
     }
 
     // Tier 4: AI Evaluation with Opus 4.5 (for accuracy or as fallback)
+    console.log('🤖 Tier 4: Using Claude API evaluation');
     const { evaluation, claudeConfidence } = await evaluateWithClaude(
       question,
       userAnswer,
@@ -182,6 +212,12 @@ export async function POST(request: NextRequest) {
       questionType,
       difficulty
     );
+
+    console.log('✅ Tier 4: Claude API evaluation completed:', {
+      isCorrect: evaluation.isCorrect,
+      score: evaluation.score,
+      confidence: claudeConfidence
+    });
 
     if (includeSuperuserMetadata) {
       const similarity = correctAnswer ? calculateSimilarity(userAnswer, correctAnswer) : undefined;
@@ -197,7 +233,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json<EvaluationResult>(evaluation);
   } catch (error) {
-    console.error('Error evaluating answer:', error);
+    console.error('❌ Error evaluating answer:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
       { error: 'Failed to evaluate answer' },
       { status: 500 }

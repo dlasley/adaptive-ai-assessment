@@ -5,11 +5,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import type { WritingQuestion } from '@/lib/writing-questions';
 import type { EvaluationResult } from '@/app/api/evaluate-writing/route';
 import { useQuestionEvaluation } from '@/hooks/useQuestionEvaluation';
-import { getStoredStudyCode, getStudyCodeId } from '@/lib/study-codes';
 
 import { WritingQuestionDisplay } from './WritingQuestionDisplay';
 import { WritingQuestionHints } from './WritingQuestionHints';
@@ -21,16 +20,18 @@ interface WritingQuestionProps {
   onSubmit?: (answer: string, evaluation: EvaluationResult) => void;
   showHints?: boolean;
   disabled?: boolean;
+  isSuperuser?: boolean;
+  studyCodeUuid?: string | null;
 }
 
 export default function WritingQuestionComponent({
   question,
   onSubmit,
   showHints = true,
-  disabled = false
+  disabled = false,
+  isSuperuser = false,
+  studyCodeUuid = null
 }: WritingQuestionProps) {
-  const [isSuperuser, setIsSuperuser] = useState(false);
-
   const {
     userAnswer,
     setUserAnswer,
@@ -45,23 +46,8 @@ export default function WritingQuestionComponent({
     resetAnswer();
   }, [question.id]);
 
-  // Check superuser status from evaluation metadata
-  useEffect(() => {
-    if (evaluation?.metadata) {
-      setIsSuperuser(true);
-    }
-  }, [evaluation]);
-
   const handleSubmit = async () => {
     if (!userAnswer.trim() || isEvaluating) return;
-
-    // Get study code ID for superuser metadata
-    let studyCodeId: string | undefined;
-    const code = getStoredStudyCode();
-    if (code) {
-      const id = await getStudyCodeId(code);
-      if (id) studyCodeId = id;
-    }
 
     await submitAnswer(
       question.question_en,
@@ -69,7 +55,7 @@ export default function WritingQuestionComponent({
       question.question_type,
       question.difficulty,
       question.acceptable_variations || [],
-      studyCodeId
+      studyCodeUuid || undefined
     );
   };
 
@@ -102,12 +88,52 @@ export default function WritingQuestionComponent({
         />
       )}
 
+      {/* Superuser Metadata - Question Screen */}
+      {isSuperuser && !evaluation && (
+        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+          <h5 className="text-sm font-semibold text-purple-900 dark:text-purple-300 mb-2 flex items-center gap-2">
+            <span className="text-lg">🔬</span>
+            Question Metadata (Superuser)
+          </h5>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="font-semibold text-purple-900 dark:text-purple-200">Question Type:</span>
+              <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
+                writing
+              </span>
+            </div>
+            <div>
+              <span className="font-semibold text-purple-900 dark:text-purple-200">Writing Type:</span>
+              <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
+                {question.question_type?.replace(/_/g, ' ') || 'N/A'}
+              </span>
+            </div>
+            <div>
+              <span className="font-semibold text-purple-900 dark:text-purple-200">Difficulty:</span>
+              <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
+                {question.difficulty}
+              </span>
+            </div>
+            <div>
+              <span className="font-semibold text-purple-900 dark:text-purple-200">Topic:</span>
+              <span className="ml-2 text-purple-800 dark:text-purple-300">
+                {question.topic || 'N/A'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Evaluation Result */}
       {evaluation && (
         <WritingEvaluationResult
           evaluation={evaluation}
           userAnswer={userAnswer}
           onTryAgain={resetAnswer}
+          isSuperuser={isSuperuser}
+          difficulty={question.difficulty}
+          topic={question.topic}
+          questionType={question.question_type}
         />
       )}
     </div>

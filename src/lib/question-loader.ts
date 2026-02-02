@@ -58,8 +58,9 @@ export function selectQuestions(
   let filtered = allQuestions;
 
   // Filter by unit if specified
+  // Include questions with unitId='all' as they apply to any unit
   if (criteria.unitId && criteria.unitId !== 'all') {
-    filtered = filtered.filter(q => q.unitId === criteria.unitId);
+    filtered = filtered.filter(q => q.unitId === criteria.unitId || q.unitId === 'all');
   }
 
   // Filter by topic if specified
@@ -77,6 +78,14 @@ export function selectQuestions(
 
   // Shuffle questions
   const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+
+  // Log selection stats in development
+  if (process.env.NODE_ENV === 'development') {
+    const writingCount = shuffled.filter(q => q.type === 'writing').length;
+    const selectedWriting = shuffled.slice(0, criteria.numQuestions).filter(q => q.type === 'writing').length;
+    console.log(`🎯 Question pool: ${shuffled.length} total (${writingCount} writing)`);
+    console.log(`📋 Selected ${criteria.numQuestions} questions (${selectedWriting} writing)`);
+  }
 
   // Return requested number of questions
   return shuffled.slice(0, criteria.numQuestions);

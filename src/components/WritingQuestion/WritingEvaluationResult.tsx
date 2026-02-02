@@ -9,12 +9,20 @@ interface WritingEvaluationResultProps {
   evaluation: EvaluationResult;
   userAnswer: string;
   onTryAgain: () => void;
+  isSuperuser?: boolean;
+  difficulty?: string;
+  topic?: string;
+  questionType?: string;
 }
 
 export function WritingEvaluationResult({
   evaluation,
   userAnswer,
-  onTryAgain
+  onTryAgain,
+  isSuperuser = false,
+  difficulty,
+  topic,
+  questionType
 }: WritingEvaluationResultProps) {
   return (
     <div className={`rounded-xl p-6 ${
@@ -133,7 +141,45 @@ export function WritingEvaluationResult({
         </div>
       )}
 
-      {/* Superuser Metadata */}
+      {/* Superuser Question Metadata */}
+      {isSuperuser && (
+        <div className="mt-6 pt-6 border-t border-gray-300 dark:border-gray-600">
+          <h5 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
+            <span className="text-lg">🔬</span>
+            Question Metadata (Superuser)
+          </h5>
+          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-semibold text-purple-900 dark:text-purple-200">Question Type:</span>
+                <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
+                  writing
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold text-purple-900 dark:text-purple-200">Writing Type:</span>
+                <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
+                  {questionType?.replace(/_/g, ' ') || 'N/A'}
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold text-purple-900 dark:text-purple-200">Difficulty:</span>
+                <span className="ml-2 text-purple-800 dark:text-purple-300 capitalize">
+                  {difficulty || 'N/A'}
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold text-purple-900 dark:text-purple-200">Topic:</span>
+                <span className="ml-2 text-purple-800 dark:text-purple-300">
+                  {topic || 'N/A'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Superuser Evaluation Metadata */}
       {evaluation.metadata && (
         <div className="mt-6 pt-6 border-t border-gray-300 dark:border-gray-600">
           <h5 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
@@ -152,24 +198,24 @@ export function WritingEvaluationResult({
                   {evaluation.metadata.evaluationTier.replace(/_/g, ' ')}
                 </span>
               </div>
-              {evaluation.metadata.similarityScore !== undefined && (
-                <div>
-                  <span className="font-semibold text-purple-900 dark:text-purple-200">Similarity:</span>
-                  <span className="ml-2 text-purple-800 dark:text-purple-300">{evaluation.metadata.similarityScore}%</span>
-                </div>
-              )}
-              {evaluation.metadata.confidenceScore !== undefined && (
-                <div>
-                  <span className="font-semibold text-purple-900 dark:text-purple-200">Confidence:</span>
-                  <span className="ml-2 text-purple-800 dark:text-purple-300">{evaluation.metadata.confidenceScore}%</span>
-                </div>
-              )}
-              {evaluation.metadata.confidenceThreshold !== undefined && (
-                <div>
-                  <span className="font-semibold text-purple-900 dark:text-purple-200">Threshold:</span>
-                  <span className="ml-2 text-purple-800 dark:text-purple-300">{evaluation.metadata.confidenceThreshold}%</span>
-                </div>
-              )}
+              <div>
+                <span className="font-semibold text-purple-900 dark:text-purple-200">Similarity:</span>
+                <span className="ml-2 text-purple-800 dark:text-purple-300">
+                  {evaluation.metadata.similarityScore !== undefined ? `${evaluation.metadata.similarityScore}%` : 'N/A'}
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold text-purple-900 dark:text-purple-200">Confidence:</span>
+                <span className="ml-2 text-purple-800 dark:text-purple-300">
+                  {evaluation.metadata.confidenceScore !== undefined ? `${evaluation.metadata.confidenceScore}%` : 'N/A'}
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold text-purple-900 dark:text-purple-200">Similarity Threshold:</span>
+                <span className="ml-2 text-purple-800 dark:text-purple-300">
+                  {evaluation.metadata.confidenceThreshold !== undefined ? `${evaluation.metadata.confidenceThreshold}%` : 'N/A'}
+                </span>
+              </div>
               <div>
                 <span className="font-semibold text-purple-900 dark:text-purple-200">Used Claude API:</span>
                 <span className="ml-2 text-purple-800 dark:text-purple-300">

@@ -27,26 +27,33 @@ export async function POST(request: NextRequest) {
           difficulty as 'beginner' | 'intermediate' | 'advanced' | undefined
         );
 
-        // Convert writing questions to Question format
-        const convertedWritingQuestions: Question[] = writingQuestions.map(wq => ({
-          id: wq.id,
-          question: wq.question_en,
-          type: 'writing' as const,
-          correctAnswer: wq.correct_answer_fr || '',
-          explanation: wq.explanation,
-          unitId: wq.unit_id || 'all',
-          topic: wq.topic,
-          difficulty: wq.difficulty,
-          writingType: wq.question_type,
-          acceptableVariations: wq.acceptable_variations,
-          hints: wq.hints,
-          requiresCompleteSentence: wq.requires_complete_sentence
-        }));
+        console.log(`📝 Fetched ${writingQuestions.length} writing questions for difficulty: ${difficulty}`);
 
-        // Merge writing questions with standard questions
-        allQuestions = [...allQuestions, ...convertedWritingQuestions];
+        if (writingQuestions.length > 0) {
+          // Convert writing questions to Question format
+          const convertedWritingQuestions: Question[] = writingQuestions.map(wq => ({
+            id: wq.id,
+            question: wq.question_en,
+            type: 'writing' as const,
+            correctAnswer: wq.correct_answer_fr || '',
+            explanation: wq.explanation,
+            unitId: wq.unit_id || 'all',
+            topic: wq.topic,
+            difficulty: wq.difficulty,
+            writingType: wq.question_type,
+            acceptableVariations: wq.acceptable_variations,
+            hints: wq.hints,
+            requiresCompleteSentence: wq.requires_complete_sentence
+          }));
+
+          // Merge writing questions with standard questions
+          allQuestions = [...allQuestions, ...convertedWritingQuestions];
+          console.log(`✅ Added ${convertedWritingQuestions.length} writing questions to pool`);
+        } else {
+          console.log(`⚠️  No writing questions found for difficulty: ${difficulty}`);
+        }
       } catch (error) {
-        console.warn('Could not load writing questions:', error);
+        console.error('❌ Error loading writing questions:', error);
         // Continue without writing questions
       }
     }
