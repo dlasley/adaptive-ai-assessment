@@ -32,6 +32,49 @@ interface Question {
 const DIFFICULTIES: ('beginner' | 'intermediate' | 'advanced')[] = ['beginner', 'intermediate', 'advanced'];
 const QUESTIONS_PER_TOPIC_PER_DIFFICULTY = 10;
 
+/**
+ * Check if a question is a meta-question about learning philosophy or teacher information
+ */
+function isMetaQuestion(question: Question): boolean {
+  const questionText = question.question.toLowerCase();
+  const explanationText = (question.explanation || '').toLowerCase();
+  const combinedText = `${questionText} ${explanationText}`;
+
+  // Patterns that indicate meta-questions
+  const metaPatterns = [
+    /making mistakes.*(discourage|should|part of learning|important|essential)/i,
+    /language acquisition/i,
+    /growth mindset/i,
+    /willingness to learn/i,
+    /learning process/i,
+    /most important factor.*success/i,
+    /effort.*language.*success/i,
+    /learning.*language.*success/i,
+    /learning.*emphasized/i,
+    /practice.*key.*success/i,
+    /consistency.*key/i,
+    /mr\.\s*/i,
+    /mrs\.\s*/i,
+    /m\.\s*/i,
+    /monsieur /i,
+    /teacher.*lived/i,
+    /teacher.*speaks.*languages/i,
+    /teacher.*interests/i,
+    /teacher.*hobbies/i,
+    /teacher.*books/i,
+    /four key skills/i,
+    /course structure/i,
+    /class structure/i,
+    /mentioned in (the )?(vocabulary|materials|list)/i,
+    /provided (vocabulary|materials)/i,
+    /(listed|included) in the/i,
+    /not.*mentioned/i,
+    /which.*not.*(classroom object|vocabulary item)/i,
+  ];
+
+  return metaPatterns.some(pattern => pattern.test(combinedText));
+}
+
 async function generateQuestionsForTopic(
   unitId: string,
   topic: string,
@@ -59,25 +102,38 @@ ${topicContent}
 
 CRITICAL: ONLY CREATE QUESTIONS ABOUT FRENCH LANGUAGE LEARNING
 
-❌ ABSOLUTELY FORBIDDEN - DO NOT create questions that mention:
-- "Monsieur " or "M. " - NEVER use this name in any question
-- "four key skills" or "key skills" - NEVER mention these phrases
-- "course structure" or "class structure"
-- Any teacher names or teacher personal information
-- Classroom technology rules (Chromebooks, computers, phones, tablets)
-- Daily materials or supplies needed for class (journals, pencils, notebooks for class)
-- Grading policies, homework policies, or assessment methods
-- Activities that will happen in class (role plays, potlucks, end-of-semester events)
-- "NOT one of" followed by course/curriculum elements
-- Classroom behavior policies or rules
-- Questions asking about what the class/course includes or excludes
-- Teacher's personal life, hobbies, or background
-- How long the teacher lived anywhere or what the teacher likes
+❌ ABSOLUTELY FORBIDDEN - DO NOT create questions about:
 
-❌ If you see "Monsieur " or references to "four key skills" in the learning materials:
-- DO NOT create questions about it
+**Meta-Questions About Learning:**
+- "Making mistakes" in learning (whether it's good, bad, encouraged, discouraged, etc.)
+- "Language acquisition" principles or theories
+- "Growth mindset" or learning mindset concepts
+- "Willingness to learn" or motivation concepts
+- "Most important factor for success" in language learning
+- "Effort and success" relationships in learning
+- "Consistency is key" or similar learning philosophy
+- "Practice makes perfect" or similar learning maxims
+- How to study, learning strategies, or study techniques
+- Whether something is "part of the learning process"
+
+**Teacher/Course Administration:**
+- "Monsieur " or "M. " or any specific teacher name
+- Teacher's personal life, hobbies, background, or interests
+- How long the teacher lived anywhere or what the teacher likes
+- Teacher's books, accomplishments, or personal achievements
+- "four key skills" or "key skills" curriculum structure
+- Course structure, class structure, or curriculum design
+- Classroom technology rules (Chromebooks, computers, phones, tablets)
+- Daily materials or supplies needed for class (journals, pencils, notebooks)
+- Grading policies, homework policies, or assessment methods
+- Activities that will happen in class (role plays, potlucks, events)
+- Classroom behavior policies or rules
+- What the class/course includes or excludes
+
+❌ If you see any of the above topics in the learning materials:
+- DO NOT create questions about them
 - SKIP that content entirely
-- IGNORE teacher-specific information
+- IGNORE all meta-information about learning, teaching, or the course itself
 
 ✅ ONLY create questions testing knowledge of:
 - French vocabulary: nouns, verbs, adjectives, common expressions
@@ -95,7 +151,7 @@ IMPORTANT INSTRUCTIONS:
 2. Mix question types: multiple-choice, fill-in-blank, true-false
 3. Make questions appropriate for ${difficulty} level students
 4. Include clear, unambiguous correct answers
-5. Add brief explanations for the correct answers
+5. Add brief explanations for the correct answers IN ENGLISH (NOT in French)
 6. Return ONLY valid JSON matching this exact format:
 
 {
@@ -106,7 +162,14 @@ IMPORTANT INSTRUCTIONS:
       "type": "multiple-choice",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": "Option B",
-      "explanation": "Brief explanation of why this is correct"
+      "explanation": "Brief explanation in English of why this is correct"
+    },
+    {
+      "id": "q2",
+      "question": "Je _____ français.",
+      "type": "fill-in-blank",
+      "correctAnswer": "parle",
+      "explanation": "English explanation here"
     }
   ]
 }
@@ -115,8 +178,9 @@ Question type options: "multiple-choice", "fill-in-blank", "true-false"
 
 For fill-in-blank questions:
 - Use underscores like: "Je _____ français." (I speak French)
-- correctAnswer should be just the word to fill in
+- correctAnswer should be the word(s) to fill in
 - No options array needed
+- Explanation must be in English
 
 For true-false questions:
 - options should be ["Vrai", "Faux"]
@@ -128,13 +192,28 @@ Return ONLY the JSON, no additional text.`,
     });
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+
+    // Try to extract JSON more robustly
+    let jsonMatch = responseText.match(/\{[\s\S]*\}/);
 
     if (!jsonMatch) {
       throw new Error('No valid JSON found in response');
     }
 
-    const parsedResponse = JSON.parse(jsonMatch[0]);
+    let jsonText = jsonMatch[0];
+
+    // Clean up common JSON issues
+    jsonText = jsonText
+      .replace(/,(\s*[}\]])/g, '$1'); // Remove trailing commas
+
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.error('Attempted to parse:', jsonText.substring(0, 500) + '...');
+      throw new Error(`Failed to parse JSON: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
     const questions: Question[] = parsedResponse.questions.map((q: any, idx: number) => ({
       ...q,
       id: `${unitId}_${topic.replace(/\s+/g, '_')}_${difficulty}_q${idx + 1}`,
@@ -143,7 +222,14 @@ Return ONLY the JSON, no additional text.`,
       difficulty,
     }));
 
-    return questions;
+    // Filter out any meta-questions that slipped through
+    const validQuestions = questions.filter(q => !isMetaQuestion(q));
+
+    if (validQuestions.length < questions.length) {
+      console.log(`    ⚠️  Filtered out ${questions.length - validQuestions.length} meta-question(s)`);
+    }
+
+    return validQuestions;
   } catch (error) {
     console.error(`  ❌ Error generating questions for ${topic} (${difficulty}):`, error);
     return [];
