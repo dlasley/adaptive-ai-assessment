@@ -178,10 +178,10 @@ POST /api/evaluate-writing
 
 ## Evaluation Logic
 
-The system supports two evaluation modes controlled by the `NEXT_PUBLIC_API_ONLY_EVALUATION` feature flag:
+The system supports two evaluation modes controlled by the `SKIP_FUZZY_LOGIC` feature flag:
 
 ### Mode 1: API-Only Evaluation (High Accuracy)
-Set `NEXT_PUBLIC_API_ONLY_EVALUATION=true` for maximum accuracy. Best for:
+Set `SKIP_FUZZY_LOGIC=true` for maximum accuracy. Best for:
 - Formal assessments and graded tests
 - Advanced/intermediate difficulty questions
 - When accuracy is more important than cost
@@ -195,7 +195,7 @@ Set `NEXT_PUBLIC_API_ONLY_EVALUATION=true` for maximum accuracy. Best for:
 **Cost:** ~$0.015 per evaluation
 
 ### Mode 2: Fuzzy → API Tiered Evaluation (Cost-Efficient) **[DEFAULT]**
-Set `NEXT_PUBLIC_API_ONLY_EVALUATION=false` for cost savings. Best for:
+Set `SKIP_FUZZY_LOGIC=false` for cost savings. Best for:
 - Practice sessions and homework
 - Beginner difficulty questions
 - Large class sizes or frequent practice
@@ -231,7 +231,7 @@ When fuzzy evaluation has high confidence, it scores as follows:
 - **95%+ similarity:** Score 95-100, marked correct (minor typos)
 - **85-94% similarity:** Score 85-94, correct only for beginners
 - **70-84% similarity:** Score 70-84, not marked correct but partial credit
-- **Below threshold:** Falls back to Claude API
+- **Below threshold:** Falls back to Semantic API
 
 ### Customizing Confidence Thresholds
 

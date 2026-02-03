@@ -54,9 +54,6 @@ export function EvaluationResultDisplay({
             }`}>
               {evaluation.isCorrect ? 'Correct!' : 'Not Quite Right'}
             </h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Score: {evaluation.score}/100
-            </p>
           </div>
         </div>
 
@@ -198,7 +195,7 @@ export function EvaluationResultDisplay({
       )}
 
       {/* Superuser Evaluation Metadata */}
-      {evaluation.metadata && (
+      {isSuperuser && evaluation.metadata && (
         <div className="mt-6 pt-6 border-t border-gray-300 dark:border-gray-600">
           <h5 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
             <span className="text-lg">🔬</span>
@@ -213,33 +210,89 @@ export function EvaluationResultDisplay({
               <div>
                 <span className="font-semibold text-purple-900 dark:text-purple-200">Evaluation Tier:</span>
                 <span className="ml-2 text-purple-800 dark:text-purple-300">
-                  {evaluation.metadata.evaluationTier.replace(/_/g, ' ')}
+                  {(() => {
+                    const tierMap: Record<string, string> = {
+                      'empty_check': '1 - Empty Check',
+                      'exact_match': '2 - Exact Match',
+                      'fuzzy_logic': '3 - Fuzzy Logic',
+                      'claude_api': '4 - Semantic API'
+                    };
+                    return tierMap[evaluation.metadata!.evaluationTier] || evaluation.metadata!.evaluationTier;
+                  })()}
                 </span>
               </div>
+              {/* Levenshtein Score - shown for tiers 2 and 3 */}
+              {(evaluation.metadata.evaluationTier === 'exact_match' || evaluation.metadata.evaluationTier === 'fuzzy_logic') && (
+                <div>
+                  <span className="font-semibold text-purple-900 dark:text-purple-200">Levenshtein Score:</span>
+                  <span className="ml-2 text-purple-800 dark:text-purple-300">
+                    {evaluation.score}%
+                  </span>
+                </div>
+              )}
+
+              {/* Semantic Score - shown for tier 4 */}
+              {evaluation.metadata.evaluationTier === 'claude_api' && (
+                <div>
+                  <span className="font-semibold text-purple-900 dark:text-purple-200">Semantic Score:</span>
+                  <span className="ml-2 text-purple-800 dark:text-purple-300">
+                    {evaluation.score}%
+                  </span>
+                </div>
+              )}
+
+              {/* Levenshtein Threshold - shown for tier 3 */}
+              {evaluation.metadata.levenshteinThreshold !== undefined && (
+                <div>
+                  <span className="font-semibold text-purple-900 dark:text-purple-200">Fuzzy Logic Threshold:</span>
+                  <span className="ml-2 text-purple-800 dark:text-purple-300">
+                    {evaluation.metadata.levenshteinThreshold}%
+                  </span>
+                </div>
+              )}
+
+              {/* Correctness Band - shown for tier 3 */}
+              {evaluation.metadata.correctnessBand && (
+                <div>
+                  <span className="font-semibold text-purple-900 dark:text-purple-200">Correctness Band:</span>
+                  <span className="ml-2 text-purple-800 dark:text-purple-300">
+                    {evaluation.metadata.correctnessBand}
+                  </span>
+                </div>
+              )}
+
+              {/* Semantic Confidence - shown for tier 4 */}
+              {evaluation.metadata.claudeConfidence !== undefined && (
+                <div>
+                  <span className="font-semibold text-purple-900 dark:text-purple-200">Semantic Confidence:</span>
+                  <span className="ml-2 text-purple-800 dark:text-purple-300">
+                    {evaluation.metadata.claudeConfidence}%
+                  </span>
+                </div>
+              )}
+
+              {/* Matched Against */}
               <div>
-                <span className="font-semibold text-purple-900 dark:text-purple-200">Similarity:</span>
+                <span className="font-semibold text-purple-900 dark:text-purple-200">Matched Against:</span>
                 <span className="ml-2 text-purple-800 dark:text-purple-300">
-                  {evaluation.metadata.similarityScore !== undefined ? `${evaluation.metadata.similarityScore}%` : 'N/A'}
+                  {(() => {
+                    const matchMap: Record<string, string> = {
+                      'primary_answer': 'Primary Answer',
+                      'acceptable_variation': `Variation #${(evaluation.metadata!.matchedVariationIndex ?? 0) + 1}`,
+                      'none': 'None'
+                    };
+                    return matchMap[evaluation.metadata!.matchedAgainst] || evaluation.metadata!.matchedAgainst;
+                  })()}
                 </span>
               </div>
+{/*}
               <div>
-                <span className="font-semibold text-purple-900 dark:text-purple-200">Confidence:</span>
-                <span className="ml-2 text-purple-800 dark:text-purple-300">
-                  {evaluation.metadata.confidenceScore !== undefined ? `${evaluation.metadata.confidenceScore}%` : 'N/A'}
-                </span>
-              </div>
-              <div>
-                <span className="font-semibold text-purple-900 dark:text-purple-200">Similarity Threshold:</span>
-                <span className="ml-2 text-purple-800 dark:text-purple-300">
-                  {evaluation.metadata.confidenceThreshold !== undefined ? `${evaluation.metadata.confidenceThreshold}%` : 'N/A'}
-                </span>
-              </div>
-              <div>
-                <span className="font-semibold text-purple-900 dark:text-purple-200">Used Claude API:</span>
+                <span className="font-semibold text-purple-900 dark:text-purple-200">Used Semantic API:</span>
                 <span className="ml-2 text-purple-800 dark:text-purple-300">
                   {evaluation.metadata.usedClaudeAPI ? 'Yes' : 'No'}
                 </span>
               </div>
+*/}
               {evaluation.metadata.modelUsed && (
                 <div className="col-span-2">
                   <span className="font-semibold text-purple-900 dark:text-purple-200">Model:</span>
@@ -248,18 +301,30 @@ export function EvaluationResultDisplay({
                   </span>
                 </div>
               )}
+
+              {/* Evaluation Reason - full width */}
+              {evaluation.metadata.evaluationReason && (
+                <div className="col-span-2">
+                  <span className="font-semibold text-purple-900 dark:text-purple-200">Evaluation Reason:</span>
+                  <span className="ml-2 text-purple-800 dark:text-purple-300">
+                    {evaluation.metadata.evaluationReason}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Try Again Button */}
-      <button
-        onClick={onTryAgain}
-        className="mt-4 w-full py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold"
-      >
-        Try Another Answer
-      </button>
+      {/* Try Again Button - Superuser only */}
+      {isSuperuser && (
+        <button
+          onClick={onTryAgain}
+          className="mt-4 w-full py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold"
+        >
+          Try Another Answer
+        </button>
+      )}
     </div>
   );
 }

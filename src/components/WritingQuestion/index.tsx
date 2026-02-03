@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import type { Question } from '@/types';
 import type { EvaluationResult } from '@/app/api/evaluate-writing/route';
 import { useQuestionEvaluation } from '@/hooks/useQuestionEvaluation';
+import { getSuperuserOverride } from '@/lib/superuser-override';
 
 import { QuestionDisplay } from './WritingQuestionDisplay';
 import { QuestionHints } from './WritingQuestionHints';
@@ -32,6 +33,11 @@ export default function TypedAnswerQuestion({
   isSuperuser = false,
   studyCodeUuid = null
 }: TypedAnswerQuestionProps) {
+  // Compute effective superuser status - sessionStorage override ALWAYS takes precedence
+  const override = getSuperuserOverride();
+  const effectiveIsSuperuser = override ?? isSuperuser;
+  console.log(`🎯 TypedAnswerQuestion render: override=${override}, prop=${isSuperuser}, effective=${effectiveIsSuperuser}`);
+
   const {
     userAnswer,
     setUserAnswer,
@@ -53,13 +59,17 @@ export default function TypedAnswerQuestion({
   const handleSubmit = async () => {
     if (!userAnswer.trim() || isEvaluating) return;
 
+    // Get superuser override from sessionStorage (if set via URL param)
+    const superuserOverride = getSuperuserOverride();
+
     await submitAnswer(
       question.question,
       question.correctAnswer,
       questionType,
       question.difficulty,
       question.acceptableVariations || [],
-      studyCodeUuid || undefined
+      studyCodeUuid || undefined,
+      superuserOverride
     );
   };
 
@@ -88,7 +98,7 @@ export default function TypedAnswerQuestion({
       {!evaluation && question.hints && question.hints.length > 0 && (
         <QuestionHints
           hints={question.hints}
-          isSuperuser={isSuperuser}
+          isSuperuser={effectiveIsSuperuser}
           showHints={showHints}
         />
       )}
@@ -108,7 +118,7 @@ export default function TypedAnswerQuestion({
       )}
 
       {/* Superuser Metadata - Question Screen */}
-      {isSuperuser && !evaluation && (
+      {effectiveIsSuperuser && !evaluation && (
         <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
           <h5 className="text-sm font-semibold text-purple-900 dark:text-purple-300 mb-2 flex items-center gap-2">
             <span className="text-lg">🔬</span>
@@ -153,7 +163,7 @@ export default function TypedAnswerQuestion({
           correctAnswer={question.correctAnswer}
           explanation={question.explanation}
           onTryAgain={resetAnswer}
-          isSuperuser={isSuperuser}
+          isSuperuser={effectiveIsSuperuser}
           questionType={question.type}
           writingType={question.writingType}
         />

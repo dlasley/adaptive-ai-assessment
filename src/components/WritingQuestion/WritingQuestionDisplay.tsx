@@ -7,10 +7,10 @@ import type { Question } from '@/types';
 
 interface QuestionDisplayProps {
   question: Question;
-  showEvaluation: boolean;
+  showEvaluation?: boolean; // Kept for backward compatibility, not currently used
 }
 
-export function QuestionDisplay({ question, showEvaluation }: QuestionDisplayProps) {
+export function QuestionDisplay({ question }: QuestionDisplayProps) {
   // Format question type for display
   const questionTypeLabel = question.type === 'fill-in-blank'
     ? 'Fill in Blank'
@@ -45,11 +45,6 @@ export function QuestionDisplay({ question, showEvaluation }: QuestionDisplayPro
       <h3 className="text-xl font-bold text-gray-900 dark:text-white">
         {question.question}
       </h3>
-      {question.explanation && !showEvaluation && (
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-          {question.explanation}
-        </p>
-      )}
     </div>
   );
 }

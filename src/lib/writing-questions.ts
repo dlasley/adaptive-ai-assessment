@@ -4,6 +4,7 @@
  */
 
 import { supabase, isSupabaseAvailable } from './supabase';
+import { getFuzzyLogicThreshold, CORRECTNESS_THRESHOLDS } from './feature-flags';
 import type { EvaluationResult } from '@/app/api/evaluate-writing/route';
 
 export interface WritingQuestion {
@@ -104,16 +105,6 @@ export function hasCorrectAccents(userAnswer: string, correctAnswer: string): bo
 }
 
 /**
- * Confidence thresholds for fuzzy evaluation
- * Higher difficulty = higher confidence required before using fuzzy logic
- */
-const CONFIDENCE_THRESHOLDS = {
-  beginner: 0.95,      // 95% confidence (raised to prevent accepting semantically wrong answers)
-  intermediate: 0.85,  // 85% confidence
-  advanced: 0.95,      // 95% confidence
-} as const;
-
-/**
  * Calculate similarity between two strings (0-1)
  * Uses normalized Levenshtein distance
  */
@@ -159,13 +150,22 @@ export function fuzzyEvaluateAnswer(
         : 'Correct ! Attention aux accents pour être parfait.',
       corrections: hasAccents ? {} : {
         accents: [`La réponse correcte est: "${correctAnswer}"`]
+      },
+      _matchInfo: {
+        matchedAgainst: 'primary_answer',
+        matchedSimilarity: 100, // Exact match
+        evaluationReason: 'Exact match against primary answer (after normalization)'
       }
     };
   }
 
-  // Check acceptable variations
-  for (const variation of acceptableVariations) {
-    if (normalizeText(variation) === normalizedUser) {
+  // Check acceptable variations (exact match first, then similarity)
+  for (let i = 0; i < acceptableVariations.length; i++) {
+    const variation = acceptableVariations[i];
+    const normalizedVariation = normalizeText(variation);
+
+    // Exact match against variation
+    if (normalizedVariation === normalizedUser) {
       const hasAccents = hasCorrectAccents(userAnswer, variation);
       return {
         isCorrect: true,
@@ -176,6 +176,34 @@ export function fuzzyEvaluateAnswer(
           : 'Bien ! Attention aux accents. Variation acceptable.',
         corrections: hasAccents ? {} : {
           accents: [`Une variation correcte est: "${variation}"`]
+        },
+        _matchInfo: {
+          matchedAgainst: 'acceptable_variation',
+          matchedVariationIndex: i,
+          matchedSimilarity: 100, // Exact match
+          evaluationReason: `Exact match against acceptable variation #${i + 1}`
+        }
+      };
+    }
+
+    // Similarity match against variation (catches typos in acceptable answers)
+    const variationSimilarity = calculateSimilarity(userAnswer, variation);
+    if (variationSimilarity >= 0.95) {
+      const hasAccents = hasCorrectAccents(userAnswer, variation);
+      return {
+        isCorrect: true,
+        score: Math.round(variationSimilarity * 100) - 2, // Slight penalty for not being exact
+        hasCorrectAccents: hasAccents,
+        feedback: 'Presque parfait ! Petite erreur dans une variation acceptable.',
+        corrections: {
+          suggestions: [`Une variation correcte est: "${variation}"`]
+        },
+        correctedAnswer: variation,
+        _matchInfo: {
+          matchedAgainst: 'acceptable_variation',
+          matchedVariationIndex: i,
+          matchedSimilarity: Math.round(variationSimilarity * 100),
+          evaluationReason: `Similarity match (${Math.round(variationSimilarity * 100)}%) against acceptable variation #${i + 1}`
         }
       };
     }
@@ -183,7 +211,7 @@ export function fuzzyEvaluateAnswer(
 
   // Calculate similarity for fuzzy matching
   const similarity = calculateSimilarity(userAnswer, correctAnswer);
-  const threshold = CONFIDENCE_THRESHOLDS[difficulty];
+  const threshold = getFuzzyLogicThreshold(difficulty) / 100; // Convert percentage to decimal
 
   // If similarity is below threshold, return null (need API evaluation)
   if (similarity < threshold) {
@@ -191,31 +219,30 @@ export function fuzzyEvaluateAnswer(
   }
 
   // High confidence fuzzy match
-  // Check if it's "close enough" based on difficulty
+  // Check if it's "close enough" based on correctness thresholds
+  const similarityPercent = Math.round(similarity * 100);
   let isCorrect = false;
-  let score = 0;
+  let score = similarityPercent;
   let feedback = '';
+  let correctnessBand = '';
 
-  if (similarity >= 0.95) {
+  if (similarityPercent >= CORRECTNESS_THRESHOLDS.MINOR_TYPO) {
     // Very close - probably a minor typo
     isCorrect = true;
-    score = Math.round(similarity * 100);
     feedback = 'Presque parfait ! Attention aux petites erreurs.';
-  } else if (similarity >= 0.85) {
+    correctnessBand = `${CORRECTNESS_THRESHOLDS.MINOR_TYPO}%+ (minor typo)`;
+  } else if (similarityPercent >= CORRECTNESS_THRESHOLDS.BEGINNER_PASS) {
     // Close - some errors but recognizable
     isCorrect = difficulty === 'beginner'; // Only count as correct for beginners
-    score = Math.round(similarity * 100);
     feedback = isCorrect
       ? 'Bon effort ! Quelques petites erreurs à corriger.'
       : 'Pas mal, mais il y a des erreurs à corriger.';
-  } else if (similarity >= 0.70) {
-    // Moderate similarity - has the right idea
-    isCorrect = false;
-    score = Math.round(similarity * 100);
-    feedback = 'Vous êtes sur la bonne voie, mais il y a plusieurs erreurs.';
+    correctnessBand = `${CORRECTNESS_THRESHOLDS.BEGINNER_PASS}-${CORRECTNESS_THRESHOLDS.MINOR_TYPO - 1}% (beginner pass only)`;
   } else {
-    // Below threshold - should not reach here but handle anyway
-    return null;
+    // Below beginner pass threshold
+    isCorrect = false;
+    feedback = 'Vous êtes sur la bonne voie, mais il y a plusieurs erreurs.';
+    correctnessBand = `below ${CORRECTNESS_THRESHOLDS.BEGINNER_PASS}% (incorrect)`;
   }
 
   const hasAccents = hasCorrectAccents(userAnswer, correctAnswer);
@@ -228,7 +255,13 @@ export function fuzzyEvaluateAnswer(
     corrections: {
       suggestions: [`La réponse correcte est: "${correctAnswer}"`]
     },
-    correctedAnswer: correctAnswer
+    correctedAnswer: correctAnswer,
+    _matchInfo: {
+      matchedAgainst: 'primary_answer',
+      matchedSimilarity: similarityPercent,
+      evaluationReason: `Fuzzy match against primary answer (${similarityPercent}% similarity)`,
+      correctnessBand
+    }
   };
 }
 
@@ -242,7 +275,8 @@ export async function evaluateWritingAnswer(
   questionType: string,
   difficulty: string,
   acceptableVariations: string[] = [],
-  studyCodeId?: string
+  studyCodeId?: string,
+  superuserOverride?: boolean | null
 ): Promise<EvaluationResult> {
   try {
     const response = await fetch('/api/evaluate-writing', {
@@ -255,7 +289,8 @@ export async function evaluateWritingAnswer(
         questionType,
         difficulty,
         acceptableVariations,
-        studyCodeId
+        studyCodeId,
+        superuserOverride
       })
     });
 

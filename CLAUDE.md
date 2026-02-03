@@ -1,12 +1,12 @@
 # Claude Code Instructions
 
 ## Project Overview
-French language learning quiz application for French 1 classes. Built with Next.js 15, uses Anthropic Claude API for AI-powered evaluation and Supabase for data persistence.
+French language learning quiz application for French 1 classes. Built with Next.js 15, uses Anthropic Semantic API for AI-powered evaluation and Supabase for data persistence.
 
 ## Tech Stack
 - **Framework**: Next.js 15 (App Router)
 - **UI**: React 18, Tailwind CSS
-- **AI**: Anthropic Claude API (Opus 4.5 for evaluation)
+- **AI**: Anthropic Semantic API (Opus 4.5 for evaluation)
 - **Database**: Supabase (PostgreSQL)
 - **Language**: TypeScript
 
@@ -25,7 +25,7 @@ For typed-answer questions (fill-in-blank, writing), evaluation follows this fal
 1. **Empty check** - Reject < 2 chars
 2. **Exact match** - Normalized comparison (accents stripped, lowercase)
 3. **Fuzzy logic** - Levenshtein distance with difficulty-based thresholds
-4. **Claude API** - Opus 4.5 fallback for low-confidence cases
+4. **Semantic API** - Opus 4.5 fallback for low-confidence cases
 
 See `src/app/api/evaluate-writing/route.ts` for implementation.
 
@@ -36,6 +36,11 @@ See `src/app/api/evaluate-writing/route.ts` for implementation.
 - `EvaluationResultDisplay` - Shows results, corrections, superuser metadata
 - `QuestionDisplay` - Header with difficulty, topic, type badges
 - `QuestionHints` - Progressive hints for superusers
+
+### Quiz Modes
+Two quiz modes in `src/lib/quiz-modes.ts`:
+- `practice` - Mixed question types (35% MCQ, 15% T/F, 20% fill-in-blank, 30% writing)
+- `assessment` - Typed answers only (50/50 fill-in-blank and writing)
 
 ### Data Types
 - `Question` (src/types) - Unified quiz question format
@@ -62,6 +67,8 @@ src/
 │   └── WritingQuestion/        # Typed answer components
 ├── lib/              # Utilities
 │   ├── question-loader.ts      # Question loading + meta-filtering
+│   ├── quiz-modes.ts           # Quiz mode definitions (practice/assessment)
+│   ├── superuser-override.ts   # Superuser toggle utilities
 │   └── writing-questions.ts    # Evaluation helpers
 ├── hooks/            # Custom React hooks
 └── types/            # TypeScript definitions
