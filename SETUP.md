@@ -71,7 +71,7 @@ The application will start at [http://localhost:3000](http://localhost:3000)
 ### "Error generating questions"
 - **Check your API key**: Make sure it's correctly copied in `.env.local`
 - **Restart the server**: Press Ctrl+C and run `npm run dev` again
-- **Check your internet**: The app needs internet to connect to Claude API
+- **Check your internet**: The app needs internet to connect to Semantic API
 
 ### Page won't load
 - Make sure you ran `npm install` first
@@ -112,7 +112,7 @@ Your app will be live at `your-app.vercel.app`
 
 ## Cost Considerations
 
-The app uses Claude API which has costs:
+The app uses Semantic API which has costs:
 - **Claude 3.5 Sonnet**: ~$3 per million input tokens, ~$15 per million output tokens
 - **Typical quiz**: ~2,000 input tokens + ~1,000 output tokens
 - **Approximate cost per quiz**: $0.01-0.02

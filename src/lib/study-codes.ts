@@ -86,6 +86,31 @@ export function clearStudyCode(): void {
 }
 
 /**
+ * Get the study code ID (UUID) from the code string
+ * Returns null if not found or Supabase not available
+ */
+export async function getStudyCodeId(code: string): Promise<string | null> {
+  if (!isSupabaseAvailable()) return null;
+
+  try {
+    const { data, error } = await supabase!
+      .from('study_codes')
+      .select('id')
+      .eq('code', code)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return data.id;
+  } catch (error) {
+    console.error('Failed to get study code ID:', error);
+    return null;
+  }
+}
+
+/**
  * Create a new study code in the database with collision handling
  * Returns the code on success, null on failure
  * Implements retry logic (up to 10 attempts) to handle duplicate codes

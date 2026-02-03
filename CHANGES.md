@@ -203,6 +203,72 @@ rm -rf data/
 rm src/lib/question-loader.ts
 ```
 
+---
+
+## Quiz Modes
+
+The app now supports multiple quiz modes with configurable question type distributions.
+
+### Practice Mode (Default)
+Mixed question types for learning and review:
+- Multiple choice: 35%
+- True/False: 15%
+- Fill-in-blank: 20%
+- Writing: 30%
+
+### Assessment Mode
+Written responses only - simulates classroom assessments:
+- Fill-in-blank: 50%
+- Writing: 50%
+
+**How to use:**
+Add `&mode=assessment` to the quiz URL, or select from the home page (if mode selector is enabled).
+
+```
+http://localhost:3000/quiz/all?num=10&difficulty=beginner&mode=assessment
+```
+
+**Configuration:**
+Mode definitions are in `src/lib/quiz-modes.ts`. Easy to add new modes or adjust distributions.
+
+---
+
+## Hidden/Developer Features
+
+### Superuser Mode
+
+Superuser mode displays additional metadata on typed-answer questions (fill-in-blank and writing), including:
+- Evaluation tier used (exact match, fuzzy logic, Semantic API)
+- Similarity scores and confidence levels
+- Question metadata (type, difficulty, topic)
+
+**Ways to enable/disable superuser mode:**
+
+#### 1. URL Parameter (for initial load)
+Add `?superuser=true` or `?superuser=false` to any quiz URL:
+```
+http://localhost:3000/quiz/all?num=10&difficulty=beginner&superuser=true
+```
+Note: Changing the URL mid-quiz will reset quiz progress.
+
+#### 2. Console Command (mid-quiz, no reset)
+Open browser DevTools console and run:
+```javascript
+window.setSuperuser(true)   // Enable superuser mode
+window.setSuperuser(false)  // Disable superuser mode
+```
+Changes take effect on the next question submission.
+
+#### 3. Keyboard Shortcut (mid-quiz, no reset)
+Press `Ctrl+Shift+S` (or `Cmd+Shift+S` on Mac) to toggle superuser mode.
+A brief notification will appear confirming the new state.
+
+**Persistence:**
+- Superuser override persists in sessionStorage until the tab is closed
+- The override takes precedence over database-based superuser status
+
+---
+
 ## Questions?
 
 - Check `README.md` for basic setup

@@ -1,10 +1,10 @@
 # French Assessment Tool 🇫🇷
 
-An AI-powered French language learning assessment application built with Next.js and Claude API.
+An AI-powered French language learning assessment application built with Next.js and Semantic API.
 
 ## Features
 
-- **AI-Generated Questions**: Uses Claude API to generate personalized practice questions from your French learning materials
+- **AI-Generated Questions**: Uses Semantic API to generate personalized practice questions from your French learning materials
 - **Multiple Question Types**: Multiple choice, fill-in-the-blank, and true/false questions
 - **Three Units**: Practice with Introduction, Unit 2, or Unit 3 materials
 - **Topic-Specific Practice**: Focus on specific topics within each unit
@@ -64,7 +64,7 @@ french-assessment-claude-1/
 ├── src/
 │   ├── app/               # Next.js app directory
 │   │   ├── api/           # API routes
-│   │   │   └── generate-questions/  # Claude API integration
+│   │   │   └── generate-questions/  # Semantic API integration
 │   │   ├── quiz/          # Quiz interface
 │   │   └── unit/          # Unit selection
 │   ├── components/        # React components
@@ -80,7 +80,7 @@ french-assessment-claude-1/
 - **Next.js 15**: React framework with App Router
 - **TypeScript**: Type-safe development
 - **Tailwind CSS**: Utility-first styling
-- **Claude API**: AI question generation
+- **Semantic API**: AI question generation
 - **Anthropic SDK**: Official SDK for Claude
 
 ## Development
@@ -105,4 +105,4 @@ This project is for educational purposes.
 
 ## Credits
 
-Built with Claude Code and powered by Anthropic's Claude API.
+Built with Claude Code and powered by Anthropic's Semantic API.

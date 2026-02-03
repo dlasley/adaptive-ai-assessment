@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getStoredStudyCode, getQuizHistory, getConceptMastery, getWeakTopics, getStudyCodeDetails } from '@/lib/study-codes';
 import { getProgress } from '@/lib/progress-tracking';
+import { getVideosForTopic } from '@/lib/video-resources';
+import { StudyCodeDisplay } from '@/components/StudyCodeDisplay';
 import type { StudyCode, QuizHistory, ConceptMastery } from '@/lib/supabase';
 
 export default function ProgressPage() {
@@ -15,7 +17,7 @@ export default function ProgressPage() {
   const [conceptMastery, setConceptMastery] = useState<ConceptMastery[]>([]);
   const [weakTopics, setWeakTopics] = useState<ConceptMastery[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCopied, setShowCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<'quizzes' | 'mastery' | 'practice'>('quizzes');
 
   useEffect(() => {
     const loadProgress = async () => {
@@ -55,13 +57,6 @@ export default function ProgressPage() {
     loadProgress();
   }, [router]);
 
-  const handleCopyCode = () => {
-    if (studyCode) {
-      navigator.clipboard.writeText(studyCode);
-      setShowCopied(true);
-      setTimeout(() => setShowCopied(false), 2000);
-    }
-  };
 
   if (loading) {
     return (
@@ -107,28 +102,8 @@ export default function ProgressPage() {
         </p>
       </div>
 
-      {/* Study Code Card */}
-      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border-2 border-indigo-200 dark:border-indigo-800">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Your Study Code
-            </h3>
-            <code className="text-2xl font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-900 px-4 py-2 rounded-lg inline-block">
-              {studyCode}
-            </code>
-          </div>
-          <button
-            onClick={handleCopyCode}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-          >
-            {showCopied ? '✓ Copied!' : '📋 Copy'}
-          </button>
-        </div>
-        <p className="text-sm text-gray-600 dark:text-gray-300 mt-3">
-          Use this code to access your progress from any device or share your progress with others.
-        </p>
-      </div>
+      {/* Study Code Card with QR */}
+      <StudyCodeDisplay studyCode={studyCode} size="medium" />
 
       {/* Overall Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -170,111 +145,244 @@ export default function ProgressPage() {
         </div>
       </div>
 
-      {/* Quiz History */}
-      {quizHistory.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            📚 Recent Quizzes
-          </h2>
-          <div className="space-y-3">
-            {quizHistory.map((quiz) => (
-              <div
-                key={quiz.id}
-                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
-              >
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-900 dark:text-white">
-                    {quiz.unit_id === 'all' ? 'All Units' : `Unit: ${quiz.unit_id}`}
+      {/* Tab Navigation */}
+      {totalQuizzes > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+          <div className="flex border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setActiveTab('quizzes')}
+              className={`flex-1 py-4 px-4 text-sm font-semibold transition-colors ${
+                activeTab === 'quizzes'
+                  ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              <span className="hidden sm:inline">Recent </span>Quizzes
+              {quizHistory.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-200 dark:bg-gray-600">
+                  {quizHistory.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('mastery')}
+              className={`flex-1 py-4 px-4 text-sm font-semibold transition-colors ${
+                activeTab === 'mastery'
+                  ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              <span className="hidden sm:inline">Topic </span>Mastery
+              {conceptMastery.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-200 dark:bg-gray-600">
+                  {conceptMastery.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('practice')}
+              className={`flex-1 py-4 px-4 text-sm font-semibold transition-colors ${
+                activeTab === 'practice'
+                  ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              <span className="hidden sm:inline">Topics to </span>Practice
+              {weakTopics.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-orange-200 dark:bg-orange-600 text-orange-800 dark:text-orange-100">
+                  {weakTopics.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6">
+            {/* Recent Quizzes Tab */}
+            {activeTab === 'quizzes' && (
+              <>
+                {quizHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    {quizHistory.map((quiz) => (
+                      <div
+                        key={quiz.id}
+                        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                      >
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900 dark:text-white">
+                            {quiz.unit_id === 'all' ? 'All Units' : `Unit: ${quiz.unit_id}`}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            {quiz.difficulty.charAt(0).toUpperCase() + quiz.difficulty.slice(1)} • {quiz.total_questions} questions • {new Date(quiz.quiz_date).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`text-2xl font-bold ${
+                            quiz.score_percentage >= 80 ? 'text-green-600 dark:text-green-400' :
+                            quiz.score_percentage >= 60 ? 'text-yellow-600 dark:text-yellow-400' :
+                            'text-red-600 dark:text-red-400'
+                          }`}>
+                            {quiz.score_percentage.toFixed(0)}%
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                            {quiz.correct_answers}/{quiz.total_questions}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {quiz.difficulty.charAt(0).toUpperCase() + quiz.difficulty.slice(1)} • {quiz.total_questions} questions • {new Date(quiz.quiz_date).toLocaleDateString()}
+                ) : (
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                    No quiz history yet. Complete a quiz to see your results here.
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* Topic Mastery Tab */}
+            {activeTab === 'mastery' && (
+              <>
+                {conceptMastery.length > 0 ? (
+                  <div className="space-y-3">
+                    {conceptMastery.map((concept) => (
+                      <div key={concept.topic} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="font-semibold text-gray-900 dark:text-white">
+                            {concept.topic}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {concept.correct_attempts}/{concept.total_attempts}
+                            </span>
+                            <span className={`font-bold ${
+                              concept.mastery_percentage >= 85 ? 'text-green-600 dark:text-green-400' :
+                              concept.mastery_percentage >= 70 ? 'text-yellow-600 dark:text-yellow-400' :
+                              'text-red-600 dark:text-red-400'
+                            }`}>
+                              {concept.mastery_percentage.toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all ${
+                              concept.mastery_percentage >= 85 ? 'bg-green-600' :
+                              concept.mastery_percentage >= 70 ? 'bg-yellow-600' :
+                              'bg-red-600'
+                            }`}
+                            style={{ width: `${concept.mastery_percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className={`text-2xl font-bold ${
-                    quiz.score_percentage >= 80 ? 'text-green-600 dark:text-green-400' :
-                    quiz.score_percentage >= 60 ? 'text-yellow-600 dark:text-yellow-400' :
-                    'text-red-600 dark:text-red-400'
-                  }`}>
-                    {quiz.score_percentage.toFixed(0)}%
+                ) : (
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                    No topic mastery data yet. Complete quizzes to track your progress by topic.
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* Topics to Practice Tab */}
+            {activeTab === 'practice' && (
+              <>
+                {weakTopics.length > 0 ? (
+                  <div className="space-y-6">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      These topics need more practice (below 70% accuracy)
+                    </p>
+                    {weakTopics.map((topic) => {
+                      const videos = getVideosForTopic(topic.topic);
+                      return (
+                        <div key={topic.topic} className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-5 border border-orange-200 dark:border-orange-800">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <div className="font-bold text-lg text-gray-900 dark:text-white mb-1">
+                                {topic.topic}
+                              </div>
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
+                                {topic.mastery_percentage.toFixed(0)}% accuracy • {topic.total_attempts} attempts
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                                {topic.mastery_percentage.toFixed(0)}%
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Recommended Videos */}
+                          {videos.length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-700">
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                Recommended Videos
+                              </h4>
+                              <div className="space-y-2">
+                                {videos.slice(0, 3).map((video, idx) => (
+                                  <a
+                                    key={idx}
+                                    href={video.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors group border border-transparent hover:border-orange-300 dark:hover:border-orange-700"
+                                  >
+                                    <svg
+                                      className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path d="M10 0C4.477 0 0 4.477 0 10s4.477 10 10 10 10-4.477 10-10S15.523 0 10 0zm3.5 10.5l-5 3a.5.5 0 01-.75-.433v-6a.5.5 0 01.75-.433l5 3a.5.5 0 010 .866z" />
+                                    </svg>
+                                    <div className="flex-1 min-w-0">
+                                      <h5 className="font-medium text-sm text-gray-900 dark:text-white group-hover:text-orange-700 dark:group-hover:text-orange-300">
+                                        {video.title}
+                                      </h5>
+                                      {video.difficulty && (
+                                        <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300">
+                                          {video.difficulty}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <svg
+                                      className="w-4 h-4 text-gray-400 group-hover:text-orange-600 dark:group-hover:text-orange-400 flex-shrink-0"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                      />
+                                    </svg>
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                    {quiz.correct_answers}/{quiz.total_questions}
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-green-600 dark:text-green-400 font-semibold">
+                      Great job! No weak topics detected.
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                      Keep practicing to maintain your mastery.
+                    </p>
                   </div>
-                </div>
-              </div>
-            ))}
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* Concept Mastery */}
-      {conceptMastery.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            🎯 Topic Mastery
-          </h2>
-          <div className="space-y-3">
-            {conceptMastery.map((concept) => (
-              <div key={concept.topic} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-gray-900 dark:text-white">
-                    {concept.topic}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {concept.correct_attempts}/{concept.total_attempts}
-                    </span>
-                    <span className={`font-bold ${
-                      concept.mastery_percentage >= 85 ? 'text-green-600 dark:text-green-400' :
-                      concept.mastery_percentage >= 70 ? 'text-yellow-600 dark:text-yellow-400' :
-                      'text-red-600 dark:text-red-400'
-                    }`}>
-                      {concept.mastery_percentage.toFixed(0)}%
-                    </span>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${
-                      concept.mastery_percentage >= 85 ? 'bg-green-600' :
-                      concept.mastery_percentage >= 70 ? 'bg-yellow-600' :
-                      'bg-red-600'
-                    }`}
-                    style={{ width: `${concept.mastery_percentage}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Weak Topics */}
-      {weakTopics.length > 0 && (
-        <div className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-800 rounded-xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-            ⚠️ Topics to Practice
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-            These topics need more practice (below 70% accuracy)
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {weakTopics.map((topic) => (
-              <div key={topic.topic} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
-                <div className="font-semibold text-gray-900 dark:text-white mb-1">
-                  {topic.topic}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {topic.mastery_percentage.toFixed(0)}% accuracy • {topic.total_attempts} attempts
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* No Data Message */}
+      {/* No Data Message - only show when no quizzes at all */}
       {totalQuizzes === 0 && (
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-xl">
           <div className="text-6xl mb-4">📝</div>
