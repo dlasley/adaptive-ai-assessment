@@ -6,12 +6,14 @@ import { units } from '@/lib/units';
 import { FEATURES } from '@/lib/feature-flags';
 import { getOrCreateStudyCode, getStoredStudyCode } from '@/lib/study-codes';
 import { StudyCodeDisplay } from '@/components/StudyCodeDisplay';
+import { QUIZ_MODES, QuizMode, getDefaultMode } from '@/lib/quiz-modes';
 
 export default function Home() {
   const router = useRouter();
   const [selectedUnit, setSelectedUnit] = useState<string>('all');
-  const [numQuestions, setNumQuestions] = useState<number>(10);
+  const [numQuestions, setNumQuestions] = useState<number>(30);
   const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [quizMode, setQuizMode] = useState<QuizMode>(getDefaultMode());
   const [studyCode, setStudyCode] = useState<string | null>(null);
   const [isLoadingCode, setIsLoadingCode] = useState(false);
 
@@ -30,9 +32,11 @@ export default function Home() {
 
   const handleStartPractice = () => {
     router.push(
-      `/quiz/${selectedUnit}?num=${numQuestions}&difficulty=${difficulty}`
+      `/quiz/${selectedUnit}?num=${numQuestions}&difficulty=${difficulty}&mode=${quizMode}`
     );
   };
+
+  const modeConfig = QUIZ_MODES[quizMode];
 
 
   const selectedUnitData = units.find(u => u.id === selectedUnit);
@@ -122,6 +126,40 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Quiz Mode Selection */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Quiz Mode:
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            {(Object.keys(QUIZ_MODES) as QuizMode[]).map((mode) => {
+              const config = QUIZ_MODES[mode];
+              const isSelected = quizMode === mode;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setQuizMode(mode)}
+                  className={`py-4 px-4 rounded-lg border-2 transition-all text-left ${
+                    isSelected
+                      ? mode === 'assessment'
+                        ? 'border-amber-600 bg-amber-600 text-white shadow-lg'
+                        : 'border-indigo-600 bg-indigo-600 text-white shadow-lg'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-indigo-400 hover:shadow'
+                  }`}
+                >
+                  <div className="font-semibold">
+                    {mode === 'practice' ? '📚 ' : '📝 '}
+                    {config.label}
+                  </div>
+                  <div className={`text-xs mt-1 ${isSelected ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {config.description}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Difficulty Selection */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
@@ -147,9 +185,13 @@ export default function Home() {
         {/* Start Button */}
         <button
           onClick={handleStartPractice}
-          className="w-full py-5 rounded-lg font-bold text-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5"
+          className={`w-full py-5 rounded-lg font-bold text-xl text-white shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 ${
+            quizMode === 'assessment'
+              ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
+              : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
+          }`}
         >
-          🚀 Start Practice Session
+          {quizMode === 'assessment' ? '📝 Start Assessment' : '🚀 Start Practice Session'}
         </button>
       </div>
 {/*

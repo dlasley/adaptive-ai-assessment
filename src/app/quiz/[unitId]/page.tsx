@@ -1,12 +1,19 @@
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Question } from '@/types';
 import { units } from '@/lib/units';
 import { FEATURES } from '@/lib/feature-flags';
 import { getStoredStudyCode, getStudyCodeId } from '@/lib/study-codes';
 import { saveQuizResults, saveQuizResultsLocally } from '@/lib/progress-tracking';
+import { QuizMode, getModeConfig } from '@/lib/quiz-modes';
+import {
+  getSuperuserOverride,
+  initGlobalSuperuserHelper,
+  initSuperuserKeyboardShortcut,
+  SUPERUSER_CHANGE_EVENT
+} from '@/lib/superuser-override';
 import TypedAnswerQuestion from '@/components/WritingQuestion';
 import type { EvaluationResult } from '@/app/api/evaluate-writing/route';
 
@@ -25,9 +32,12 @@ export default function QuizPage() {
   const topic = searchParams.get('topic') || '';
   const numQuestions = parseInt(searchParams.get('num') || '5');
   const difficulty = searchParams.get('difficulty') || 'beginner';
+  const mode = (searchParams.get('mode') || 'practice') as QuizMode;
 
   const unit = unitId === 'all' ? null : units.find((u) => u.id === unitId);
   const displayTitle = unitId === 'all' ? 'All Units' : unit?.title || 'Quiz';
+  const modeConfig = getModeConfig(mode);
+  const isAssessmentMode = mode === 'assessment';
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -35,6 +45,7 @@ export default function QuizPage() {
   const [evaluationResults, setEvaluationResults] = useState<Record<string, EvaluationResult>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
   const [studyGuide, setStudyGuide] = useState<TopicRecommendation[]>([]);
@@ -42,7 +53,32 @@ export default function QuizPage() {
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [studyCodeUuid, setStudyCodeUuid] = useState<string | null>(null);
 
-  // Initialize study code UUID and check superuser status
+  // Compute effective superuser status - sessionStorage override ALWAYS takes precedence
+  // This ensures the override is respected immediately, even before React state updates
+  const override = getSuperuserOverride();
+  const effectiveIsSuperuser = override ?? isSuperuser;
+  console.log(`🎯 QuizPage render: questionIndex=${currentQuestionIndex}, override=${override}, isSuperuser=${isSuperuser}, effective=${effectiveIsSuperuser}`);
+
+  // Check superuser status from DB (sessionStorage override is handled at render time)
+  const checkSuperuserStatus = useCallback(async (studyCodeId: string | null) => {
+    if (!studyCodeId) {
+      setIsSuperuser(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/check-superuser?studyCodeId=${studyCodeId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setIsSuperuser(data.isSuperuser === true);
+        console.log(`🔬 Superuser status from DB: ${data.isSuperuser ? 'YES' : 'NO'}`);
+      }
+    } catch (error) {
+      console.error('Error checking superuser status:', error);
+    }
+  }, []);
+
+  // Initialize study code UUID and check superuser status on mount
   useEffect(() => {
     async function initializeStudyCode() {
       const studyCode = getStoredStudyCode();
@@ -59,19 +95,45 @@ export default function QuizPage() {
         }
 
         setStudyCodeUuid(studyCodeId);
-
-        const response = await fetch(`/api/check-superuser?studyCodeId=${studyCodeId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setIsSuperuser(data.isSuperuser);
-          console.log(`🔬 Superuser status: ${data.isSuperuser ? 'YES' : 'NO'}`);
-        }
+        await checkSuperuserStatus(studyCodeId);
       } catch (error) {
         console.error('Error initializing study code:', error);
       }
     }
 
     initializeStudyCode();
+  }, [checkSuperuserStatus]);
+
+  // Re-check superuser override on each question change (for console/keyboard toggling)
+  useEffect(() => {
+    if (currentQuestionIndex > 0) {
+      const override = getSuperuserOverride();
+      console.log(`🔄 QuizPage useEffect[questionChange]: questionIndex=${currentQuestionIndex}, override=${override}`);
+      if (override !== null) {
+        setIsSuperuser(override);
+      }
+    }
+  }, [currentQuestionIndex]);
+
+  // Initialize superuser console helper and keyboard shortcut (Ctrl+Shift+S)
+  // Also listen for superuser change events to update React state
+  useEffect(() => {
+    initGlobalSuperuserHelper();
+    const cleanupKeyboard = initSuperuserKeyboardShortcut();
+
+    // Listen for superuser toggle events (from keyboard shortcut or console)
+    const handleSuperuserChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ enabled: boolean }>;
+      console.log(`🔔 QuizPage: superuser change event received, setting isSuperuser to ${customEvent.detail.enabled}`);
+      setIsSuperuser(customEvent.detail.enabled);
+    };
+
+    window.addEventListener(SUPERUSER_CHANGE_EVENT, handleSuperuserChange);
+
+    return () => {
+      cleanupKeyboard();
+      window.removeEventListener(SUPERUSER_CHANGE_EVENT, handleSuperuserChange);
+    };
   }, []);
 
   // Load questions on mount
@@ -79,10 +141,11 @@ export default function QuizPage() {
     async function fetchQuestions() {
       try {
         setLoading(true);
+        setWarnings([]);
         const response = await fetch('/api/generate-questions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ unitId, topic, numQuestions, difficulty }),
+          body: JSON.stringify({ unitId, topic, numQuestions, difficulty, mode }),
         });
 
         if (!response.ok) {
@@ -91,6 +154,9 @@ export default function QuizPage() {
 
         const data = await response.json();
         setQuestions(data.questions);
+        if (data.warnings && data.warnings.length > 0) {
+          setWarnings(data.warnings);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -99,7 +165,7 @@ export default function QuizPage() {
     }
 
     fetchQuestions();
-  }, [unitId, topic, numQuestions, difficulty]);
+  }, [unitId, topic, numQuestions, difficulty, mode]);
 
   const currentQuestion = questions[currentQuestionIndex];
   const hasAnswered = currentQuestion && userAnswers[currentQuestion.id] !== undefined;
@@ -122,15 +188,13 @@ export default function QuizPage() {
       };
 
       // Add metadata for superusers
-      if (isSuperuser) {
+      if (effectiveIsSuperuser) {
         evaluationResult.metadata = {
           difficulty: currentQuestion.difficulty,
           evaluationTier: 'exact_match',
           usedClaudeAPI: false,
-          similarityScore: undefined,
-          confidenceScore: undefined,
-          confidenceThreshold: undefined,
-          modelUsed: undefined,
+          matchedAgainst: 'primary_answer',
+          evaluationReason: 'Exact match for multiple choice/true-false question'
         };
       }
 
@@ -292,17 +356,34 @@ export default function QuizPage() {
       <div className="max-w-3xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
           <div className="text-center mb-8">
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${
+              isAssessmentMode
+                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'
+                : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200'
+            }`}>
+              <span>{isAssessmentMode ? '📝' : '📚'}</span>
+              <span className="font-semibold">{modeConfig.label}</span>
+            </div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              Quiz Complete! 🎉
+              {isAssessmentMode ? 'Assessment Complete!' : 'Quiz Complete! 🎉'}
             </h2>
             <p className="text-gray-600 dark:text-gray-300">{topic}</p>
           </div>
 
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-8 text-white text-center mb-8">
+          <div className={`rounded-lg p-8 text-white text-center mb-8 ${
+            isAssessmentMode
+              ? 'bg-gradient-to-r from-amber-500 to-orange-600'
+              : 'bg-gradient-to-r from-indigo-500 to-purple-600'
+          }`}>
             <div className="text-6xl font-bold mb-2">{score.percentage}%</div>
             <div className="text-xl">
               {score.correct} out of {score.total} correct
             </div>
+            {isAssessmentMode && (
+              <div className="mt-2 text-sm opacity-90">
+                Written responses only
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 mb-8">
@@ -365,7 +446,7 @@ export default function QuizPage() {
                   )}
 
                   {/* Superuser Question Metadata - For writing questions */}
-                  {isSuperuser && q.type === 'writing' && (
+                  {effectiveIsSuperuser && q.type === 'writing' && (
                     <div className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-600">
                       <h5 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
                         <span className="text-lg">🔬</span>
@@ -403,7 +484,7 @@ export default function QuizPage() {
                   )}
 
                   {/* Superuser Evaluation Metadata - Show for all question types */}
-                  {isSuperuser && evaluation && evaluation.metadata && (
+                  {effectiveIsSuperuser && evaluation && evaluation.metadata && (
                     <div className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-600">
                       <h5 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
                         <span className="text-lg">🔬</span>
@@ -426,38 +507,79 @@ export default function QuizPage() {
                           <div>
                             <span className="font-semibold text-purple-900 dark:text-purple-200">Evaluation Tier:</span>
                             <span className="ml-2 text-purple-800 dark:text-purple-300">
-                              {evaluation.metadata.evaluationTier.replace(/_/g, ' ')}
+                              {(() => {
+                                const tierMap: Record<string, string> = {
+                                  'empty_check': '1 - Empty Check',
+                                  'exact_match': '2 - Exact Match',
+                                  'fuzzy_logic': '3 - Fuzzy Logic',
+                                  'claude_api': '4  Semantic API'
+                                };
+                                return tierMap[evaluation.metadata!.evaluationTier] || evaluation.metadata!.evaluationTier;
+                              })()}
                             </span>
                           </div>
-                          {evaluation.metadata.similarityScore !== undefined && (
+
+                          {/* Levenshtein Similarity - shown for tiers 2 and 3 */}
+                          {evaluation.metadata.levenshteinSimilarity !== undefined && (
                             <div>
-                              <span className="font-semibold text-purple-900 dark:text-purple-200">Similarity:</span>
-                              <span className="ml-2 text-purple-800 dark:text-purple-300">{evaluation.metadata.similarityScore}%</span>
+                              <span className="font-semibold text-purple-900 dark:text-purple-200">Levenshtein Similarity:</span>
+                              <span className="ml-2 text-purple-800 dark:text-purple-300">{evaluation.metadata.levenshteinSimilarity}%</span>
                             </div>
                           )}
-                          {evaluation.metadata.confidenceScore !== undefined && (
-                            <div>
-                              <span className="font-semibold text-purple-900 dark:text-purple-200">Confidence:</span>
-                              <span className="ml-2 text-purple-800 dark:text-purple-300">{evaluation.metadata.confidenceScore}%</span>
-                            </div>
-                          )}
-                          {evaluation.metadata.confidenceThreshold !== undefined && (
+
+                          {/* Levenshtein Threshold - shown for tier 3 */}
+                          {evaluation.metadata.levenshteinThreshold !== undefined && (
                             <div>
                               <span className="font-semibold text-purple-900 dark:text-purple-200">Similarity Threshold:</span>
-                              <span className="ml-2 text-purple-800 dark:text-purple-300">{evaluation.metadata.confidenceThreshold}%</span>
+                              <span className="ml-2 text-purple-800 dark:text-purple-300">{evaluation.metadata.levenshteinThreshold}%</span>
                             </div>
                           )}
+
+                          {/* Semantic Confidence - shown for tier 4 */}
+                          {evaluation.metadata.claudeConfidence !== undefined && (
+                            <div>
+                              <span className="font-semibold text-purple-900 dark:text-purple-200">Semantic Confidence:</span>
+                              <span className="ml-2 text-purple-800 dark:text-purple-300">{evaluation.metadata.claudeConfidence}%</span>
+                            </div>
+                          )}
+
+                          {/* Matched Against */}
                           <div>
-                            <span className="font-semibold text-purple-900 dark:text-purple-200">Used Claude API:</span>
+                            <span className="font-semibold text-purple-900 dark:text-purple-200">Matched Against:</span>
+                            <span className="ml-2 text-purple-800 dark:text-purple-300">
+                              {(() => {
+                                const matchMap: Record<string, string> = {
+                                  'primary_answer': 'Primary Answer',
+                                  'acceptable_variation': `Variation #${(evaluation.metadata!.matchedVariationIndex ?? 0) + 1}`,
+                                  'none': 'None'
+                                };
+                                return matchMap[evaluation.metadata!.matchedAgainst] || evaluation.metadata!.matchedAgainst;
+                              })()}
+                            </span>
+                          </div>
+{/*
+                          <div>
+                            <span className="font-semibold text-purple-900 dark:text-purple-200">Used Semantic API:</span>
                             <span className="ml-2 text-purple-800 dark:text-purple-300">
                               {evaluation.metadata.usedClaudeAPI ? 'Yes' : 'No'}
                             </span>
                           </div>
+*/}
                           {evaluation.metadata.modelUsed && (
                             <div className="col-span-2">
                               <span className="font-semibold text-purple-900 dark:text-purple-200">Model:</span>
                               <span className="ml-2 text-purple-800 dark:text-purple-300 font-mono text-xs">
                                 {evaluation.metadata.modelUsed}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Evaluation Reason - full width */}
+                          {evaluation.metadata.evaluationReason && (
+                            <div className="col-span-2">
+                              <span className="font-semibold text-purple-900 dark:text-purple-200">Evaluation Reason:</span>
+                              <span className="ml-2 text-purple-800 dark:text-purple-300">
+                                {evaluation.metadata.evaluationReason}
                               </span>
                             </div>
                           )}
@@ -592,6 +714,32 @@ export default function QuizPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      {/* Mode Badge */}
+      <div className={`mb-4 px-4 py-2 rounded-lg inline-flex items-center gap-2 ${
+        isAssessmentMode
+          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'
+          : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200'
+      }`}>
+        <span>{isAssessmentMode ? '📝' : '📚'}</span>
+        <span className="font-semibold">{modeConfig.label}</span>
+      </div>
+
+      {/* Warnings */}
+      {warnings.length > 0 && (
+        <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="flex items-start gap-2">
+            <span className="text-yellow-600 dark:text-yellow-400">⚠️</span>
+            <div>
+              {warnings.map((warning, idx) => (
+                <p key={idx} className="text-sm text-yellow-800 dark:text-yellow-200">
+                  {warning}
+                </p>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -614,7 +762,7 @@ export default function QuizPage() {
             question={currentQuestion}
             onSubmit={handleTypedAnswerSubmit}
             showHints={true}
-            isSuperuser={isSuperuser}
+            isSuperuser={effectiveIsSuperuser}
             studyCodeUuid={studyCodeUuid}
           />
 
@@ -644,7 +792,7 @@ export default function QuizPage() {
             </h3>
 
             {/* Superuser Metadata - Question Screen */}
-            {isSuperuser && !showExplanation && (
+            {effectiveIsSuperuser && !showExplanation && (
               <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
                 <h5 className="text-sm font-semibold text-purple-900 dark:text-purple-300 mb-2 flex items-center gap-2">
                   <span className="text-lg">🔬</span>
@@ -737,7 +885,7 @@ export default function QuizPage() {
               )}
 
               {/* Superuser Question Metadata for Non-Writing Questions */}
-              {isSuperuser && (
+              {effectiveIsSuperuser && (
                 <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg mb-4">
                   <h5 className="text-sm font-semibold text-purple-900 dark:text-purple-300 mb-2 flex items-center gap-2">
                     <span className="text-lg">🔬</span>
@@ -767,7 +915,7 @@ export default function QuizPage() {
               )}
 
               {/* Superuser Evaluation Metadata for Non-Writing Questions */}
-              {isSuperuser && evaluationResults[currentQuestion.id]?.metadata && (() => {
+              {effectiveIsSuperuser && evaluationResults[currentQuestion.id]?.metadata && (() => {
                 const metadata = evaluationResults[currentQuestion.id].metadata!;
                 return (
                   <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
@@ -779,45 +927,88 @@ export default function QuizPage() {
                       <div>
                         <span className="font-semibold text-purple-900 dark:text-purple-200">Evaluation Tier:</span>
                         <span className="ml-2 text-purple-800 dark:text-purple-300">
-                          {metadata.evaluationTier.replace(/_/g, ' ')}
+                          {(() => {
+                            const tierMap: Record<string, string> = {
+                              'empty_check': '1. Empty Check',
+                              'exact_match': '2. Exact Match',
+                              'fuzzy_logic': '3. Fuzzy Logic',
+                              'claude_api': '4. Semantic API'
+                            };
+                            return tierMap[metadata.evaluationTier] || metadata.evaluationTier;
+                          })()}
                         </span>
                       </div>
+
+                      {/* Levenshtein Similarity - shown for tiers 2 and 3 */}
+                      {metadata.levenshteinSimilarity !== undefined && (
+                        <div>
+                          <span className="font-semibold text-purple-900 dark:text-purple-200">Levenshtein Similarity:</span>
+                          <span className="ml-2 text-purple-800 dark:text-purple-300">
+                            {metadata.levenshteinSimilarity}%
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Levenshtein Threshold - shown for tier 3 */}
+                      {metadata.levenshteinThreshold !== undefined && (
+                        <div>
+                          <span className="font-semibold text-purple-900 dark:text-purple-200">Similarity Threshold:</span>
+                          <span className="ml-2 text-purple-800 dark:text-purple-300">
+                            {metadata.levenshteinThreshold}%
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Semantic Confidence - shown for tier 4 */}
+                      {metadata.claudeConfidence !== undefined && (
+                        <div>
+                          <span className="font-semibold text-purple-900 dark:text-purple-200">Semantic Confidence:</span>
+                          <span className="ml-2 text-purple-800 dark:text-purple-300">
+                            {metadata.claudeConfidence}%
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Matched Against */}
                       <div>
-                        <span className="font-semibold text-purple-900 dark:text-purple-200">Similarity:</span>
+                        <span className="font-semibold text-purple-900 dark:text-purple-200">Matched Against:</span>
                         <span className="ml-2 text-purple-800 dark:text-purple-300">
-                          {metadata.similarityScore !== undefined
-                            ? `${metadata.similarityScore}%`
-                            : 'N/A'}
+                          {(() => {
+                            const matchMap: Record<string, string> = {
+                              'primary_answer': 'Primary Answer',
+                              'acceptable_variation': `Variation #${(metadata.matchedVariationIndex ?? 0) + 1}`,
+                              'none': 'None'
+                            };
+                            return matchMap[metadata.matchedAgainst] || metadata.matchedAgainst;
+                          })()}
                         </span>
                       </div>
+{/*}
                       <div>
-                        <span className="font-semibold text-purple-900 dark:text-purple-200">Confidence:</span>
-                        <span className="ml-2 text-purple-800 dark:text-purple-300">
-                          {metadata.confidenceScore !== undefined
-                            ? `${metadata.confidenceScore}%`
-                            : 'N/A'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-semibold text-purple-900 dark:text-purple-200">Similarity Threshold:</span>
-                        <span className="ml-2 text-purple-800 dark:text-purple-300">
-                          {metadata.confidenceThreshold !== undefined
-                            ? `${metadata.confidenceThreshold}%`
-                            : 'N/A'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-semibold text-purple-900 dark:text-purple-200">Used Claude API:</span>
+                        <span className="font-semibold text-purple-900 dark:text-purple-200">Used Semantic API:</span>
                         <span className="ml-2 text-purple-800 dark:text-purple-300">
                           {metadata.usedClaudeAPI ? 'Yes' : 'No'}
                         </span>
                       </div>
-                      <div>
-                        <span className="font-semibold text-purple-900 dark:text-purple-200">Model:</span>
-                        <span className="ml-2 text-purple-800 dark:text-purple-300">
-                          {metadata.modelUsed || 'N/A'}
-                        </span>
-                      </div>
+*/}
+                      {metadata.modelUsed && (
+                        <div>
+                          <span className="font-semibold text-purple-900 dark:text-purple-200">Model:</span>
+                          <span className="ml-2 text-purple-800 dark:text-purple-300 font-mono text-xs">
+                            {metadata.modelUsed}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Evaluation Reason - full width */}
+                      {metadata.evaluationReason && (
+                        <div className="col-span-2">
+                          <span className="font-semibold text-purple-900 dark:text-purple-200">Evaluation Reason:</span>
+                          <span className="ml-2 text-purple-800 dark:text-purple-300">
+                            {metadata.evaluationReason}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -837,7 +1028,7 @@ export default function QuizPage() {
 
             {showExplanation && (
               <div className="space-y-3">
-                {isSuperuser && (
+                {effectiveIsSuperuser && (
                   <button
                     onClick={() => {
                       // Clear the answer and evaluation for this question

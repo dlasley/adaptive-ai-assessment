@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { FEATURES } from '@/lib/feature-flags';
+import { FEATURES, getFuzzyLogicThreshold } from '@/lib/feature-flags';
 import { fuzzyEvaluateAnswer, calculateSimilarity } from '@/lib/writing-questions';
 import { supabase, isSupabaseAvailable } from '@/lib/supabase';
 
@@ -46,15 +46,27 @@ export interface EvaluationResult {
     suggestions?: string[];
   };
   correctedAnswer?: string;
+  // Internal field for passing match info from fuzzy evaluation (removed before sending response)
+  _matchInfo?: {
+    matchedAgainst: 'primary_answer' | 'acceptable_variation' | 'none';
+    matchedVariationIndex?: number;
+    matchedSimilarity?: number; // 0-100, similarity to the matched answer (not necessarily primary)
+    evaluationReason: string;
+    correctnessBand?: string; // Which correctness band this fell into (e.g., "95%+ (minor typo)")
+  };
   // Superuser metadata (only included when is_superuser=true)
   metadata?: {
     difficulty: string;
     evaluationTier: 'empty_check' | 'exact_match' | 'fuzzy_logic' | 'claude_api';
-    similarityScore?: number; // 0-100
-    confidenceScore?: number; // 0-100
-    confidenceThreshold?: number; // 0-100
+    levenshteinSimilarity?: number; // 0-100, similarity score from Levenshtein distance
+    levenshteinThreshold?: number; // 0-100, threshold for this difficulty
+    claudeConfidence?: number; // 0-100, Claude's self-reported confidence (only for claude_api tier)
     usedClaudeAPI: boolean;
     modelUsed?: string;
+    matchedAgainst: 'primary_answer' | 'acceptable_variation' | 'none';
+    matchedVariationIndex?: number; // Which variation was matched (0-indexed)
+    evaluationReason: string; // Human-readable explanation of why this tier was used
+    correctnessBand?: string; // Which correctness band this fell into (for fuzzy_logic tier)
   };
 }
 
@@ -67,7 +79,8 @@ export async function POST(request: NextRequest) {
       questionType,
       difficulty,
       acceptableVariations = [],
-      studyCodeId
+      studyCodeId,
+      superuserOverride  // Optional override from client (URL param -> sessionStorage)
     } = await request.json();
 
     console.log(`📝 Evaluating ${questionType} question:`, {
@@ -75,7 +88,8 @@ export async function POST(request: NextRequest) {
       userAnswer: userAnswer.substring(0, 50),
       correctAnswer: correctAnswer?.substring(0, 50),
       difficulty,
-      hasStudyCodeId: !!studyCodeId
+      hasStudyCodeId: !!studyCodeId,
+      superuserOverride
     });
 
     if (!question || !userAnswer) {
@@ -86,8 +100,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is a superuser (for metadata)
-    const includeSuperuserMetadata = await isSuperuser(studyCodeId);
-    console.log(`🔬 Superuser metadata: ${includeSuperuserMetadata}`);
+    // Priority: explicit override > database status
+    let includeSuperuserMetadata: boolean;
+    if (superuserOverride !== undefined && superuserOverride !== null) {
+      includeSuperuserMetadata = superuserOverride === true;
+      console.log(`🔬 Superuser metadata (OVERRIDE): ${includeSuperuserMetadata}`);
+    } else {
+      includeSuperuserMetadata = await isSuperuser(studyCodeId);
+      console.log(`🔬 Superuser metadata (DB): ${includeSuperuserMetadata}`);
+    }
 
     // Tier 1: Check if answer is empty or too short
     if (userAnswer.trim().length < 2) {
@@ -106,7 +127,9 @@ export async function POST(request: NextRequest) {
         result.metadata = {
           difficulty,
           evaluationTier: 'empty_check',
-          usedClaudeAPI: false
+          usedClaudeAPI: false,
+          matchedAgainst: 'none',
+          evaluationReason: 'Answer too short (less than 2 characters)'
         };
       }
 
@@ -146,9 +169,10 @@ export async function POST(request: NextRequest) {
         result.metadata = {
           difficulty,
           evaluationTier: 'exact_match',
-          similarityScore: Math.round(similarity * 100),
-          confidenceScore: 100,
-          usedClaudeAPI: false
+          levenshteinSimilarity: Math.round(similarity * 100),
+          usedClaudeAPI: false,
+          matchedAgainst: 'primary_answer',
+          evaluationReason: 'Exact match against primary answer (after normalization)'
         };
       }
 
@@ -157,17 +181,16 @@ export async function POST(request: NextRequest) {
 
     // Tier 3: Fuzzy evaluation (if feature flag enabled and confidence is high enough)
     console.log('🔧 Tier 3: Fuzzy logic check:', {
-      featureFlagEnabled: !FEATURES.API_ONLY_EVALUATION,
+      featureFlagEnabled: !FEATURES.SKIP_FUZZY_LOGIC,
       hasCorrectAnswer: !!correctAnswer
     });
 
-    if (!FEATURES.API_ONLY_EVALUATION && correctAnswer) {
+    if (!FEATURES.SKIP_FUZZY_LOGIC && correctAnswer) {
       const similarity = calculateSimilarity(userAnswer, correctAnswer);
       const confidenceScore = Math.round(similarity * 100);
 
-      // Get confidence threshold for this difficulty
-      const thresholds = { beginner: 70, intermediate: 85, advanced: 95 };
-      const threshold = thresholds[difficulty as keyof typeof thresholds] || 85;
+      // Get fuzzy logic threshold for this difficulty
+      const threshold = getFuzzyLogicThreshold(difficulty);
 
       console.log('🔧 Fuzzy logic similarity:', {
         similarity: confidenceScore,
@@ -187,24 +210,34 @@ export async function POST(request: NextRequest) {
       if (fuzzyResult) {
         console.log('✅ Tier 3: Fuzzy logic evaluation succeeded');
         if (includeSuperuserMetadata) {
+          // Determine what was matched based on fuzzyResult metadata
+          const matchInfo = fuzzyResult._matchInfo || { matchedAgainst: 'primary_answer', evaluationReason: 'Fuzzy match' };
+          delete fuzzyResult._matchInfo; // Remove internal field before sending response
+
+          // Use the similarity to the matched answer, not the primary answer
+          const displaySimilarity = matchInfo.matchedSimilarity ?? confidenceScore;
+
           fuzzyResult.metadata = {
             difficulty,
             evaluationTier: 'fuzzy_logic',
-            similarityScore: confidenceScore,
-            confidenceScore,
-            confidenceThreshold: threshold,
-            usedClaudeAPI: false
+            levenshteinSimilarity: displaySimilarity,
+            levenshteinThreshold: threshold,
+            usedClaudeAPI: false,
+            matchedAgainst: matchInfo.matchedAgainst,
+            matchedVariationIndex: matchInfo.matchedVariationIndex,
+            evaluationReason: matchInfo.evaluationReason,
+            correctnessBand: matchInfo.correctnessBand
           };
         }
         return NextResponse.json<EvaluationResult>(fuzzyResult);
       }
 
-      // Otherwise, fall through to Claude API evaluation
-      console.log('⚠️  Tier 3: Fuzzy evaluation confidence too low, using Claude API');
+      // Otherwise, fall through to Semantic API evaluation
+      console.log('⚠️  Tier 3: Fuzzy evaluation confidence too low, using Semantic API');
     }
 
     // Tier 4: AI Evaluation with Opus 4.5 (for accuracy or as fallback)
-    console.log('🤖 Tier 4: Using Claude API evaluation');
+    console.log('🤖 Tier 4: Using Semantic API evaluation');
     const { evaluation, claudeConfidence } = await evaluateWithClaude(
       question,
       userAnswer,
@@ -213,7 +246,7 @@ export async function POST(request: NextRequest) {
       difficulty
     );
 
-    console.log('✅ Tier 4: Claude API evaluation completed:', {
+    console.log('✅ Tier 4: Semantic API evaluation completed:', {
       isCorrect: evaluation.isCorrect,
       score: evaluation.score,
       confidence: claudeConfidence
@@ -224,10 +257,12 @@ export async function POST(request: NextRequest) {
       evaluation.metadata = {
         difficulty,
         evaluationTier: 'claude_api',
-        similarityScore: similarity !== undefined ? Math.round(similarity * 100) : undefined,
-        confidenceScore: claudeConfidence, // Claude's self-reported confidence
+        levenshteinSimilarity: similarity !== undefined ? Math.round(similarity * 100) : undefined,
+        claudeConfidence, // Claude's self-reported confidence
         usedClaudeAPI: true,
-        modelUsed: 'claude-opus-4-5-20251101'
+        modelUsed: 'claude-opus-4-5-20251101',
+        matchedAgainst: 'none', // Claude evaluates semantically, not by matching
+        evaluationReason: 'Fuzzy logic confidence below threshold; used Semantic API for semantic evaluation'
       };
     }
 
@@ -255,7 +290,7 @@ function normalizeText(text: string): string {
 }
 
 /**
- * Claude API response interface (includes confidence score)
+ * Semantic API response interface (includes confidence score)
  */
 interface ClaudeEvaluationResponse {
   isCorrect: boolean;
@@ -363,7 +398,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
       claudeConfidence: confidenceScore
     };
   } catch (error) {
-    console.error('Claude API error:', error);
+    console.error('Semantic API error:', error);
 
     // Fallback evaluation
     return {

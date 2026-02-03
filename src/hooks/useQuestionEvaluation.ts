@@ -22,7 +22,8 @@ export function useQuestionEvaluation({ onSubmit }: UseQuestionEvaluationProps =
     questionType: string,
     difficulty: string,
     acceptableVariations: string[] = [],
-    studyCodeId?: string
+    studyCodeId?: string,
+    superuserOverride?: boolean | null
   ) => {
     if (!userAnswer.trim() || isEvaluating) return;
 
@@ -36,7 +37,8 @@ export function useQuestionEvaluation({ onSubmit }: UseQuestionEvaluationProps =
         questionType,
         difficulty,
         acceptableVariations,
-        studyCodeId
+        studyCodeId,
+        superuserOverride
       );
 
       setEvaluation(result);

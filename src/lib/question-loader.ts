@@ -87,6 +87,16 @@ export function isMetaQuestion(question: Question): boolean {
 }
 
 /**
+ * Result from question selection including any warnings
+ */
+export interface SelectionResult {
+  questions: Question[];
+  warnings: string[];
+  requestedCount: number;
+  actualCount: number;
+}
+
+/**
  * Filter and randomize questions based on criteria
  */
 export function selectQuestions(
@@ -96,8 +106,13 @@ export function selectQuestions(
     topic?: string;
     difficulty?: string;
     numQuestions: number;
+    /** Allowed question types (if not specified, all types allowed) */
+    allowedTypes?: Question['type'][];
+    /** Distribution ratios for each type (should sum to 1.0) */
+    typeDistribution?: Partial<Record<Question['type'], number>>;
   }
-): Question[] {
+): SelectionResult {
+  const warnings: string[] = [];
   let filtered = allQuestions;
 
   // Log initial pool
@@ -105,6 +120,17 @@ export function selectQuestions(
     const initialWriting = allQuestions.filter(q => q.type === 'writing').length;
     console.log(`\n📦 Initial pool: ${allQuestions.length} total (${initialWriting} writing)`);
     console.log(`   Criteria: unit=${criteria.unitId}, topic=${criteria.topic}, difficulty=${criteria.difficulty}`);
+    if (criteria.allowedTypes) {
+      console.log(`   Allowed types: ${criteria.allowedTypes.join(', ')}`);
+    }
+  }
+
+  // Filter by allowed types if specified
+  if (criteria.allowedTypes && criteria.allowedTypes.length > 0) {
+    filtered = filtered.filter(q => criteria.allowedTypes!.includes(q.type));
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`   After type filter: ${filtered.length} total`);
+    }
   }
 
   // Filter by unit if specified
@@ -138,36 +164,128 @@ export function selectQuestions(
     }
   }
 
-  // Separate writing and traditional questions for guaranteed mix
-  const writingQuestions = filtered.filter(q => q.type === 'writing');
-  const traditionalQuestions = filtered.filter(q => q.type !== 'writing');
+  // Use type distribution if provided, otherwise use default behavior
+  let finalSelection: Question[];
 
-  // Calculate desired writing question count (aim for 30% if available)
-  const desiredWritingCount = Math.min(
-    Math.ceil(criteria.numQuestions * 0.3),
-    writingQuestions.length
-  );
-  const desiredTraditionalCount = criteria.numQuestions - desiredWritingCount;
+  if (criteria.typeDistribution) {
+    // Select questions based on specified distribution
+    finalSelection = selectByDistribution(filtered, criteria.numQuestions, criteria.typeDistribution, warnings);
+  } else {
+    // Legacy behavior: 30% writing, 70% traditional
+    const writingQuestions = filtered.filter(q => q.type === 'writing');
+    const traditionalQuestions = filtered.filter(q => q.type !== 'writing');
 
-  // Shuffle each type separately
-  const shuffledWriting = [...writingQuestions].sort(() => Math.random() - 0.5);
-  const shuffledTraditional = [...traditionalQuestions].sort(() => Math.random() - 0.5);
+    const desiredWritingCount = Math.min(
+      Math.ceil(criteria.numQuestions * 0.3),
+      writingQuestions.length
+    );
+    const desiredTraditionalCount = criteria.numQuestions - desiredWritingCount;
 
-  // Select from each type
-  const selectedWriting = shuffledWriting.slice(0, desiredWritingCount);
-  const selectedTraditional = shuffledTraditional.slice(0, desiredTraditionalCount);
+    const shuffledWriting = [...writingQuestions].sort(() => Math.random() - 0.5);
+    const shuffledTraditional = [...traditionalQuestions].sort(() => Math.random() - 0.5);
 
-  // Combine and shuffle the final selection
-  const finalSelection = [...selectedWriting, ...selectedTraditional].sort(() => Math.random() - 0.5);
+    const selectedWriting = shuffledWriting.slice(0, desiredWritingCount);
+    const selectedTraditional = shuffledTraditional.slice(0, desiredTraditionalCount);
+
+    finalSelection = [...selectedWriting, ...selectedTraditional].sort(() => Math.random() - 0.5);
+  }
+
+  // Check if we got fewer questions than requested
+  if (finalSelection.length < criteria.numQuestions) {
+    warnings.push(`Only ${finalSelection.length} questions available (requested ${criteria.numQuestions})`);
+  }
 
   // Log selection stats in development
   if (process.env.NODE_ENV === 'development') {
-    console.log(`🎯 Question pool: ${filtered.length} total (${writingQuestions.length} writing, ${traditionalQuestions.length} traditional)`);
-    console.log(`📋 Selected ${finalSelection.length} questions (${selectedWriting.length} writing, ${selectedTraditional.length} traditional)`);
+    const typeCounts = finalSelection.reduce((acc, q) => {
+      acc[q.type] = (acc[q.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log(`🎯 Question pool: ${filtered.length} total`);
+    console.log(`📋 Selected ${finalSelection.length} questions:`, typeCounts);
+    if (warnings.length > 0) {
+      console.log(`⚠️  Warnings: ${warnings.join(', ')}`);
+    }
   }
 
-  // Return final selection
-  return finalSelection;
+  return {
+    questions: finalSelection,
+    warnings,
+    requestedCount: criteria.numQuestions,
+    actualCount: finalSelection.length,
+  };
+}
+
+/**
+ * Select questions based on type distribution ratios
+ */
+function selectByDistribution(
+  questions: Question[],
+  numQuestions: number,
+  distribution: Partial<Record<Question['type'], number>>,
+  warnings: string[]
+): Question[] {
+  const selected: Question[] = [];
+
+  // Group questions by type
+  const byType: Record<string, Question[]> = {};
+  for (const q of questions) {
+    if (!byType[q.type]) byType[q.type] = [];
+    byType[q.type].push(q);
+  }
+
+  // Shuffle each type group
+  for (const type in byType) {
+    byType[type] = byType[type].sort(() => Math.random() - 0.5);
+  }
+
+  // Calculate desired counts for each type using floor, then distribute remainder
+  const desiredCounts: Record<string, number> = {};
+  const entries = Object.entries(distribution).filter(([, ratio]) => ratio > 0);
+
+  // First pass: floor all values
+  let allocated = 0;
+  for (const [type, ratio] of entries) {
+    desiredCounts[type] = Math.floor(numQuestions * ratio);
+    allocated += desiredCounts[type];
+  }
+
+  // Second pass: distribute remainder to types with highest fractional parts
+  const remainder = numQuestions - allocated;
+  if (remainder > 0) {
+    const fractionals = entries.map(([type, ratio]) => ({
+      type,
+      fractional: (numQuestions * ratio) - Math.floor(numQuestions * ratio)
+    })).sort((a, b) => b.fractional - a.fractional);
+
+    for (let i = 0; i < remainder && i < fractionals.length; i++) {
+      desiredCounts[fractionals[i].type]++;
+    }
+  }
+
+  // Select from each type based on distribution
+  for (const [type, desiredCount] of Object.entries(desiredCounts)) {
+    const available = byType[type] || [];
+    const toSelect = Math.min(desiredCount, available.length);
+
+    if (toSelect < desiredCount) {
+      warnings.push(`Only ${available.length} ${type} questions available (wanted ${desiredCount})`);
+    }
+
+    selected.push(...available.slice(0, toSelect));
+  }
+
+  // If we're short on questions, try to fill from any available type
+  if (selected.length < numQuestions) {
+    const usedIds = new Set(selected.map(q => q.id));
+    const unused = questions.filter(q => !usedIds.has(q.id));
+    const shuffledUnused = unused.sort(() => Math.random() - 0.5);
+    const needed = numQuestions - selected.length;
+    selected.push(...shuffledUnused.slice(0, needed));
+  }
+
+  // Shuffle final selection
+  return selected.sort(() => Math.random() - 0.5);
 }
 
 /**

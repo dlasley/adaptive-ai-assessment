@@ -8,7 +8,7 @@ export interface Unit {
 export interface Question {
   id: string;
   question: string;
-  type: 'multiple-choice' | 'fill-in-blank' | 'true-false' | 'matching' | 'writing';
+  type: 'multiple-choice' | 'fill-in-blank' | 'true-false' | 'writing';
   options?: string[];
   correctAnswer: string;
   explanation?: string;
