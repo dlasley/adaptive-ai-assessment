@@ -4,7 +4,6 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { Question } from '@/types';
 import { units } from '@/lib/units';
-import { FEATURES } from '@/lib/feature-flags';
 import { getStoredStudyCode, getStudyCodeId } from '@/lib/study-codes';
 import { saveQuizResults, saveQuizResultsLocally } from '@/lib/progress-tracking';
 import { QuizMode, getModeConfig } from '@/lib/quiz-modes';
@@ -344,8 +343,6 @@ export default function QuizPage() {
 
   // Save quiz results to database
   const saveResults = async () => {
-    if (!FEATURES.PROGRESS_TRACKING) return;
-
     const studyCode = getStoredStudyCode();
     if (!studyCode) return;
 

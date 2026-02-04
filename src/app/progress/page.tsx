@@ -104,7 +104,7 @@ export default function ProgressPage() {
       </div>
 
       {/* Study Code Card with QR */}
-      {FEATURES.STUDY_CODES && (
+      {FEATURES.SHOW_STUDY_CODE && (
         <StudyCodeDisplay studyCode={studyCode} size="medium" />
       )}
 

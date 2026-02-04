@@ -41,3 +41,6 @@ next-env.d.ts
 # data
 /data/*
 !/data/DATA.md
+
+# learnings (proprietary course materials)
+/learnings/

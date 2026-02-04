@@ -20,18 +20,16 @@ export default function Navigation() {
         Home
       </Link>
 
-      {FEATURES.PROGRESS_TRACKING && (
-        <Link
-          href="/progress"
-          className={`text-sm font-medium transition-colors ${
-            pathname === '/progress'
-              ? 'text-indigo-600 dark:text-indigo-400'
-              : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-          }`}
-        >
-          My Progress
-        </Link>
-      )}
+      <Link
+        href="/progress"
+        className={`text-sm font-medium transition-colors ${
+          pathname === '/progress'
+            ? 'text-indigo-600 dark:text-indigo-400'
+            : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+        }`}
+      >
+        My Progress
+      </Link>
 
       {FEATURES.ADMIN_PANEL && (
         <Link

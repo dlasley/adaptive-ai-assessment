@@ -1,5 +1,6 @@
 -- French Assessment App - Database Schema
 -- Anonymous study code system with progress tracking
+-- Consolidated from base schema + all migrations
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -10,19 +11,22 @@ CREATE TABLE study_codes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code TEXT UNIQUE NOT NULL,
   display_name TEXT, -- Optional: student can add their name
+  admin_label TEXT, -- Optional label/identifier assigned by admin, not visible to students
+  is_superuser BOOLEAN DEFAULT false NOT NULL, -- Enables detailed evaluation metadata
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   last_active_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   total_quizzes INTEGER DEFAULT 0,
   total_questions INTEGER DEFAULT 0,
-  correct_answers INTEGER DEFAULT 0,
-
-  -- Indexes for fast lookups
-  CONSTRAINT code_format CHECK (code ~ '^study-[a-z0-9]{8}$')
+  correct_answers INTEGER DEFAULT 0
+  -- No code_format constraint: validation happens in application layer
+  -- Supports both old "study-xxxxxxxx" and new "adjective animal" formats
 );
 
--- Index on code for fast lookups
-CREATE INDEX idx_study_codes_code ON study_codes(code);
+-- Index for ordering by creation date (code column already indexed via UNIQUE constraint)
 CREATE INDEX idx_study_codes_created_at ON study_codes(created_at DESC);
+
+-- Partial index for efficient superuser lookups
+CREATE INDEX idx_study_codes_superuser ON study_codes(is_superuser) WHERE is_superuser = true;
 
 -- Quiz History Table
 -- Stores individual quiz attempts
@@ -37,7 +41,6 @@ CREATE TABLE quiz_history (
   score_percentage NUMERIC(5,2) NOT NULL,
   time_spent_seconds INTEGER,
 
-  -- Indexes
   CONSTRAINT valid_score CHECK (score_percentage >= 0 AND score_percentage <= 100)
 );
 
@@ -61,6 +64,28 @@ CREATE TABLE question_results (
 
 CREATE INDEX idx_question_results_study_code ON question_results(study_code_id);
 CREATE INDEX idx_question_results_topic ON question_results(study_code_id, topic);
+
+-- Writing Questions Table
+-- French writing questions requiring typed answers
+CREATE TABLE writing_questions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  question_en TEXT NOT NULL,
+  correct_answer_fr TEXT,
+  acceptable_variations TEXT[] DEFAULT '{}',
+  topic TEXT NOT NULL,
+  difficulty TEXT NOT NULL CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
+  question_type TEXT NOT NULL CHECK (question_type IN ('translation', 'conjugation', 'open_ended', 'question_formation', 'sentence_building')),
+  explanation TEXT,
+  hints TEXT[] DEFAULT '{}',
+  requires_complete_sentence BOOLEAN DEFAULT FALSE,
+  unit_id UUID,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_writing_questions_difficulty ON writing_questions(difficulty);
+CREATE INDEX idx_writing_questions_topic ON writing_questions(topic);
+CREATE INDEX idx_writing_questions_type ON writing_questions(question_type);
 
 -- Concept Mastery View
 -- Aggregates performance by topic for each student
@@ -173,21 +198,19 @@ $$ LANGUAGE plpgsql;
 ALTER TABLE study_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quiz_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE question_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE writing_questions ENABLE ROW LEVEL SECURITY;
 
--- Allow anonymous users to read/write their own data
--- Everyone can create new study codes
+-- Study codes policies
 CREATE POLICY "Anyone can create study codes"
   ON study_codes FOR INSERT
   TO anon
   WITH CHECK (true);
 
--- Anyone can read any study code (anonymous, no PII)
 CREATE POLICY "Anyone can read study codes"
   ON study_codes FOR SELECT
   TO anon
   USING (true);
 
--- Anyone can update their own study code
 CREATE POLICY "Anyone can update study codes"
   ON study_codes FOR UPDATE
   TO anon
@@ -215,21 +238,32 @@ CREATE POLICY "Anyone can read question results"
   TO anon
   USING (true);
 
--- Sample data for testing (optional)
--- Uncomment to insert test data
-/*
-INSERT INTO study_codes (code, display_name)
-VALUES ('study-test1234', 'Test Student');
+-- Writing questions policies
+CREATE POLICY "Allow public read access" ON writing_questions
+  FOR SELECT
+  USING (true);
 
-INSERT INTO quiz_history (study_code_id, unit_id, difficulty, total_questions, correct_answers, score_percentage)
-SELECT id, 'introduction', 'beginner', 10, 8, 80.00
-FROM study_codes WHERE code = 'study-test1234';
-*/
+CREATE POLICY "Allow authenticated insert" ON writing_questions
+  FOR INSERT
+  WITH CHECK (true);
 
--- Helpful queries for admin dashboard
+CREATE POLICY "Allow authenticated update" ON writing_questions
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated delete" ON writing_questions
+  FOR DELETE
+  USING (true);
+
+-- Table and column comments
 COMMENT ON TABLE study_codes IS 'Anonymous student identifiers';
 COMMENT ON TABLE quiz_history IS 'Individual quiz attempts';
 COMMENT ON TABLE question_results IS 'Detailed question-by-question results';
+COMMENT ON TABLE writing_questions IS 'French writing questions requiring typed answers';
 COMMENT ON VIEW concept_mastery IS 'Topic mastery by student';
 COMMENT ON VIEW weak_topics IS 'Topics where student needs help';
 COMMENT ON VIEW strong_topics IS 'Topics where student excels';
+COMMENT ON COLUMN study_codes.admin_label IS 'Optional label/identifier that admin can assign to a student. Not visible to students.';
+COMMENT ON COLUMN study_codes.is_superuser IS 'When true, user receives detailed evaluation metadata including confidence scores, similarity metrics, and which evaluation tier was used';
+COMMENT ON COLUMN writing_questions.requires_complete_sentence IS 'Advanced questions requiring full sentence responses';

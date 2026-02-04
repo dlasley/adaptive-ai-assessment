@@ -17,17 +17,20 @@ export default function Home() {
   const [studyCode, setStudyCode] = useState<string | null>(null);
   const [isLoadingCode, setIsLoadingCode] = useState(false);
 
-  // Load or create study code on mount
+  // Always create study code on mount (progress tracking runs silently)
   useEffect(() => {
-    if (FEATURES.STUDY_CODES) {
-      const loadCode = async () => {
-        setIsLoadingCode(true);
+    const loadCode = async () => {
+      setIsLoadingCode(true);
+      try {
         const code = await getOrCreateStudyCode();
         setStudyCode(code);
+      } catch (error) {
+        console.error('Failed to load study code:', error);
+      } finally {
         setIsLoadingCode(false);
-      };
-      loadCode();
-    }
+      }
+    };
+    loadCode();
   }, []);
 
   const handleStartPractice = () => {
@@ -52,25 +55,29 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Study Code Card with QR */}
-      {FEATURES.STUDY_CODES && studyCode && !isLoadingCode && (
+      {/* Study Code Card with QR (only shown when SHOW_STUDY_CODE is true) */}
+      {FEATURES.SHOW_STUDY_CODE && studyCode && !isLoadingCode && (
         <div className="max-w-3xl mx-auto">
           <StudyCodeDisplay studyCode={studyCode} size="medium" />
-          <div className="text-center mt-4">
-            <button
-              onClick={() => router.push('/progress')}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
-            >
-              View Progress →
-            </button>
-          </div>
         </div>
       )}
-      {FEATURES.STUDY_CODES && isLoadingCode && (
+      {FEATURES.SHOW_STUDY_CODE && isLoadingCode && (
         <div className="max-w-3xl mx-auto bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border-2 border-indigo-200 dark:border-indigo-800">
           <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
             Generating your study code...
           </p>
+        </div>
+      )}
+
+      {/* View Progress link (always visible) */}
+      {studyCode && !isLoadingCode && (
+        <div className="text-center">
+          <button
+            onClick={() => router.push('/progress')}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+          >
+            View Progress →
+          </button>
         </div>
       )}
 
