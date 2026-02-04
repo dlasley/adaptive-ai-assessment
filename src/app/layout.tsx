@@ -3,8 +3,8 @@ import "./globals.css";
 import Navigation from "@/components/Navigation";
 
 export const metadata: Metadata = {
-  title: "French Assessment Tool",
-  description: "AI-powered French language learning assessment tool",
+  title: "French 1 Practice & Assessment",
+  description: "",
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
                     🇫🇷 French Assessment Tool
                   </h1>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    AI-powered French learning practice
+                    {/* AI-powered French learning practice */}
                   </p>
                 </div>
                 <Navigation />
