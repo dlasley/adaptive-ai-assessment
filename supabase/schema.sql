@@ -216,6 +216,11 @@ CREATE POLICY "Anyone can update study codes"
   TO anon
   USING (true);
 
+CREATE POLICY "Anyone can delete study codes"
+  ON study_codes FOR DELETE
+  TO anon
+  USING (true);
+
 -- Quiz history policies
 CREATE POLICY "Anyone can create quiz history"
   ON quiz_history FOR INSERT

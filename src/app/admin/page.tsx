@@ -10,10 +10,13 @@ import {
   getStudentProgress,
   exportStudentsToCSV,
   updateAdminLabel,
+  deleteStudent,
+  deleteStudents,
   type ClasswideStats,
   type StudentSummary,
   type StudentDetailedProgress,
 } from '@/lib/admin';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 // Format date and time in PST timezone
 function formatDateTimePST(dateString: string): string {
@@ -40,6 +43,12 @@ export default function AdminPage() {
   const [showStudentDetail, setShowStudentDetail] = useState(false);
   const [editingLabel, setEditingLabel] = useState(false);
   const [labelValue, setLabelValue] = useState('');
+
+  // Selection and deletion state
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'single' | 'bulk'; code?: string }>({ type: 'bulk' });
 
   // Check authentication
   useEffect(() => {
@@ -141,6 +150,77 @@ export default function AdminPage() {
     window.URL.revokeObjectURL(url);
   };
 
+  // Handle selection
+  const handleSelectStudent = (code: string) => {
+    setSelectedStudents((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedStudents.size === filteredStudents.length) {
+      setSelectedStudents(new Set());
+    } else {
+      setSelectedStudents(new Set(filteredStudents.map((s) => s.code)));
+    }
+  };
+
+  // Handle deletion
+  const handleDeleteSelected = () => {
+    setDeleteTarget({ type: 'bulk' });
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteSingleStudent = (code: string) => {
+    setDeleteTarget({ type: 'single', code });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      if (deleteTarget.type === 'single' && deleteTarget.code) {
+        const success = await deleteStudent(deleteTarget.code);
+        if (success) {
+          // If we're viewing this student's detail, go back to list
+          if (showStudentDetail && selectedStudent?.studyCode.code === deleteTarget.code) {
+            setShowStudentDetail(false);
+            setSelectedStudent(null);
+          }
+          // Remove from selection if selected
+          setSelectedStudents((prev) => {
+            const next = new Set(prev);
+            next.delete(deleteTarget.code!);
+            return next;
+          });
+        }
+      } else {
+        await deleteStudents(Array.from(selectedStudents));
+        setSelectedStudents(new Set());
+      }
+
+      // Refresh the student list
+      const updatedStudents = await getAllStudents(sortBy);
+      setStudents(updatedStudents);
+      setFilteredStudents(searchQuery ? await searchStudents(searchQuery) : updatedStudents);
+
+      // Refresh stats
+      const updatedStats = await getClasswideStats();
+      setStats(updatedStats);
+    } catch (error) {
+      console.error('Error during deletion:', error);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -225,6 +305,12 @@ export default function AdminPage() {
               <div className="text-lg font-semibold text-gray-900 dark:text-white">
                 {formatDateTimePST(selectedStudent.studyCode.lastActive)}
               </div>
+              <button
+                onClick={() => handleDeleteSingleStudent(selectedStudent.studyCode.code)}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              >
+                Delete Student
+              </button>
             </div>
           </div>
         </div>
@@ -364,6 +450,18 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Modal for Student Detail View */}
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={confirmDelete}
+          title="Delete Student?"
+          message="This will permanently delete this student and all their quiz history. This action cannot be undone."
+          confirmText="Delete"
+          variant="danger"
+          isLoading={isDeleting}
+        />
       </div>
     );
   }
@@ -494,6 +592,14 @@ export default function AdminPage() {
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">
               <tr>
+                <th className="px-4 py-4 text-center">
+                  <input
+                    type="checkbox"
+                    checked={filteredStudents.length > 0 && selectedStudents.size === filteredStudents.length}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                </th>
                 <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 dark:text-gray-300">
                   Study Code
                 </th>
@@ -523,7 +629,7 @@ export default function AdminPage() {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                     {searchQuery ? 'No students found matching your search' : 'No students yet'}
                   </td>
                 </tr>
@@ -531,8 +637,18 @@ export default function AdminPage() {
                 filteredStudents.map((student) => (
                   <tr
                     key={student.code}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      selectedStudents.has(student.code) ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                    }`}
                   >
+                    <td className="px-4 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedStudents.has(student.code)}
+                        onChange={() => handleSelectStudent(student.code)}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <code className="text-sm font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-gray-900 px-2 py-1 rounded">
                         {student.code}
@@ -588,6 +704,47 @@ export default function AdminPage() {
           ← Back to Home
         </button>
       </div>
+
+      {/* Bulk Action Bar */}
+      {selectedStudents.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700 shadow-lg p-4 z-40">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {selectedStudents.size} student{selectedStudents.size !== 1 ? 's' : ''} selected
+            </span>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSelectedStudents(new Set())}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Clear Selection
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete Selected
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title={deleteTarget.type === 'single' ? 'Delete Student?' : `Delete ${selectedStudents.size} Student${selectedStudents.size !== 1 ? 's' : ''}?`}
+        message={
+          deleteTarget.type === 'single'
+            ? 'This will permanently delete this student and all their quiz history. This action cannot be undone.'
+            : `This will permanently delete ${selectedStudents.size} student${selectedStudents.size !== 1 ? 's' : ''} and all their quiz history. This action cannot be undone.`
+        }
+        confirmText="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

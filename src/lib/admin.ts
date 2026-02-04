@@ -263,6 +263,64 @@ export async function updateAdminLabel(code: string, adminLabel: string): Promis
 }
 
 /**
+ * Delete a single student and all their data
+ * Due to ON DELETE CASCADE, this removes quiz_history and concept_mastery too
+ */
+export async function deleteStudent(code: string): Promise<boolean> {
+  if (!isSupabaseAvailable()) return false;
+
+  try {
+    const { error } = await supabase!
+      .from('study_codes')
+      .delete()
+      .eq('code', code);
+
+    if (error) {
+      console.error('Error deleting student:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Failed to delete student:', error);
+    return false;
+  }
+}
+
+/**
+ * Delete multiple students at once
+ * Returns the count of successfully deleted students and any failed codes
+ */
+export async function deleteStudents(codes: string[]): Promise<{
+  success: boolean;
+  deleted: number;
+  failed: string[];
+}> {
+  if (!isSupabaseAvailable()) {
+    return { success: false, deleted: 0, failed: codes };
+  }
+
+  const failed: string[] = [];
+  let deleted = 0;
+
+  // Delete one by one to track individual failures
+  for (const code of codes) {
+    const success = await deleteStudent(code);
+    if (success) {
+      deleted++;
+    } else {
+      failed.push(code);
+    }
+  }
+
+  return {
+    success: failed.length === 0,
+    deleted,
+    failed,
+  };
+}
+
+/**
  * Export all student data as CSV
  */
 export function exportStudentsToCSV(students: StudentSummary[]): string {
