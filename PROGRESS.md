@@ -72,22 +72,22 @@ Unified fill-in-blank and writing question components:
 
 ## Next Steps (Suggested)
 1. ✅ Consider if results page needs similar unification for metadata display
-2. File renaming for component files (optional, aliases work for now)
-3. Break the Progress screen into grouped tabs
+2. ❌ File renaming for component files (optional, aliases work for now)
+3. ✅ Break the Progress screen into grouped tabs
 4. I want to be able to easily regenerate the app with new material as it becomes available
 5. Allow superusers to define question type and difficulty mix?
 6. ✅ TOP PRIORITY: Allow users to select their quiz in practice mode or assessment mode.
 Create a new user onboarding runthrough sequence.
 7. Add appropriate effect animations to milestone events.
-8. The Intermediate level should include an appropriate mix of Beginner questions, and the Advanced level should include an appropriate level of Beginner and Intermediate questions.
+8. ❌ The Intermediate level should include an appropriate mix of Beginner questions, and the Advanced level should include an appropriate level of Beginner and Intermediate questions.
 9. Adaptive Testing and Spaced Repetition (ask Gemini): In student assessment and testing design, in which a student may be randomly presented with a test drawn from a pool of available questions, and may retake a test multiple times, are there known methods or schemes to represent them with questions that they recently got wrong to reinforce learnings? And then diminish these questions weighting in the random selection as they demonstrate mastery?
 10. ✅ This is correct French typography behavior. In French, there must be a space before ?, !, :, and ;. "Quelle heure est-il ?" -- Jackson says it doesn't matter.
 11. Figure out how to score partially correct typed responses
 12. ✅ Check to see if user is still superuser at each quiz question
-13. Group the content in the Progress page and the Quiz & Assessment conclusion pages into tabs.
+13. ✅ Group the content in the Progress page and the Quiz & Assessment conclusion pages into tabs.
 14. Add x second delay to moving to the next question to encnourage reading the feedback on wrong or poor answers. Especially text input answers.
 15. ✅ Remove the help text from the fill in blank questions, and maybe the written questions. Some of them explicitly give away the answers.
-16. Change db password in .env.local
+16. ✅ Change db password in .env.local
 17. Some questions are in French, such as "Lequel de ces énoncés utilise correctement 'préférer'?"
 
 
