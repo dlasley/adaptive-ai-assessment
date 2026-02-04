@@ -6,6 +6,7 @@ import { getStoredStudyCode, getQuizHistory, getConceptMastery, getWeakTopics, g
 import { getProgress } from '@/lib/progress-tracking';
 import { getVideosForTopic } from '@/lib/video-resources';
 import { StudyCodeDisplay } from '@/components/StudyCodeDisplay';
+import { FEATURES } from '@/lib/feature-flags';
 import type { StudyCode, QuizHistory, ConceptMastery } from '@/lib/supabase';
 
 export default function ProgressPage() {
@@ -103,7 +104,9 @@ export default function ProgressPage() {
       </div>
 
       {/* Study Code Card with QR */}
-      <StudyCodeDisplay studyCode={studyCode} size="medium" />
+      {FEATURES.STUDY_CODES && (
+        <StudyCodeDisplay studyCode={studyCode} size="medium" />
+      )}
 
       {/* Overall Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
