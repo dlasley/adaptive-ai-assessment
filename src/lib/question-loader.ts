@@ -1,27 +1,73 @@
-import fs from 'fs';
-import path from 'path';
+import { supabase, isSupabaseAvailable } from './supabase';
 import { Question } from '@/types';
 
 /**
- * Load all questions from JSON file
+ * Database question row type
  */
-export function loadAllQuestions(): Question[] {
-  try {
-    const questionsPath = path.join(process.cwd(), 'data', 'questions.json');
+interface DBQuestion {
+  id: string;
+  question: string;
+  correct_answer: string;
+  explanation: string | null;
+  unit_id: string;
+  topic: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  type: 'multiple-choice' | 'true-false' | 'fill-in-blank' | 'writing';
+  options: string[] | null;
+  acceptable_variations: string[];
+  writing_type: string | null;
+  hints: string[];
+  requires_complete_sentence: boolean;
+}
 
-    if (!fs.existsSync(questionsPath)) {
-      console.warn('Questions file not found. Please run: npm run generate-questions');
+/**
+ * Convert database row to Question type
+ */
+function dbToQuestion(row: DBQuestion): Question {
+  return {
+    id: row.id,
+    question: row.question,
+    correctAnswer: row.correct_answer,
+    explanation: row.explanation || undefined,
+    unitId: row.unit_id,
+    topic: row.topic,
+    difficulty: row.difficulty,
+    type: row.type,
+    options: row.options || undefined,
+    acceptableVariations: row.acceptable_variations,
+    writingType: row.writing_type as Question['writingType'],
+    hints: row.hints,
+    requiresCompleteSentence: row.requires_complete_sentence,
+  };
+}
+
+/**
+ * Load all questions from database
+ */
+export async function loadAllQuestions(): Promise<Question[]> {
+  if (!isSupabaseAvailable()) {
+    console.warn('Supabase not available. No questions loaded.');
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase!
+      .from('questions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading questions:', error);
       return [];
     }
 
-    const data = fs.readFileSync(questionsPath, 'utf-8');
-    const allQuestions: Question[] = JSON.parse(data);
+    const questions = (data || []).map(dbToQuestion);
 
     // Filter out meta-questions
-    const validQuestions = allQuestions.filter(q => !isMetaQuestion(q));
+    const validQuestions = questions.filter(q => !isMetaQuestion(q));
 
-    if (process.env.NODE_ENV === 'development' && allQuestions.length !== validQuestions.length) {
-      console.log(`🚫 Filtered out ${allQuestions.length - validQuestions.length} meta-questions`);
+    if (process.env.NODE_ENV === 'development' && questions.length !== validQuestions.length) {
+      console.log(`🚫 Filtered out ${questions.length - validQuestions.length} meta-questions`);
     }
 
     return validQuestions;
@@ -34,18 +80,25 @@ export function loadAllQuestions(): Question[] {
 /**
  * Load questions for a specific unit
  */
-export function loadUnitQuestions(unitId: string): Question[] {
-  try {
-    const unitPath = path.join(process.cwd(), 'data', `questions-${unitId}.json`);
+export async function loadUnitQuestions(unitId: string): Promise<Question[]> {
+  if (!isSupabaseAvailable()) {
+    console.warn('Supabase not available. No questions loaded.');
+    return [];
+  }
 
-    if (!fs.existsSync(unitPath)) {
-      // Fallback to loading from all questions
-      const allQuestions = loadAllQuestions();
-      return allQuestions.filter(q => q.unitId === unitId);
+  try {
+    const { data, error } = await supabase!
+      .from('questions')
+      .select('*')
+      .or(`unit_id.eq.${unitId},unit_id.eq.all`)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(`Error loading questions for unit ${unitId}:`, error);
+      return [];
     }
 
-    const data = fs.readFileSync(unitPath, 'utf-8');
-    const questions: Question[] = JSON.parse(data);
+    const questions = (data || []).map(dbToQuestion);
 
     // Filter out meta-questions
     return questions.filter(q => !isMetaQuestion(q));
@@ -291,10 +344,10 @@ function selectByDistribution(
 /**
  * Get available topics for a unit
  */
-export function getAvailableTopics(unitId?: string): string[] {
+export async function getAvailableTopics(unitId?: string): Promise<string[]> {
   const questions = unitId && unitId !== 'all'
-    ? loadUnitQuestions(unitId)
-    : loadAllQuestions();
+    ? await loadUnitQuestions(unitId)
+    : await loadAllQuestions();
 
   const topicsSet = new Set(questions.map(q => q.topic));
   return Array.from(topicsSet).sort();

@@ -1,6 +1,7 @@
 export interface Unit {
   id: string;
   title: string;
+  label?: string; // Short label for dropdown (e.g., "Activities & -ER Verbs")
   description: string;
   topics: string[];
 }

@@ -6,8 +6,11 @@
  *
  * This script:
  * 1. Generates 50 diverse French writing questions using Claude
- * 2. Saves them to the Supabase database
+ * 2. Saves them to the unified 'questions' table in Supabase
  * 3. Provides a summary of created questions
+ *
+ * Note: For regular question generation, use generate-questions.ts instead.
+ * This script is for initial seeding or bulk writing question generation.
  */
 
 import { config } from 'dotenv';
@@ -136,21 +139,23 @@ Return ONLY a valid JSON array with no markdown formatting or code blocks:
 async function saveQuestionsToDatabase(questions: WritingQuestion[]): Promise<void> {
   console.log(`\n💾 Saving ${questions.length} questions to database...`);
 
+  // Map to unified questions table schema
   const questionsToInsert = questions.map(q => ({
-    question_en: q.question_en,
-    correct_answer_fr: q.correct_answer_fr,
+    question: q.question_en,
+    correct_answer: q.correct_answer_fr || '',
     acceptable_variations: q.acceptable_variations,
     topic: q.topic,
     difficulty: q.difficulty,
-    question_type: q.question_type,
+    type: 'writing' as const,  // All questions from this script are writing type
+    writing_type: q.question_type,
     explanation: q.explanation,
     hints: q.hints,
     requires_complete_sentence: q.requires_complete_sentence,
-    unit_id: null, // Can be updated later to assign to specific units
+    unit_id: 'all', // Applies to all units
   }));
 
   const { data, error } = await supabase
-    .from('writing_questions')
+    .from('questions')
     .insert(questionsToInsert)
     .select();
 

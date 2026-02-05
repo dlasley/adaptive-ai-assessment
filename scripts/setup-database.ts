@@ -1,6 +1,6 @@
 /**
  * Database setup script
- * Creates the writing_questions table in Supabase
+ * Creates the unified questions table in Supabase
  *
  * Usage:
  *   npx tsx scripts/setup-database.ts
@@ -31,10 +31,10 @@ async function setupDatabase() {
 
   try {
     // Read the SQL migration file
-    const sqlPath = resolve(__dirname, '../supabase/migrations/create_writing_questions_table.sql');
+    const sqlPath = resolve(__dirname, '../supabase/migrations/create_unified_questions_table.sql');
     const sql = readFileSync(sqlPath, 'utf-8');
 
-    console.log('\n📝 Executing SQL migration...');
+    console.log('\n📝 Unified Questions Table Migration');
     console.log(`   File: ${sqlPath}`);
 
     // Note: Supabase client doesn't support executing raw SQL directly
@@ -44,10 +44,10 @@ async function setupDatabase() {
     console.log(sql);
     console.log('─'.repeat(50));
     console.log('\n💡 Steps:');
-    console.log('   1. Go to https://apqdfwlfavbfgvhtgkyf.supabase.co/project/apqdfwlfavbfgvhtgkyf/sql');
+    console.log('   1. Go to your Supabase project SQL Editor');
     console.log('   2. Copy and paste the SQL above');
     console.log('   3. Click "Run" to execute');
-    console.log('   4. Run the generate-initial-questions.ts script again');
+    console.log('   4. Run: npx tsx scripts/generate-questions.ts --sync-db');
     console.log('');
 
   } catch (error) {

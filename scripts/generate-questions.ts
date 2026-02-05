@@ -1,15 +1,32 @@
 /**
  * Script to pre-generate all assessment questions
+ *
  * Run with: npm run generate-questions
+ *
+ * CLI Options:
+ *   --unit <unit-id>        Generate for specific unit only (e.g., --unit unit-3)
+ *   --topic <topic-name>    Generate for specific topic only
+ *   --difficulty <level>    Generate for specific difficulty (beginner|intermediate|advanced)
+ *   --count <n>             Questions per topic/difficulty (default: 10)
+ *   --sync-db               Sync to database (with deduplication)
+ *   --dry-run               Show what would be generated without actually generating
+ *   --batch-id <id>         Custom batch ID (default: auto-generated from date)
+ *   --source-file <path>    Source learning material file path for tracking
+ *
+ * Examples:
+ *   npx tsx scripts/generate-questions.ts --unit unit-3 --sync-db
+ *   npx tsx scripts/generate-questions.ts --unit unit-3 --topic "Numbers 0-20" --difficulty beginner
+ *   npx tsx scripts/generate-questions.ts --unit unit-2 --count 25   # More questions for broad topics
+ *   npx tsx scripts/generate-questions.ts --sync-db --dry-run
  */
 
 import { config } from 'dotenv';
-import Anthropic from '@anthropic-ai/sdk';
-
-// Load environment variables from .env.local
+// Load environment variables from .env.local BEFORE other imports
 config({ path: '.env.local' });
-import fs from 'fs';
-import path from 'path';
+
+import Anthropic from '@anthropic-ai/sdk';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import { units } from '../src/lib/units';
 import { loadUnitMaterials, extractTopicContent } from '../src/lib/learning-materials';
 
@@ -20,17 +37,228 @@ const anthropic = new Anthropic({
 interface Question {
   id: string;
   question: string;
-  type: 'multiple-choice' | 'fill-in-blank' | 'true-false';
+  type: 'multiple-choice' | 'fill-in-blank' | 'true-false' | 'writing';
   options?: string[];
   correctAnswer: string;
   explanation?: string;
   unitId: string;
   topic: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
+  contentHash?: string;
+  batchId?: string;
+  sourceFile?: string;
+}
+
+interface CLIOptions {
+  unitId?: string;
+  topic?: string;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  questionType?: 'multiple-choice' | 'fill-in-blank' | 'true-false' | 'writing';
+  count: number;
+  syncDb: boolean;
+  dryRun: boolean;
+  batchId: string;
+  sourceFile?: string;
 }
 
 const DIFFICULTIES: ('beginner' | 'intermediate' | 'advanced')[] = ['beginner', 'intermediate', 'advanced'];
 const QUESTIONS_PER_TOPIC_PER_DIFFICULTY = 10;
+
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): CLIOptions {
+  const args = process.argv.slice(2);
+  const options: CLIOptions = {
+    count: QUESTIONS_PER_TOPIC_PER_DIFFICULTY,
+    syncDb: false,
+    dryRun: false,
+    batchId: `batch_${new Date().toISOString().split('T')[0]}_${Date.now()}`,
+  };
+
+  for (let i = 0; i < args.length; i++) {
+    switch (args[i]) {
+      case '--unit':
+        options.unitId = args[++i];
+        break;
+      case '--topic':
+        options.topic = args[++i];
+        break;
+      case '--difficulty':
+        options.difficulty = args[++i] as CLIOptions['difficulty'];
+        break;
+      case '--type':
+        const typeVal = args[++i];
+        if (!['multiple-choice', 'fill-in-blank', 'true-false', 'writing'].includes(typeVal)) {
+          console.error('❌ --type must be one of: multiple-choice, fill-in-blank, true-false, writing');
+          process.exit(1);
+        }
+        options.questionType = typeVal as CLIOptions['questionType'];
+        break;
+      case '--count':
+        const countVal = parseInt(args[++i], 10);
+        if (isNaN(countVal) || countVal < 1) {
+          console.error('❌ --count must be a positive integer');
+          process.exit(1);
+        }
+        options.count = countVal;
+        break;
+      case '--sync-db':
+        options.syncDb = true;
+        break;
+      case '--dry-run':
+        options.dryRun = true;
+        break;
+      case '--batch-id':
+        options.batchId = args[++i];
+        break;
+      case '--source-file':
+        options.sourceFile = args[++i];
+        break;
+      case '--help':
+      case '-h':
+        printHelp();
+        process.exit(0);
+    }
+  }
+
+  return options;
+}
+
+function printHelp(): void {
+  console.log(`
+Question Generation Script
+
+Usage: npx tsx scripts/generate-questions.ts [options]
+
+Options:
+  --unit <unit-id>        Generate for specific unit only (e.g., --unit unit-3)
+  --topic <topic-name>    Generate for specific topic only
+  --difficulty <level>    Generate for specific difficulty (beginner|intermediate|advanced)
+  --type <question-type>  Generate only this type (multiple-choice|fill-in-blank|true-false|writing)
+  --count <n>             Questions per topic/difficulty (default: ${QUESTIONS_PER_TOPIC_PER_DIFFICULTY})
+  --sync-db               Sync to database (with deduplication)
+  --dry-run               Show what would be generated without actually generating
+  --batch-id <id>         Custom batch ID (default: auto-generated)
+  --source-file <path>    Source learning material file path for tracking
+  --help, -h              Show this help message
+
+Examples:
+  npx tsx scripts/generate-questions.ts --unit unit-3 --sync-db
+  npx tsx scripts/generate-questions.ts --unit unit-3 --topic "Numbers 0-20"
+  npx tsx scripts/generate-questions.ts --unit unit-2 --count 25   # More questions for broad topics
+  npx tsx scripts/generate-questions.ts --type writing --sync-db   # Add only writing questions
+  npx tsx scripts/generate-questions.ts --sync-db --dry-run
+  `);
+}
+
+/**
+ * Compute content hash for deduplication
+ * Hash includes: question text, correct answer, topic, and difficulty
+ * This allows the same question to exist at different difficulties
+ */
+function computeContentHash(
+  questionText: string,
+  correctAnswer: string,
+  topic: string,
+  difficulty: string
+): string {
+  const normalized = `${questionText}|${correctAnswer}|${topic}|${difficulty}`
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+  return crypto.createHash('md5').update(normalized).digest('hex');
+}
+
+/**
+ * Initialize Supabase client for database operations
+ */
+function initSupabase(): SupabaseClient | null {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.log('⚠️  Supabase credentials not found in environment');
+    return null;
+  }
+
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+/**
+ * Fetch existing content hashes from database for deduplication
+ * Fetches ALL hashes to ensure cross-topic deduplication works correctly
+ */
+async function fetchExistingHashes(
+  supabase: SupabaseClient
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('questions')
+    .select('content_hash')
+    .not('content_hash', 'is', null);
+
+  if (error) {
+    console.error('Error fetching existing hashes:', error);
+    return new Set();
+  }
+
+  return new Set(data?.map(row => row.content_hash) || []);
+}
+
+/**
+ * Insert new questions to database (skipping duplicates)
+ */
+async function syncToDatabase(
+  supabase: SupabaseClient,
+  questions: Question[],
+  existingHashes: Set<string>,
+  batchId: string,
+  sourceFile?: string
+): Promise<{ inserted: number; skipped: number }> {
+  const newQuestions = questions.filter(q => q.contentHash && !existingHashes.has(q.contentHash));
+  const skipped = questions.length - newQuestions.length;
+
+  if (newQuestions.length === 0) {
+    return { inserted: 0, skipped };
+  }
+
+  // Convert to database format (unified questions table)
+  const dbRecords = newQuestions.map(q => {
+    const qType = q.type as string;
+    const isChoiceType = qType === 'multiple-choice' || qType === 'true-false';
+    const isTypedType = qType === 'fill-in-blank' || qType === 'writing';
+    const isWriting = qType === 'writing';
+
+    return {
+      question: q.question,
+      correct_answer: q.correctAnswer,
+      unit_id: q.unitId,
+      topic: q.topic,
+      difficulty: q.difficulty,
+      type: q.type,
+      options: isChoiceType ? q.options : null,
+      acceptable_variations: isTypedType ? (q.options || []) : [],
+      writing_type: isWriting ? 'translation' : null,
+      explanation: q.explanation,
+      hints: [],
+      requires_complete_sentence: false,
+      content_hash: q.contentHash,
+      batch_id: batchId,
+      source_file: sourceFile,
+    };
+  });
+
+  const { error } = await supabase
+    .from('questions')
+    .insert(dbRecords);
+
+  if (error) {
+    console.error('Error inserting questions:', error);
+    return { inserted: 0, skipped };
+  }
+
+  return { inserted: newQuestions.length, skipped };
+}
 
 /**
  * Check if a question is a meta-question about learning philosophy or teacher information
@@ -79,9 +307,11 @@ async function generateQuestionsForTopic(
   unitId: string,
   topic: string,
   difficulty: 'beginner' | 'intermediate' | 'advanced',
-  numQuestions: number
+  numQuestions: number,
+  questionType?: 'multiple-choice' | 'fill-in-blank' | 'true-false' | 'writing'
 ): Promise<Question[]> {
-  console.log(`  Generating ${numQuestions} ${difficulty} questions for: ${topic}`);
+  const typeLabel = questionType ? ` ${questionType}` : '';
+  console.log(`  Generating ${numQuestions} ${difficulty}${typeLabel} questions for: ${topic}`);
 
   try {
     const unitMaterials = loadUnitMaterials(unitId);
@@ -148,7 +378,7 @@ If the learning materials contain administrative or course-related content, IGNO
 
 IMPORTANT INSTRUCTIONS:
 1. Create EXACTLY ${numQuestions} questions
-2. Mix question types: multiple-choice, fill-in-blank, true-false
+2. ${questionType ? `Create ONLY "${questionType}" type questions` : 'Mix question types: multiple-choice, fill-in-blank, true-false, writing'}
 3. Make questions appropriate for ${difficulty} level students
 4. Include clear, unambiguous correct answers
 5. Add brief explanations for the correct answers IN ENGLISH (NOT in French)
@@ -170,11 +400,18 @@ IMPORTANT INSTRUCTIONS:
       "type": "fill-in-blank",
       "correctAnswer": "parle",
       "explanation": "English explanation here"
+    },
+    {
+      "id": "q3",
+      "question": "Translate to French: 'We speak French.'",
+      "type": "writing",
+      "correctAnswer": "Nous parlons français.",
+      "explanation": "Uses 'nous' form of parler (parlons) with the language"
     }
   ]
 }
 
-Question type options: "multiple-choice", "fill-in-blank", "true-false"
+${questionType ? `Question type: "${questionType}" ONLY - do not create any other type` : 'Question type options: "multiple-choice", "fill-in-blank", "true-false", "writing"'}
 
 For fill-in-blank questions:
 - Use underscores like: "Je _____ français." (I speak French)
@@ -185,6 +422,14 @@ For fill-in-blank questions:
 For true-false questions:
 - options should be ["Vrai", "Faux"]
 - correctAnswer should be "Vrai" or "Faux"
+
+For writing questions:
+- These are longer-form responses requiring full sentences or translations
+- Example: "Translate to French: 'I like to eat apples.'" → "J'aime manger des pommes."
+- Example: "Write a sentence using the verb 'parler' in the nous form."
+- correctAnswer should be the expected response (accept reasonable variations)
+- No options array needed
+- Good for: translations, sentence construction, conjugation in context
 
 Return ONLY the JSON, no additional text.`,
         },
@@ -223,10 +468,20 @@ Return ONLY the JSON, no additional text.`,
     }));
 
     // Filter out any meta-questions that slipped through
-    const validQuestions = questions.filter(q => !isMetaQuestion(q));
+    let validQuestions = questions.filter(q => !isMetaQuestion(q));
 
     if (validQuestions.length < questions.length) {
       console.log(`    ⚠️  Filtered out ${questions.length - validQuestions.length} meta-question(s)`);
+    }
+
+    // Enforce type constraint when --type flag is used (prevent AI type drift)
+    if (questionType) {
+      const beforeTypeFilter = validQuestions.length;
+      validQuestions = validQuestions.filter(q => q.type === questionType);
+      const typeDrift = beforeTypeFilter - validQuestions.length;
+      if (typeDrift > 0) {
+        console.log(`    ⚠️  Filtered out ${typeDrift} question(s) with wrong type (type drift)`);
+      }
     }
 
     return validQuestions;
@@ -236,31 +491,127 @@ Return ONLY the JSON, no additional text.`,
   }
 }
 
-async function generateAllQuestions() {
+async function generateAllQuestions(options: CLIOptions) {
   console.log('🚀 Starting question generation...\n');
+  console.log('Configuration:');
+  console.log(`   Unit:        ${options.unitId || 'all'}`);
+  console.log(`   Topic:       ${options.topic || 'all'}`);
+  console.log(`   Difficulty:  ${options.difficulty || 'all'}`);
+  console.log(`   Count:       ${options.count} per topic/difficulty`);
+  console.log(`   Sync to DB:  ${options.syncDb ? 'yes' : 'no'}`);
+  console.log(`   Dry run:     ${options.dryRun ? 'yes' : 'no'}`);
+  console.log(`   Batch ID:    ${options.batchId}`);
+  if (options.sourceFile) {
+    console.log(`   Source file: ${options.sourceFile}`);
+  }
+  console.log();
+
+  // Initialize Supabase if syncing to database
+  let supabaseClient: ReturnType<typeof initSupabase> = null;
+  let existingHashes = new Set<string>();
+
+  if (options.syncDb) {
+    supabaseClient = initSupabase();
+    if (!supabaseClient) {
+      console.error('❌ Cannot sync to DB: Supabase not configured');
+      console.log('   Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local');
+      process.exit(1);
+    }
+    console.log('📡 Fetching existing content hashes for deduplication...');
+    existingHashes = await fetchExistingHashes(supabaseClient);
+    console.log(`   Found ${existingHashes.size} existing question hashes\n`);
+  }
 
   const allQuestions: Question[] = [];
   let totalGenerated = 0;
   let totalAttempted = 0;
+  let totalSkippedDuplicates = 0;
+  let totalInserted = 0;
 
-  for (const unit of units) {
+  // Filter units based on CLI options
+  const unitsToProcess = options.unitId
+    ? units.filter(u => u.id === options.unitId)
+    : units;
+
+  if (unitsToProcess.length === 0) {
+    console.error(`❌ Unit not found: ${options.unitId}`);
+    console.log('   Available units:', units.map(u => u.id).join(', '));
+    process.exit(1);
+  }
+
+  for (const unit of unitsToProcess) {
     console.log(`\n📚 Processing ${unit.title}...`);
 
-    for (const topic of unit.topics) {
-      for (const difficulty of DIFFICULTIES) {
+    // Filter topics based on CLI options
+    const topicsToProcess = options.topic
+      ? unit.topics.filter(t => t === options.topic || t.toLowerCase().includes(options.topic!.toLowerCase()))
+      : unit.topics;
+
+    if (options.topic && topicsToProcess.length === 0) {
+      console.log(`   ⚠️  Topic "${options.topic}" not found in this unit`);
+      continue;
+    }
+
+    for (const topic of topicsToProcess) {
+      // Filter difficulties based on CLI options
+      const difficultiesToProcess = options.difficulty
+        ? [options.difficulty]
+        : DIFFICULTIES;
+
+      for (const difficulty of difficultiesToProcess) {
         totalAttempted++;
+
+        if (options.dryRun) {
+          const typeLabel = options.questionType ? ` ${options.questionType}` : '';
+          console.log(`  [DRY RUN] Would generate ${options.count} ${difficulty}${typeLabel} questions for: ${topic}`);
+          continue;
+        }
 
         const questions = await generateQuestionsForTopic(
           unit.id,
           topic,
           difficulty,
-          QUESTIONS_PER_TOPIC_PER_DIFFICULTY
+          options.count,
+          options.questionType
         );
 
         if (questions.length > 0) {
-          allQuestions.push(...questions);
-          totalGenerated += questions.length;
-          console.log(`    ✅ Generated ${questions.length} questions`);
+          // Add content hashes and batch metadata to each question
+          const questionsWithHashes = questions.map(q => ({
+            ...q,
+            contentHash: computeContentHash(q.question, q.correctAnswer, q.topic, q.difficulty),
+            batchId: options.batchId,
+            sourceFile: options.sourceFile,
+          }));
+
+          allQuestions.push(...questionsWithHashes);
+          totalGenerated += questionsWithHashes.length;
+
+          // Sync to database if enabled
+          if (options.syncDb && supabaseClient) {
+            const { inserted, skipped } = await syncToDatabase(
+              supabaseClient,
+              questionsWithHashes,
+              existingHashes,
+              options.batchId,
+              options.sourceFile
+            );
+            totalInserted += inserted;
+            totalSkippedDuplicates += skipped;
+
+            // Add newly inserted hashes to the set to avoid duplicates within the same run
+            for (const q of questionsWithHashes) {
+              if (q.contentHash) existingHashes.add(q.contentHash);
+            }
+
+            if (inserted > 0 || skipped > 0) {
+              console.log(`    ✅ Generated ${questions.length} | Inserted ${inserted} | Skipped ${skipped} duplicates`);
+            } else {
+              console.log(`    ✅ Generated ${questions.length} questions`);
+            }
+          } else {
+            console.log(`    ✅ Generated ${questions.length} questions`);
+          }
         }
 
         // Small delay to avoid rate limiting
@@ -269,32 +620,52 @@ async function generateAllQuestions() {
     }
   }
 
-  // Save all questions to a single JSON file
-  const outputDir = path.join(process.cwd(), 'data');
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
-
-  const outputPath = path.join(outputDir, 'questions.json');
-  fs.writeFileSync(outputPath, JSON.stringify(allQuestions, null, 2));
-
-  // Also save organized by unit for easier access
-  for (const unit of units) {
-    const unitQuestions = allQuestions.filter(q => q.unitId === unit.id);
-    const unitPath = path.join(outputDir, `questions-${unit.id}.json`);
-    fs.writeFileSync(unitPath, JSON.stringify(unitQuestions, null, 2));
+  if (options.dryRun) {
+    const estimatedQuestions = totalAttempted * options.count;
+    console.log('\n\n📋 DRY RUN Summary:');
+    console.log(`   Would process: ${totalAttempted} topic/difficulty combinations`);
+    console.log(`   Estimated questions: ~${estimatedQuestions}`);
+    return;
   }
 
   console.log('\n\n✅ Question generation complete!');
   console.log(`📊 Statistics:`);
-  console.log(`   Total topics processed: ${totalAttempted / 3} topics`);
-  console.log(`   Total questions attempted: ${totalAttempted * QUESTIONS_PER_TOPIC_PER_DIFFICULTY}`);
-  console.log(`   Total questions generated: ${totalGenerated}`);
-  console.log(`   Success rate: ${Math.round((totalGenerated / (totalAttempted * QUESTIONS_PER_TOPIC_PER_DIFFICULTY)) * 100)}%`);
-  console.log(`\n📁 Saved to:`);
-  console.log(`   ${outputPath}`);
-  console.log(`   ${path.join(outputDir, 'questions-*.json')}`);
+  console.log(`   Topics processed:     ${totalAttempted}`);
+  console.log(`   Questions generated:  ${totalGenerated}`);
+
+  if (options.syncDb) {
+    console.log(`   Inserted to DB:       ${totalInserted}`);
+    console.log(`   Skipped (duplicates): ${totalSkippedDuplicates}`);
+
+    // Calculate and display collision rate with quality guidance
+    if (totalGenerated > 0) {
+      const collisionRate = (totalSkippedDuplicates / totalGenerated) * 100;
+      console.log(`   Collision rate:       ${collisionRate.toFixed(1)}%`);
+
+      if (collisionRate >= 80) {
+        console.log('\n⚠️  WARNING: Very high collision rate (≥80%)');
+        console.log('   The topic/difficulty combination appears saturated.');
+        console.log('   Further generation is likely to produce diminishing returns');
+        console.log('   or lower-quality questions. Consider:');
+        console.log('   • Stopping generation for this topic/difficulty');
+        console.log('   • Adding new learning materials to expand the topic');
+        console.log('   • Reviewing existing questions for quality');
+      } else if (collisionRate >= 50) {
+        console.log('\n⚠️  NOTICE: Moderate collision rate (≥50%)');
+        console.log('   Many questions already exist for this topic/difficulty.');
+        console.log('   Quality may begin to degrade with additional generation.');
+        console.log('   Consider reviewing the newest questions for repetitiveness.');
+      } else if (collisionRate >= 30) {
+        console.log('\n📝 Note: Some collisions detected (≥30%)');
+        console.log('   The question pool is filling up. This is normal.');
+      }
+    }
+  } else {
+    console.log('\n⚠️  Questions were generated but NOT saved to database.');
+    console.log('   Use --sync-db flag to persist questions to Supabase.');
+  }
 }
 
-// Run the generation
-generateAllQuestions().catch(console.error);
+// Parse CLI args and run the generation
+const options = parseArgs();
+generateAllQuestions(options).catch(console.error);

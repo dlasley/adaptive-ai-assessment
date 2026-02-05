@@ -1,6 +1,6 @@
 /**
- * Check Writing Questions in Database
- * Quick script to verify writing questions are in the database
+ * Check Questions in Database
+ * Quick script to verify questions are in the unified questions table
  */
 
 import { config } from 'dotenv';
@@ -20,28 +20,39 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-async function checkWritingQuestions() {
-  console.log('🔍 Checking writing questions in database...\n');
+async function checkQuestions() {
+  console.log('🔍 Checking questions in database...\n');
 
   try {
-    // Get count by difficulty
+    // Get all questions
     const { data: all, error: allError } = await supabase
-      .from('writing_questions')
-      .select('id, difficulty, question_type');
+      .from('questions')
+      .select('id, difficulty, type, writing_type, topic');
 
     if (allError) {
-      console.error('❌ Error fetching writing questions:', allError);
+      console.error('❌ Error fetching questions:', allError);
       return;
     }
 
     if (!all || all.length === 0) {
-      console.log('⚠️  No writing questions found in database!');
-      console.log('\nTo add writing questions, run:');
-      console.log('  npx tsx scripts/generate-initial-questions.ts');
+      console.log('⚠️  No questions found in database!');
+      console.log('\nTo add questions, run:');
+      console.log('  npx tsx scripts/generate-questions.ts --sync-db');
       return;
     }
 
-    console.log(`✅ Total writing questions: ${all.length}\n`);
+    console.log(`✅ Total questions: ${all.length}\n`);
+
+    // Count by question type (MCQ, T/F, fill-in-blank, writing)
+    const byType = all.reduce((acc, q) => {
+      acc[q.type] = (acc[q.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    console.log('📝 By Question Type:');
+    Object.entries(byType).forEach(([type, count]) => {
+      console.log(`  ${type}: ${count} questions`);
+    });
 
     // Count by difficulty
     const byDifficulty = all.reduce((acc, q) => {
@@ -49,32 +60,43 @@ async function checkWritingQuestions() {
       return acc;
     }, {} as Record<string, number>);
 
-    console.log('📊 By Difficulty:');
+    console.log('\n📊 By Difficulty:');
     Object.entries(byDifficulty).forEach(([difficulty, count]) => {
       console.log(`  ${difficulty}: ${count} questions`);
     });
 
-    // Count by question type
-    const byType = all.reduce((acc, q) => {
-      acc[q.question_type] = (acc[q.question_type] || 0) + 1;
+    // Count writing questions by writing_type
+    const writingQuestions = all.filter(q => q.type === 'writing');
+    if (writingQuestions.length > 0) {
+      const byWritingType = writingQuestions.reduce((acc, q) => {
+        const wType = q.writing_type || 'unspecified';
+        acc[wType] = (acc[wType] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      console.log('\n✍️  Writing Questions by Subtype:');
+      Object.entries(byWritingType).forEach(([type, count]) => {
+        console.log(`  ${type}: ${count} questions`);
+      });
+    }
+
+    // Count by topic (top 10)
+    const byTopic = all.reduce((acc, q) => {
+      acc[q.topic] = (acc[q.topic] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    console.log('\n📝 By Type:');
-    Object.entries(byType).forEach(([type, count]) => {
-      console.log(`  ${type}: ${count} questions`);
-    });
-
-    // Show sample questions
-    console.log('\n📋 Sample Questions:');
-    const samples = all.slice(0, 3);
-    samples.forEach((q, idx) => {
-      console.log(`\n${idx + 1}. [${q.difficulty}] ${q.question_type}`);
-    });
+    console.log('\n🎯 Top 10 Topics:');
+    Object.entries(byTopic)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .forEach(([topic, count]) => {
+        console.log(`  ${topic}: ${count} questions`);
+      });
 
   } catch (error) {
     console.error('❌ Error:', error);
   }
 }
 
-checkWritingQuestions();
+checkQuestions();

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { getTopicHeadings } from './topic-headings';
 
 // Map unit IDs to their corresponding markdown files
 const UNIT_FILE_MAP: Record<string, string> = {
@@ -69,8 +70,45 @@ export function extractTopicContent(materials: string, topic: string): string {
     return relevantLines.join('\n');
   }
 
-  // Otherwise, return a broader section of the materials
-  return materials.slice(0, 3000); // First 3000 characters as fallback
+  // Fallback: try heading patterns from centralized topic-headings mapping
+  const aliases = getTopicHeadings(topic);
+
+  // Try matching with aliases
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+
+    if (headingMatch) {
+      const headingText = headingMatch[2].toLowerCase();
+      const hasAlias = aliases.some(alias => headingText.includes(alias));
+
+      if (hasAlias) {
+        // Found a match via alias - extract this section
+        const level = headingMatch[1].length;
+        const sectionLines: string[] = [line];
+
+        for (let j = i + 1; j < lines.length; j++) {
+          const nextLine = lines[j];
+          const nextHeading = nextLine.match(/^(#{1,6})\s+/);
+          if (nextHeading && nextHeading[1].length <= level) {
+            break;
+          }
+          sectionLines.push(nextLine);
+        }
+
+        if (sectionLines.length > 10) {
+          console.log(`    ℹ️  Found topic "${topic}" via alias match in heading`);
+          return sectionLines.join('\n');
+        }
+      }
+    }
+  }
+
+  // No match found - log warning and return empty to trigger skip
+  console.warn(`    ⚠️  No content found for topic "${topic}" - questions may be off-topic`);
+
+  // Return a minimal prompt that instructs Claude to work from general knowledge
+  return `Topic: ${topic}\n\nNote: No specific learning materials found for this topic. Generate questions based on standard French 1 curriculum content for this topic.`;
 }
 
 /**

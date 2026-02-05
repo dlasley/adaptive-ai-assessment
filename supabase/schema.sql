@@ -65,27 +65,46 @@ CREATE TABLE question_results (
 CREATE INDEX idx_question_results_study_code ON question_results(study_code_id);
 CREATE INDEX idx_question_results_topic ON question_results(study_code_id, topic);
 
--- Writing Questions Table
--- French writing questions requiring typed answers
-CREATE TABLE writing_questions (
+-- Questions Table (Unified)
+-- All question types: multiple-choice, true-false, fill-in-blank, writing
+CREATE TABLE questions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  question_en TEXT NOT NULL,
-  correct_answer_fr TEXT,
-  acceptable_variations TEXT[] DEFAULT '{}',
-  topic TEXT NOT NULL,
+
+  -- Core fields (all question types)
+  question TEXT NOT NULL,                    -- The question text
+  correct_answer TEXT NOT NULL,              -- The correct answer
+  explanation TEXT,                          -- Why this is correct
+  unit_id TEXT NOT NULL,                     -- e.g., 'unit-2'
+  topic TEXT NOT NULL,                       -- e.g., 'Days of the Week'
   difficulty TEXT NOT NULL CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
-  question_type TEXT NOT NULL CHECK (question_type IN ('translation', 'conjugation', 'open_ended', 'question_formation', 'sentence_building')),
-  explanation TEXT,
-  hints TEXT[] DEFAULT '{}',
+
+  -- Question format type
+  type TEXT NOT NULL CHECK (type IN ('multiple-choice', 'true-false', 'fill-in-blank', 'writing')),
+
+  -- Type-specific fields (nullable based on type)
+  options TEXT[],                            -- MCQ/TF: choices presented to user
+  acceptable_variations TEXT[] DEFAULT '{}', -- Writing/fill-in-blank: alternate correct answers
+  writing_type TEXT CHECK (writing_type IS NULL OR writing_type IN ('translation', 'conjugation', 'open_ended', 'question_formation', 'sentence_building')),
+  hints TEXT[] DEFAULT '{}',                 -- Progressive hints (optional)
   requires_complete_sentence BOOLEAN DEFAULT FALSE,
-  unit_id UUID,
+
+  -- Metadata for tracking/deduplication
+  content_hash TEXT,                         -- MD5 hash for deduplication
+  batch_id TEXT,                             -- Generation batch identifier
+  source_file TEXT,                          -- Learning material source
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_writing_questions_difficulty ON writing_questions(difficulty);
-CREATE INDEX idx_writing_questions_topic ON writing_questions(topic);
-CREATE INDEX idx_writing_questions_type ON writing_questions(question_type);
+-- Indexes for common query patterns
+CREATE INDEX idx_questions_unit ON questions(unit_id);
+CREATE INDEX idx_questions_topic ON questions(topic);
+CREATE INDEX idx_questions_difficulty ON questions(difficulty);
+CREATE INDEX idx_questions_type ON questions(type);
+CREATE INDEX idx_questions_content_hash ON questions(content_hash);
+CREATE INDEX idx_questions_batch_id ON questions(batch_id);
+CREATE INDEX idx_questions_unit_topic_diff ON questions(unit_id, topic, difficulty);
+CREATE INDEX idx_questions_unit_type ON questions(unit_id, type);
 
 -- Concept Mastery View
 -- Aggregates performance by topic for each student
@@ -193,12 +212,27 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to update questions.updated_at timestamp
+CREATE OR REPLACE FUNCTION update_questions_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to auto-update updated_at on questions
+CREATE TRIGGER questions_updated_at
+  BEFORE UPDATE ON questions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_questions_updated_at();
+
 -- Row Level Security (RLS) Policies
 -- Enable RLS on all tables
 ALTER TABLE study_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quiz_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE question_results ENABLE ROW LEVEL SECURITY;
-ALTER TABLE writing_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
 
 -- Study codes policies
 CREATE POLICY "Anyone can create study codes"
@@ -243,32 +277,38 @@ CREATE POLICY "Anyone can read question results"
   TO anon
   USING (true);
 
--- Writing questions policies
-CREATE POLICY "Allow public read access" ON writing_questions
-  FOR SELECT
+-- Questions policies
+CREATE POLICY "Anyone can read questions"
+  ON questions FOR SELECT
+  TO anon
   USING (true);
 
-CREATE POLICY "Allow authenticated insert" ON writing_questions
-  FOR INSERT
+CREATE POLICY "Anyone can insert questions"
+  ON questions FOR INSERT
+  TO anon
   WITH CHECK (true);
 
-CREATE POLICY "Allow authenticated update" ON writing_questions
-  FOR UPDATE
-  USING (true)
-  WITH CHECK (true);
+CREATE POLICY "Anyone can update questions"
+  ON questions FOR UPDATE
+  TO anon
+  USING (true);
 
-CREATE POLICY "Allow authenticated delete" ON writing_questions
-  FOR DELETE
+CREATE POLICY "Anyone can delete questions"
+  ON questions FOR DELETE
+  TO anon
   USING (true);
 
 -- Table and column comments
 COMMENT ON TABLE study_codes IS 'Anonymous student identifiers';
 COMMENT ON TABLE quiz_history IS 'Individual quiz attempts';
 COMMENT ON TABLE question_results IS 'Detailed question-by-question results';
-COMMENT ON TABLE writing_questions IS 'French writing questions requiring typed answers';
+COMMENT ON TABLE questions IS 'All quiz questions (MCQ, T/F, fill-in-blank, writing)';
 COMMENT ON VIEW concept_mastery IS 'Topic mastery by student';
 COMMENT ON VIEW weak_topics IS 'Topics where student needs help';
 COMMENT ON VIEW strong_topics IS 'Topics where student excels';
 COMMENT ON COLUMN study_codes.admin_label IS 'Optional label/identifier that admin can assign to a student. Not visible to students.';
 COMMENT ON COLUMN study_codes.is_superuser IS 'When true, user receives detailed evaluation metadata including confidence scores, similarity metrics, and which evaluation tier was used';
 COMMENT ON COLUMN writing_questions.requires_complete_sentence IS 'Advanced questions requiring full sentence responses';
+COMMENT ON COLUMN writing_questions.content_hash IS 'MD5 hash of normalized question content for deduplication during regeneration';
+COMMENT ON COLUMN writing_questions.batch_id IS 'Identifies which generation batch created this question (e.g., 2026-02-04_unit3)';
+COMMENT ON COLUMN writing_questions.source_file IS 'Path to the markdown learning file used to generate this question';

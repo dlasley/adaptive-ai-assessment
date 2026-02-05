@@ -37,6 +37,46 @@ export interface WritingAttempt {
 }
 
 /**
+ * Database row from unified questions table
+ */
+interface DBQuestionRow {
+  id: string;
+  question: string;
+  correct_answer: string;
+  explanation: string | null;
+  unit_id: string;
+  topic: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  type: string;
+  options: string[] | null;
+  acceptable_variations: string[];
+  writing_type: string | null;
+  hints: string[];
+  requires_complete_sentence: boolean;
+  created_at: string;
+}
+
+/**
+ * Convert from new unified questions schema to WritingQuestion interface
+ */
+function dbRowToWritingQuestion(row: DBQuestionRow): WritingQuestion {
+  return {
+    id: row.id,
+    question_en: row.question,
+    correct_answer_fr: row.correct_answer,
+    acceptable_variations: row.acceptable_variations || [],
+    topic: row.topic,
+    difficulty: row.difficulty,
+    question_type: (row.writing_type || 'translation') as WritingQuestion['question_type'],
+    explanation: row.explanation || '',
+    hints: row.hints || [],
+    unit_id: row.unit_id,
+    requires_complete_sentence: row.requires_complete_sentence,
+    created_at: row.created_at,
+  };
+}
+
+/**
  * Normalize text for comparison (remove accents, lowercase, trim)
  */
 export function normalizeText(text: string): string {
@@ -353,6 +393,7 @@ export async function saveWritingAttempt(
 
 /**
  * Get writing questions by difficulty
+ * Queries the unified 'questions' table filtered by type='writing'
  */
 export async function getWritingQuestions(
   difficulty?: string,
@@ -362,8 +403,9 @@ export async function getWritingQuestions(
 
   try {
     let query = supabase!
-      .from('writing_questions')
+      .from('questions')
       .select('*')
+      .eq('type', 'writing')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -378,7 +420,8 @@ export async function getWritingQuestions(
       return [];
     }
 
-    return data || [];
+    // Map from new schema to WritingQuestion interface
+    return (data || []).map(dbRowToWritingQuestion);
   } catch (error) {
     console.error('Failed to get writing questions:', error);
     return [];
@@ -387,6 +430,7 @@ export async function getWritingQuestions(
 
 /**
  * Get random writing questions for practice
+ * Queries the unified 'questions' table filtered by type='writing'
  */
 export async function getRandomWritingQuestions(
   count: number = 5,
@@ -395,10 +439,11 @@ export async function getRandomWritingQuestions(
   if (!isSupabaseAvailable()) return [];
 
   try {
-    // Build query with random ordering
+    // Build query with type filter for writing questions
     let query = supabase!
-      .from('writing_questions')
-      .select('*');
+      .from('questions')
+      .select('*')
+      .eq('type', 'writing');
 
     if (difficulty) {
       query = query.eq('difficulty', difficulty);
@@ -415,7 +460,7 @@ export async function getRandomWritingQuestions(
 
     // Shuffle and return requested count
     const shuffled = [...data].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, count);
+    return shuffled.slice(0, count).map(dbRowToWritingQuestion);
   } catch (error) {
     console.error('Failed to get random questions:', error);
     return [];

@@ -4,6 +4,7 @@ export const units: Unit[] = [
   {
     id: 'introduction',
     title: '🇫🇷 Introduction',
+    label: 'Basics & Greetings',
     description: 'Basic greetings, numbers, alphabet, and classroom vocabulary',
     topics: [
       'Greetings (Formal & Informal)',
@@ -20,6 +21,7 @@ export const units: Unit[] = [
   {
     id: 'unit-2',
     title: '🇫🇷 Unit 2',
+    label: 'Activities & -ER Verbs',
     description: 'Activities, food, verb conjugation, and adverbs',
     topics: [
       'Olympic Sports Vocabulary',
@@ -42,6 +44,7 @@ export const units: Unit[] = [
   {
     id: 'unit-3',
     title: '🇫🇷 Unit 3',
+    label: 'Être, Avoir & Numbers',
     description: 'Classroom objects, numbers, prepositions, and key verbs',
     topics: [
       'Classroom Vocabulary (objects)',

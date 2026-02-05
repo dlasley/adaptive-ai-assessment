@@ -2,7 +2,7 @@
 
 ## Generate Initial Writing Questions
 
-This script generates 50 diverse French writing questions and saves them to your Supabase database.
+This script generates 50 diverse French writing questions and saves them to your database.
 
 ### Prerequisites
 

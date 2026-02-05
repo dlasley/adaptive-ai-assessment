@@ -96,7 +96,7 @@ export default function Home() {
             <option value="all">🌟 All Units (Recommended)</option>
             {units.map((unit) => (
               <option key={unit.id} value={unit.id}>
-                {unit.title}
+                {unit.title}{unit.label ? `: ${unit.label}` : ''}
               </option>
             ))}
           </select>
