@@ -38,9 +38,5 @@ yarn-error.log*
 next-env.d.ts
 *.env*.local
 
-# data
-/data/*
-!/data/DATA.md
-
 # learnings (proprietary course materials)
 /learnings/

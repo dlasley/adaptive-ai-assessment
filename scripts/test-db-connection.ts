@@ -1,6 +1,8 @@
 /**
- * Test Supabase Connection
- * Run with: npx tsx scripts/test-supabase.ts
+ * Test Database Connection
+ * Verifies Supabase connectivity and schema for all core tables
+ *
+ * Run with: npx tsx scripts/test-db-connection.ts
  */
 
 import { config } from 'dotenv';
@@ -12,7 +14,7 @@ config({ path: '.env.local' });
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-console.log('🧪 Testing Supabase Connection\n');
+console.log('🧪 Testing Database Connection\n');
 console.log('Configuration:');
 console.log(`  URL: ${supabaseUrl ? '✓ Set' : '✗ Missing'}`);
 console.log(`  Key: ${supabaseKey ? '✓ Set' : '✗ Missing'}`);
@@ -33,7 +35,7 @@ async function testConnection() {
 
   try {
     // Test 1: Check tables exist
-    console.log('Test 1: Checking tables...');
+    console.log('Test 1: Checking study_codes table...');
     const { data: tables, error: tablesError } = await supabase
       .from('study_codes')
       .select('id')
@@ -44,10 +46,10 @@ async function testConnection() {
       console.error('Error:', tablesError.message);
       return false;
     }
-    console.log('✅ Tables exist\n');
+    console.log('✅ study_codes table exists\n');
 
     // Test 2: Generate study code
-    console.log('Test 2: Generating study code...');
+    console.log('Test 2: Creating test study code...');
     // Generate proper format: study-xxxxxxxx (8 alphanumeric chars)
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let testCode = 'study-';
@@ -129,7 +131,7 @@ async function testConnection() {
     console.log('');
 
     // Test 5: Query concept mastery view
-    console.log('Test 5: Checking concept mastery view...');
+    console.log('Test 5: Checking concept_mastery view...');
     const { data: masteryData, error: masteryError } = await supabase
       .from('concept_mastery')
       .select('*')
@@ -140,11 +142,24 @@ async function testConnection() {
       console.error('Error:', masteryError.message);
       return false;
     }
-    console.log('✅ Concept mastery view working');
+    console.log('✅ concept_mastery view working');
     console.log('   Topics tracked:', masteryData.length);
-    if (masteryData.length > 0) {
-      console.log('   Sample:', masteryData[0]);
+    console.log('');
+
+    // Test 6: Check questions table
+    console.log('Test 6: Checking questions table...');
+    const { data: questions, error: questionsError, count } = await supabase
+      .from('questions')
+      .select('id, type, topic', { count: 'exact' })
+      .limit(5);
+
+    if (questionsError) {
+      console.error('❌ Failed to query questions table');
+      console.error('Error:', questionsError.message);
+      return false;
     }
+    console.log('✅ questions table accessible');
+    console.log(`   Total questions: ${count || questions?.length || 0}`);
     console.log('');
 
     // Cleanup: Delete test data
@@ -162,10 +177,7 @@ async function testConnection() {
 testConnection().then((success) => {
   if (success) {
     console.log('🎉 All tests passed!');
-    console.log('\nSupabase is properly configured and ready to use.');
-    console.log('You can now enable the feature flags in .env.local:');
-    console.log('  NEXT_PUBLIC_ENABLE_DB_SYNC=true');
-    console.log('  NEXT_PUBLIC_ENABLE_STUDY_CODES=true');
+    console.log('\nDatabase is properly configured and ready to use.');
   } else {
     console.log('\n❌ Some tests failed.');
     console.log('Check the error messages above and:');

@@ -1,172 +1,238 @@
 # Scripts Directory
 
-## Generate Initial Writing Questions
+## Quick Reference
 
-This script generates 50 diverse French writing questions and saves them to your database.
+### By Use Case
 
-### Prerequisites
+- **Content Regeneration**
+  - `regenerate.ts` — Full pipeline: PDF → Markdown → Topics → Questions
+  - `generate-questions.ts` — Generate questions for a unit/topic
+  - `suggest-unit-topics.ts` — Extract topics from markdown files
+- **Database**
+  - `check-writing-questions.ts` — Inspect question counts and samples
+  - `test-db-connection.ts` — Verify database connection and schema
 
-1. **Supabase Setup:**
-   - Ensure you have run the `create_writing_questions.sql` migration
-   - Set environment variables in `.env.local`:
-     ```
-     NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-     NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-     ```
+### By Script Type
 
-2. **Anthropic API Key:**
-   - Set in `.env.local`:
-     ```
-     ANTHROPIC_API_KEY=your_anthropic_api_key
-     ```
+- **Pipeline** — Question generation workflow
+  - `regenerate.ts`, `generate-questions.ts`, `suggest-unit-topics.ts`
+- **Utility** — Inspection and debugging
+  - `check-writing-questions.ts`, `test-db-connection.ts`
+- **Shared** — Supporting libraries and templates
+  - `lib/`, `prompts/`
 
-### Running the Script
+---
+
+## Pipeline Overview
+
+The content regeneration pipeline converts learning materials into quiz questions:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      regenerate.ts                              │
+│  (orchestrator - runs the full pipeline)                        │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+   PDF files            Markdown files         Topic extraction
+   (PDF/)               (learnings/)
+        │                     │                     │
+        └──────────┬──────────┘                     │
+                   ▼                                │
+          suggest-unit-topics.ts ◄──────────────────┘
+          (extracts teachable topics)
+                   │
+                   ▼
+          generate-questions.ts
+          (creates questions via Claude API)
+                   │
+                   ▼
+             Supabase DB
+             (questions table)
+```
+
+### Running the Full Pipeline
 
 ```bash
-# From the project root directory
-npx tsx scripts/generate-initial-questions.ts
+# Regenerate all units and sync to database
+npx tsx scripts/regenerate.ts --all --sync-db
+
+# Regenerate a specific unit
+npx tsx scripts/regenerate.ts unit-2 --sync-db
+
+# With interactive topic review (expert users only)
+npx tsx scripts/regenerate.ts --all --review-topics --sync-db
 ```
 
-### What It Does
+---
 
-1. **Generates 50 Questions** using Claude Sonnet 4.5:
-   - 20 beginner questions (40%)
-   - 15 intermediate questions (30%)
-   - 15 advanced questions (30%)
+## Script Reference
 
-2. **Question Distribution:**
-   - Basic greetings and introductions (5 questions)
-   - Verb conjugations (10 questions)
-   - Daily routines and activities (8 questions)
-   - Food and preferences (5 questions)
-   - Time and calendar (3 questions)
-   - Question formation (4 questions)
-   - Personal expression and opinions (8 questions)
-   - Describing people, places, things (7 questions)
+### regenerate.ts (Pipeline)
 
-3. **Question Types:**
-   - Simple translation
-   - Verb conjugation
-   - Sentence translation
-   - Open-ended personal questions
-   - Question formation
-   - Sentence building
+**Purpose:** Orchestrates the full content regeneration pipeline.
 
-4. **Saves to Database:**
-   - All questions are saved to the `writing_questions` table
-   - Each includes hints, explanations, and acceptable variations
-   - Ready for immediate use in the writing-test page
+**Usage:**
+```bash
+npx tsx scripts/regenerate.ts <unit-id> [options]
+npx tsx scripts/regenerate.ts --all [options]
 
-### Expected Output
-
-```
-🚀 Starting question generation process...
-──────────────────────────────────────────────────
-
-🎯 Generating 50 writing questions...
-✅ Generated 50 questions
-
-📊 Question Summary:
-──────────────────────────────────────────────────
-
-📈 By Difficulty:
-  beginner       : 20 questions
-  intermediate   : 15 questions
-  advanced       : 15 questions
-
-📝 By Type:
-  translation         : 15 questions
-  conjugation         : 10 questions
-  open_ended          : 12 questions
-  question_formation  : 8 questions
-  sentence_building   : 5 questions
-
-🎯 Top Topics:
-  greetings                    : 5 questions
-  verb_conjugation:être        : 4 questions
-  daily_routine                : 8 questions
-  food                         : 5 questions
-  ...
-
-✍️  Require Complete Sentences: 25/50
-
-💾 Saving 50 questions to database...
-✅ Successfully saved 50 questions to database
-
-✨ Success! Questions have been generated and saved.
-
-💡 Next steps:
-   1. Review questions in your Supabase dashboard
-   2. Update writing-test page to load from database
-   3. Test the questions with students
+Options:
+  --sync-db          Sync generated questions to Supabase
+  --skip-convert     Skip PDF conversion (use existing markdown)
+  --skip-topics      Skip topic extraction (use existing topics)
+  --review-topics    Interactive topic review (see note below)
+  --dry-run          Show what would be done without executing
 ```
 
-### Cost Estimate
+**Note on `--review-topics`:** By default, the pipeline uses AI-extracted topics
+automatically. The `--review-topics` flag enables interactive prompts to manually
+review and override topic names. Use only if you are fluent in French and have
+pedagogical expertise for French courseware development.
 
-- Generation: ~$0.30 (Claude Sonnet 4.5, ~8K tokens output)
-- One-time cost for 50 high-quality questions
+**Interrelationships:**
+- Spawns `suggest-unit-topics.ts` for topic extraction
+- Spawns `generate-questions.ts` for question generation
+- Uses `prompts/pdf-to-markdown.txt` for PDF conversion
+- Reads from `PDF/` and `learnings/` directories
 
-### After Running
+---
 
-1. **Verify in Supabase:**
-   - Go to your Supabase dashboard
-   - Navigate to `writing_questions` table
-   - Verify 50 questions were added
+### generate-questions.ts (Pipeline)
 
-2. **Test the Questions:**
-   - Visit `/writing-test` in your app
-   - Questions will now load from the database
-   - Each refresh gives you a random set of 5 questions
+**Purpose:** Generates quiz questions for a unit/topic using Claude API.
 
-3. **Review and Adjust:**
-   - Check if questions align with your curriculum
-   - Update `acceptable_variations` for more flexibility
-   - Adjust difficulty levels as needed
+**Usage:**
+```bash
+npx tsx scripts/generate-questions.ts [options]
 
-### Regenerating Questions
+Options:
+  --unit <id>        Unit ID (required)
+  --topic <name>     Specific topic (optional, defaults to all)
+  --difficulty <d>   beginner, intermediate, or advanced
+  --type <t>         multiple-choice, true-false, fill-in-blank, or writing
+  --count <n>        Number of questions per topic/difficulty
+  --sync-db          Upload to Supabase after generation
+```
 
-If you want to generate a fresh batch:
+**Interrelationships:**
+- Called by `regenerate.ts`
+- Uses `src/lib/learning-materials.ts` for content extraction
+- Uses `src/lib/topic-headings.ts` for topic-to-heading mapping
 
-1. **Clear existing questions** (optional):
-   ```sql
-   DELETE FROM writing_questions;
-   ```
+---
 
-2. **Run the script again:**
-   ```bash
-   npx tsx scripts/generate-initial-questions.ts
-   ```
+### suggest-unit-topics.ts (Pipeline)
 
-### Customization
+**Purpose:** Extracts teachable topics from markdown learning materials using Claude API.
 
-To customize the questions generated, edit the prompt in `generate-initial-questions.ts`:
-
-- Change difficulty distribution
-- Add/remove topics
-- Adjust question type ratios
-- Modify the total count
+**Usage:**
+```bash
+npx tsx scripts/suggest-unit-topics.ts <markdown-file> <unit-id>
 
 Example:
-```typescript
-const prompt = `Generate ${count} French writing practice questions...
-- Difficulty distribution: 30 beginner, 15 intermediate, 5 advanced
-- Focus heavily on verb conjugations and daily routines
-...`;
+npx tsx scripts/suggest-unit-topics.ts "learnings/French 1 Unit 2.md" unit-2
 ```
 
-### Troubleshooting
+**Interrelationships:**
+- Called by `regenerate.ts`
+- Uses `lib/topic-utils.ts` for topic processing
+- Outputs suggested updates for `src/lib/units.ts` and `src/lib/topic-headings.ts`
 
-**Error: Missing Supabase credentials**
-- Ensure `.env.local` has both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+---
 
-**Error: Missing ANTHROPIC_API_KEY**
-- Add `ANTHROPIC_API_KEY` to `.env.local`
+### check-writing-questions.ts (Utility)
 
-**Error saving to database**
-- Verify the `writing_questions` table exists
-- Check Supabase permissions for the anon key
+**Purpose:** Inspect question counts, distribution, and sample content in the database.
 
-**Generated fewer than 50 questions**
-- Claude may have generated fewer questions
-- Check the console output for parsing errors
-- Re-run the script
+**Usage:**
+```bash
+# Show statistics only
+npx tsx scripts/check-writing-questions.ts
+
+# Include sample question text
+npx tsx scripts/check-writing-questions.ts --samples
+```
+
+**Output includes:**
+- Counts by unit and type
+- Counts by difficulty
+- Writing question subtypes
+- Top 10 topics
+- Sample questions (with `--samples`)
+
+---
+
+### test-db-connection.ts (Utility)
+
+**Purpose:** Verify database connection and test all core tables (study_codes, quiz_history, question_results, concept_mastery view, questions).
+
+**Usage:**
+```bash
+npx tsx scripts/test-db-connection.ts
+```
+
+**Tests performed:**
+- Connection to Supabase
+- CRUD operations on progress tracking tables
+- Questions table accessibility
+- Automatic cleanup of test data
+
+---
+
+## Shared Resources
+
+### lib/topic-utils.ts
+
+Shared utilities for topic processing:
+- Topic name normalization
+- Heading pattern matching
+- Topic-to-content mapping helpers
+
+Used by: `suggest-unit-topics.ts`
+
+### prompts/pdf-to-markdown.txt
+
+Prompt template for converting PDF content to well-structured markdown.
+
+Used by: `regenerate.ts` (PDF conversion step)
+
+---
+
+## Environment Requirements
+
+All scripts require `.env.local` with:
+
+```env
+# Supabase (required for DB operations)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Anthropic (required for AI operations)
+ANTHROPIC_API_KEY=your_anthropic_api_key
+```
+
+---
+
+## Common Workflows
+
+### Verify Database Connection
+```bash
+npx tsx scripts/test-db-connection.ts
+```
+
+### Full Content Regeneration
+```bash
+npx tsx scripts/regenerate.ts --all --sync-db
+```
+
+### Verify Database Content
+```bash
+npx tsx scripts/check-writing-questions.ts --samples
+```
+
+### Generate Questions for One Topic
+```bash
+npx tsx scripts/generate-questions.ts --unit unit-2 --topic "Numbers 20-100" --sync-db
+```

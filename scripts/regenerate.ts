@@ -11,7 +11,7 @@
  *   npx tsx scripts/regenerate.ts --all [options]
  *
  * Options:
- *   --auto          Skip topic review for existing units (use current topics)
+ *   --review-topics Enable interactive topic review (for expert users)
  *   --skip-convert  Skip PDF conversion (use existing markdown)
  *   --skip-topics   Skip topic extraction (use existing topics in units.ts)
  *   --sync-db       Sync generated questions to Supabase
@@ -19,9 +19,9 @@
  *
  * Examples:
  *   npx tsx scripts/regenerate.ts unit-4
- *   npx tsx scripts/regenerate.ts unit-4 --auto --sync-db
+ *   npx tsx scripts/regenerate.ts unit-4 --sync-db
  *   npx tsx scripts/regenerate.ts unit-4 --skip-convert
- *   npx tsx scripts/regenerate.ts --all --auto --sync-db
+ *   npx tsx scripts/regenerate.ts --all --sync-db
  */
 
 import { config } from 'dotenv';
@@ -45,7 +45,7 @@ const LEARNINGS_DIR = path.join(process.cwd(), 'learnings');
 
 interface PipelineOptions {
   unitId: string | '--all';
-  auto: boolean;
+  reviewTopics: boolean;
   skipConvert: boolean;
   forceConvert: boolean;
   skipTopics: boolean;
@@ -240,7 +240,7 @@ function parseArgs(): PipelineOptions {
 
   const options: PipelineOptions = {
     unitId: args[0],
-    auto: args.includes('--auto'),
+    reviewTopics: args.includes('--review-topics'),
     skipConvert: args.includes('--skip-convert'),
     forceConvert: args.includes('--force-convert'),
     skipTopics: args.includes('--skip-topics'),
@@ -262,7 +262,7 @@ Usage:
   npx tsx scripts/regenerate.ts --all [options]
 
 Options:
-  --auto          Skip topic review for existing units (use current topics)
+  --review-topics Interactive topic review (for fluent French speakers only)
   --skip-convert  Skip PDF conversion (use existing markdown)
   --force-convert Force PDF reconversion even if markdown exists
   --skip-topics   Skip topic extraction (use existing topics in units.ts)
@@ -271,9 +271,9 @@ Options:
 
 Examples:
   npx tsx scripts/regenerate.ts unit-4           # Full pipeline for unit-4
-  npx tsx scripts/regenerate.ts unit-4 --auto    # Auto-mode (existing unit)
+  npx tsx scripts/regenerate.ts unit-4 --sync-db # Generate and sync to DB
   npx tsx scripts/regenerate.ts unit-4 --skip-convert --sync-db
-  npx tsx scripts/regenerate.ts --all --auto --sync-db
+  npx tsx scripts/regenerate.ts --all --sync-db  # Regenerate all units
 
 Pipeline Steps:
   1. PDF → Markdown    Convert PDF to structured markdown
@@ -669,8 +669,8 @@ async function stepExtractTopics(
     return { success: false };
   }
 
-  if (existingUnit && options.auto) {
-    console.log(`  ℹ️  Auto mode: Using ${existingUnit.topics.length} existing topics`);
+  if (existingUnit && !options.reviewTopics) {
+    console.log(`  ℹ️  Using ${existingUnit.topics.length} existing topics`);
     existingUnit.topics.forEach(t => console.log(`     • ${t}`));
     return { success: true, topics: existingUnit.topics };
   }
@@ -695,8 +695,8 @@ async function stepExtractTopics(
 
   console.log(result.output);
 
-  // After topic extraction, prompt for review unless auto mode
-  if (!options.auto) {
+  // After topic extraction, prompt for review if --review-topics specified
+  if (options.reviewTopics) {
     console.log('\n  ⚠️  Review the suggested topics above');
     console.log('     Update units.ts if needed, then continue');
 
@@ -817,7 +817,7 @@ async function main() {
 
   console.log('Configuration:');
   console.log(`  Unit(s):       ${options.unitId}`);
-  console.log(`  Auto mode:     ${options.auto ? 'Yes' : 'No'}`);
+  console.log(`  Review topics: ${options.reviewTopics ? 'Yes (interactive)' : 'No (auto)'}`);
   console.log(`  Skip convert:  ${options.skipConvert ? 'Yes' : 'No'}`);
   console.log(`  Force convert: ${options.forceConvert ? 'Yes' : 'No'}`);
   console.log(`  Skip topics:   ${options.skipTopics ? 'Yes' : 'No'}`);
