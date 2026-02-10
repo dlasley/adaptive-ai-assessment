@@ -17,6 +17,11 @@ import { StudyCodeEntry } from '@/components/StudyCodeEntry';
 import { QUIZ_MODES, QuizMode, getDefaultMode } from '@/lib/quiz-modes';
 import { FEATURES } from '@/lib/feature-flags';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import OnboardingTour from '@/components/OnboardingTour';
+import TourButton from '@/components/TourButton';
+import ContextualHint from '@/components/ContextualHint';
+import { useOnboarding } from '@/hooks/useOnboarding';
+import { Step } from 'react-joyride';
 
 type Phase = 'resolving' | 'choosing' | 'ready';
 
@@ -45,6 +50,36 @@ function HomeContent() {
   const [existingCodeForSwap, setExistingCodeForSwap] = useState<string | null>(null);
   const [pendingUrlCode, setPendingUrlCode] = useState<string | null>(null);
   const hasResolved = useRef(false);
+  const { shouldShowHomeTour, completeHomeTour } = useOnboarding();
+  const [runTour, setRunTour] = useState(false);
+
+  const homeTourSteps: Step[] = [
+    {
+      target: '#tour-study-code',
+      content: 'This is your unique study code. It tracks your progress \u2014 save it or scan the QR on your phone!',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-unit-selector',
+      content: 'Choose a specific unit to study, or leave it on "All Units" for a comprehensive review.',
+    },
+    {
+      target: '#tour-num-questions',
+      content: 'Pick how many questions you want. Start with 10 for a quick practice.',
+    },
+    {
+      target: '#tour-quiz-mode',
+      content: 'Practice Mode mixes all question types. Assessment Mode uses only written answers \u2014 just like a real test!',
+    },
+    {
+      target: '#tour-difficulty',
+      content: 'Beginner is great to start. Try Intermediate and Advanced as you improve.',
+    },
+    {
+      target: '#tour-start-button',
+      content: 'All set! Hit this button to start. Bonne chance!',
+    },
+  ];
 
   // Resolve study code on mount: check URL param, localStorage, or show choice screen
   useEffect(() => {
@@ -106,6 +141,14 @@ function HomeContent() {
     resolve();
   }, [searchParams, router]);
 
+  // Auto-start tour for first-time users
+  useEffect(() => {
+    if (phase === 'ready' && shouldShowHomeTour) {
+      const timer = setTimeout(() => setRunTour(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, shouldShowHomeTour]);
+
   const handleStartPractice = () => {
     const params = new URLSearchParams({
       num: numQuestions.toString(),
@@ -159,6 +202,14 @@ function HomeContent() {
   // Phase: ready - show study code + quiz configuration
   return (
     <div className="space-y-8">
+      <OnboardingTour
+        steps={homeTourSteps}
+        run={runTour}
+        onComplete={() => {
+          completeHomeTour();
+          setRunTour(false);
+        }}
+      />
       <div className="text-center">
         <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
           Practice French
@@ -170,7 +221,7 @@ function HomeContent() {
 
       {/* Study Code Card with QR - always shown */}
       {studyCode && (
-        <div className="max-w-3xl mx-auto">
+        <div id="tour-study-code" className="max-w-3xl mx-auto">
           <StudyCodeDisplay
             studyCode={studyCode}
             size="medium"
@@ -187,7 +238,10 @@ function HomeContent() {
       {/* Main Practice Configuration Card */}
       <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8 space-y-6">
         {/* Unit Selection */}
-        <div>
+        <div className="flex items-center justify-between mb-2">
+          <TourButton onClick={() => setRunTour(true)} />
+        </div>
+        <div id="tour-unit-selector">
           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Select Unit (Optional):
           </label>
@@ -215,7 +269,7 @@ function HomeContent() {
         </div>
 
         {/* Number of Questions */}
-        <div>
+        <div id="tour-num-questions">
           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Number of Questions:
           </label>
@@ -237,7 +291,11 @@ function HomeContent() {
         </div>
 
         {/* Quiz Mode Selection */}
-        <div>
+        <ContextualHint
+          id="hint-assessment-mode"
+          message="Tip: Assessment Mode uses only written responses &mdash; great for exam prep!"
+        >
+        <div id="tour-quiz-mode">
           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Quiz Mode:
           </label>
@@ -269,6 +327,7 @@ function HomeContent() {
             })}
           </div>
         </div>
+        </ContextualHint>
 
         {/* Adaptive Mode Toggle */}
         {FEATURES.LEITNER_MODE && studyCode && (
@@ -297,7 +356,7 @@ function HomeContent() {
         )}
 
         {/* Difficulty Selection */}
-        <div>
+        <div id="tour-difficulty">
           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Difficulty Level:
           </label>
@@ -320,6 +379,7 @@ function HomeContent() {
 
         {/* Start Button */}
         <button
+          id="tour-start-button"
           onClick={handleStartPractice}
           className={`w-full py-5 rounded-lg font-bold text-xl text-white shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 ${
             quizMode === 'assessment'

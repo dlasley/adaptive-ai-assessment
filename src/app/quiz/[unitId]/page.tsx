@@ -15,6 +15,9 @@ import {
 import TypedAnswerQuestion from '@/components/WritingQuestion';
 import type { EvaluationResult } from '@/app/api/evaluate-writing/route';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import OnboardingTour from '@/components/OnboardingTour';
+import { useOnboarding } from '@/hooks/useOnboarding';
+import { Step } from 'react-joyride';
 
 interface TopicRecommendation {
   topic: string;
@@ -57,6 +60,28 @@ export default function QuizPage() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [countdownOverride, setCountdownOverride] = useState<number | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { shouldShowQuizTour, completeQuizTour } = useOnboarding();
+  const [runQuizTour, setRunQuizTour] = useState(false);
+
+  const quizTourSteps: Step[] = [
+    {
+      target: '#tour-quiz-mode-badge',
+      content: 'This shows your current quiz mode.',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-quiz-counter',
+      content: 'Track your progress through the quiz here.',
+    },
+    {
+      target: '#tour-quiz-answer-area',
+      content: 'Type or select your answer here. For written questions, don\'t worry about perfect accents \u2014 we\'ll give you credit for close answers!',
+    },
+    {
+      target: '#tour-quiz-progress',
+      content: 'This bar shows how far along you are. Keep going!',
+    },
+  ];
 
   // Start countdown when a wrong answer explanation is shown
   useEffect(() => {
@@ -305,6 +330,14 @@ export default function QuizPage() {
 
     fetchQuestions();
   }, [unitId, topic, numQuestions, difficulty, mode, adaptive, studyCodeUuid]);
+
+  // Auto-start quiz tour on first quiz
+  useEffect(() => {
+    if (!loading && questions.length > 0 && shouldShowQuizTour && !showResults) {
+      const timer = setTimeout(() => setRunQuizTour(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, questions.length, shouldShowQuizTour, showResults]);
 
   const currentQuestion = questions[currentQuestionIndex];
   const hasAnswered = currentQuestion && userAnswers[currentQuestion.id] !== undefined;
@@ -886,8 +919,16 @@ export default function QuizPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <OnboardingTour
+        steps={quizTourSteps}
+        run={runQuizTour}
+        onComplete={() => {
+          completeQuizTour();
+          setRunQuizTour(false);
+        }}
+      />
       {/* Mode Badge */}
-      <div className="mb-4 flex items-center gap-2">
+      <div id="tour-quiz-mode-badge" className="mb-4 flex items-center gap-2">
         <div className={`px-4 py-2 rounded-lg inline-flex items-center gap-2 ${
           isAssessmentMode
             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'
@@ -929,12 +970,13 @@ export default function QuizPage() {
             {topic && ` • ${topic}`}
           </p>
         </div>
-        <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">
+        <div id="tour-quiz-counter" className="text-sm font-semibold text-gray-600 dark:text-gray-300">
           Question {currentQuestionIndex + 1} of {questions.length}
         </div>
       </div>
 
       {/* Render TypedAnswerQuestion for writing and fill-in-blank types */}
+      <div id="tour-quiz-answer-area">
       {(currentQuestion.type === 'writing' || currentQuestion.type === 'fill-in-blank') ? (
         <div className="space-y-6">
           <TypedAnswerQuestion
@@ -1241,9 +1283,10 @@ export default function QuizPage() {
           </div>
         </div>
       )}
+      </div>
 
       {/* Progress bar */}
-      <div className="mt-6 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+      <div id="tour-quiz-progress" className="mt-6 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
         <div
           className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
           style={{

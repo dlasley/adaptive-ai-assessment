@@ -10,6 +10,8 @@ import StatCard from '@/components/StatCard';
 import type { StudyCode, QuizHistory, ConceptMastery } from '@/lib/supabase';
 import { getAccuracyColor, getMasteryColor, getMasteryBgColor } from '@/lib/color-utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ContextualHint from '@/components/ContextualHint';
+import EmptyStateGuide from '@/components/EmptyStateGuide';
 
 export default function ProgressPage() {
   const router = useRouter();
@@ -114,12 +116,18 @@ export default function ProgressPage() {
       />
 
       {/* Overall Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard value={totalQuizzes} label="Quizzes Completed" colorClass="text-indigo-600 dark:text-indigo-400" size="lg" />
-        <StatCard value={totalQuestions} label="Questions Answered" colorClass="text-purple-600 dark:text-purple-400" size="lg" />
-        <StatCard value={progress?.correctAnswers || 0} label="Correct Answers" colorClass="text-green-600 dark:text-green-400" size="lg" />
-        <StatCard value={`${overallAccuracy.toFixed(0)}%`} label="Overall Accuracy" colorClass={getAccuracyColor(overallAccuracy)} size="lg" />
-      </div>
+      <ContextualHint
+        id="hint-progress-stats"
+        message="These stats update after every quiz. Try to improve your accuracy over time!"
+        position="above"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard value={totalQuizzes} label="Quizzes Completed" colorClass="text-indigo-600 dark:text-indigo-400" size="lg" />
+          <StatCard value={totalQuestions} label="Questions Answered" colorClass="text-purple-600 dark:text-purple-400" size="lg" />
+          <StatCard value={progress?.correctAnswers || 0} label="Correct Answers" colorClass="text-green-600 dark:text-green-400" size="lg" />
+          <StatCard value={`${overallAccuracy.toFixed(0)}%`} label="Overall Accuracy" colorClass={getAccuracyColor(overallAccuracy)} size="lg" />
+        </div>
+      </ContextualHint>
 
       {/* Tab Navigation */}
       {totalQuizzes > 0 && (
@@ -348,21 +356,7 @@ export default function ProgressPage() {
 
       {/* No Data Message - only show when no quizzes at all */}
       {totalQuizzes === 0 && (
-        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-xl">
-          <div className="text-6xl mb-4">📝</div>
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            No Quizzes Yet
-          </h3>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
-            Take your first quiz to start tracking your progress!
-          </p>
-          <button
-            onClick={() => router.push('/')}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-          >
-            Start Practicing
-          </button>
-        </div>
+        <EmptyStateGuide onStartPractice={() => router.push('/')} />
       )}
 
       {/* Back Button */}
