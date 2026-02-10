@@ -16,6 +16,7 @@ import { StudyCodeDisplay } from '@/components/StudyCodeDisplay';
 import { StudyCodeEntry } from '@/components/StudyCodeEntry';
 import { QUIZ_MODES, QuizMode, getDefaultMode } from '@/lib/quiz-modes';
 import { FEATURES } from '@/lib/feature-flags';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 type Phase = 'resolving' | 'choosing' | 'ready';
 
@@ -23,7 +24,7 @@ export default function Home() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+        <LoadingSpinner />
       </div>
     }>
       <HomeContent />
@@ -126,7 +127,7 @@ function HomeContent() {
   if (phase === 'resolving') {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+        <LoadingSpinner />
       </div>
     );
   }

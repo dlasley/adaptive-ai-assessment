@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import {
   createStudyCode,
   storeStudyCode,
@@ -122,7 +123,7 @@ export function StudyCodeEntry({
   if (mode === 'creating') {
     return (
       <div className="max-w-md mx-auto bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-8 border-2 border-indigo-200 dark:border-indigo-800 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4" />
+        <LoadingSpinner size="md" className="mx-auto mb-4" />
         <p className="text-gray-600 dark:text-gray-300">Creating your study code...</p>
       </div>
     );

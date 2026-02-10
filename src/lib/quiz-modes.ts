@@ -58,11 +58,3 @@ export function getDefaultMode(): QuizMode {
 export function getModeConfig(mode: QuizMode): QuizModeConfig {
   return QUIZ_MODES[mode] || QUIZ_MODES.practice;
 }
-
-/**
- * Check if a question type is allowed in a mode
- */
-export function isTypeAllowedInMode(type: Question['type'], mode: QuizMode): boolean {
-  const config = getModeConfig(mode);
-  return config.allowedTypes.includes(type);
-}

@@ -14,6 +14,7 @@ import {
 } from '@/lib/superuser-override';
 import TypedAnswerQuestion from '@/components/WritingQuestion';
 import type { EvaluationResult } from '@/app/api/evaluate-writing/route';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface TopicRecommendation {
   topic: string;
@@ -461,7 +462,7 @@ export default function QuizPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <LoadingSpinner className="mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-300">
             Generating your personalized quiz questions...
           </p>
@@ -765,7 +766,7 @@ export default function QuizPage() {
               {loadingStudyGuide && (
                 <div className="p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                    <LoadingSpinner size="md" color="blue" className="mr-3" />
                     <p className="text-blue-800 dark:text-blue-200">Generating your personalized study guide...</p>
                   </div>
                 </div>

@@ -19,20 +19,6 @@ export function normalizeText(text: string): string {
 }
 
 /**
- * Check if two answers match exactly (with accents)
- */
-export function exactMatch(answer1: string, answer2: string): boolean {
-  return answer1.trim().toLowerCase() === answer2.trim().toLowerCase();
-}
-
-/**
- * Check if two answers match (ignoring accents)
- */
-export function normalizedMatch(answer1: string, answer2: string): boolean {
-  return normalizeText(answer1) === normalizeText(answer2);
-}
-
-/**
  * Calculate Levenshtein distance between two strings
  */
 export function levenshteinDistance(str1: string, str2: string): number {

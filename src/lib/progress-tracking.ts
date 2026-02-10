@@ -294,19 +294,3 @@ export function saveQuizResultsLocally(result: QuizResult): void {
     console.error('Failed to save quiz results locally:', error);
   }
 }
-
-/**
- * Get local quiz history from localStorage
- */
-export function getLocalQuizHistory(studyCode: string): any[] {
-  if (typeof window === 'undefined') return [];
-
-  try {
-    const key = `quiz_history_${studyCode}`;
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    console.error('Failed to get local quiz history:', error);
-    return [];
-  }
-}

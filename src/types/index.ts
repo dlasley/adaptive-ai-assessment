@@ -23,19 +23,3 @@ export interface Question {
   hints?: string[];
   requiresCompleteSentence?: boolean;
 }
-
-export interface QuizSession {
-  unitId: string;
-  topic: string;
-  questions: Question[];
-  currentQuestionIndex: number;
-  answers: Record<string, string>;
-  score?: number;
-}
-
-export interface QuestionGenerationRequest {
-  unitId: string;
-  topic: string;
-  numQuestions: number;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-}

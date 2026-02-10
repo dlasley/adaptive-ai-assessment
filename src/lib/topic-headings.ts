@@ -53,11 +53,3 @@ export const topicHeadings: Record<string, string[]> = {
 export function getTopicHeadings(topic: string): string[] {
   return topicHeadings[topic] || [];
 }
-
-/**
- * Add or update topic heading mapping
- * Call this from suggest-unit-topics.ts when extracting topics
- */
-export function addTopicHeading(topic: string, headings: string[]): void {
-  topicHeadings[topic] = headings;
-}
