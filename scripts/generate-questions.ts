@@ -30,6 +30,7 @@ import crypto from 'crypto';
 import { units } from '../src/lib/units';
 import { loadUnitMaterials, extractTopicContent } from '../src/lib/learning-materials';
 import { inferWritingType, WritingType } from './lib/writing-type-inference';
+import { MODELS } from './lib/config';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -344,7 +345,7 @@ async function generateQuestionsForTopic(
     const topicContent = extractTopicContent(unitMaterials, topic);
 
     const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001', // Latest Haiku 4.5 - fastest and most cost-effective
+      model: MODELS.questionGeneration,
       max_tokens: 4000,
       messages: [
         {
@@ -597,9 +598,10 @@ async function generateAllQuestions(options: CLIOptions) {
     console.log(`\n📚 Processing ${unit.title}...`);
 
     // Filter topics based on CLI options
+    const topicNames = unit.topics.map(t => t.name);
     const topicsToProcess = options.topic
-      ? unit.topics.filter(t => t === options.topic || t.toLowerCase().includes(options.topic!.toLowerCase()))
-      : unit.topics;
+      ? topicNames.filter(t => t === options.topic || t.toLowerCase().includes(options.topic!.toLowerCase()))
+      : topicNames;
 
     if (options.topic && topicsToProcess.length === 0) {
       console.log(`   ⚠️  Topic "${options.topic}" not found in this unit`);

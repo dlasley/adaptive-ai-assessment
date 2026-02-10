@@ -33,6 +33,8 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
 import { units } from '../src/lib/units';
+import { insertUnitEntry } from './lib/file-updaters';
+import { MODELS } from './lib/config';
 
 // Initialize Anthropic client for PDF conversion
 const anthropic = new Anthropic({
@@ -139,26 +141,87 @@ function extractPdfText(pdfPath: string): string {
 }
 
 /**
- * Convert PDF text to markdown using Claude
+ * Split pdftotext output into chunks using form feed page boundaries.
+ * Groups pages so each chunk stays under maxCharsPerChunk.
  */
-async function convertPdfToMarkdown(pdfText: string, pdfName: string): Promise<string> {
-  console.log(`  📝 Sending ${pdfName} to Claude for conversion...`);
+function chunkPdfText(pdfText: string, maxCharsPerChunk: number = 15000): string[] {
+  // pdftotext inserts form feed (\f) between pages
+  const pages = pdfText.split('\f').filter(p => p.trim().length > 0);
+
+  if (pages.length === 0) return [pdfText];
+
+  const chunks: string[] = [];
+  let currentChunk = '';
+
+  for (const page of pages) {
+    if (currentChunk.length + page.length > maxCharsPerChunk && currentChunk.length > 0) {
+      chunks.push(currentChunk.trim());
+      currentChunk = '';
+    }
+    currentChunk += page + '\n\n';
+  }
+
+  if (currentChunk.trim().length > 0) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks;
+}
+
+/**
+ * Convert a single chunk of PDF text to markdown using Claude
+ */
+async function convertChunkToMarkdown(
+  chunkText: string,
+  pdfName: string,
+  chunkIndex: number,
+  totalChunks: number
+): Promise<string> {
+  const chunkContext = totalChunks > 1
+    ? `\n\nNote: This is section ${chunkIndex + 1} of ${totalChunks} from ${pdfName}. Convert ALL content faithfully — do NOT summarize, skip exercises, or deduplicate. If a section continues from a previous chunk, just convert what you see.\n\n`
+    : '\n\n';
 
   const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: MODELS.pdfConversion,
     max_tokens: 16000,
     messages: [
       {
         role: 'user',
-        content: CONVERSION_PROMPT + pdfText,
+        content: CONVERSION_PROMPT + chunkContext + chunkText,
       },
     ],
   });
 
   const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
-
-  // Clean common LLM artifacts
   return cleanConversionArtifacts(responseText);
+}
+
+/**
+ * Convert PDF text to markdown using Claude, chunking large inputs
+ */
+async function convertPdfToMarkdown(pdfText: string, pdfName: string): Promise<string> {
+  const chunks = chunkPdfText(pdfText);
+
+  if (chunks.length === 1) {
+    console.log(`  📝 Sending ${pdfName} to Claude for conversion (1 chunk)...`);
+    return convertChunkToMarkdown(chunks[0], pdfName, 0, 1);
+  }
+
+  console.log(`  📝 Sending ${pdfName} to Claude in ${chunks.length} chunks...`);
+  const markdownParts: string[] = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    console.log(`     Chunk ${i + 1}/${chunks.length} (${chunks[i].length.toLocaleString()} chars)...`);
+    const md = await convertChunkToMarkdown(chunks[i], pdfName, i, chunks.length);
+    markdownParts.push(md);
+
+    // Rate limit delay between chunks
+    if (i < chunks.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  return markdownParts.join('\n\n---\n\n');
 }
 
 /**
@@ -662,17 +725,19 @@ async function stepExtractTopics(
   if (options.skipTopics) {
     console.log('  ⏭️  Skipping (--skip-topics)');
     if (existingUnit) {
-      console.log(`  ℹ️  Using ${existingUnit.topics.length} existing topics from units.ts`);
-      return { success: true, topics: existingUnit.topics };
+      const topicNames = existingUnit.topics.map(t => t.name);
+      console.log(`  ℹ️  Using ${topicNames.length} existing topics from units.ts`);
+      return { success: true, topics: topicNames };
     }
     console.log(`  ❌ Unit ${unitId} not found in units.ts`);
     return { success: false };
   }
 
   if (existingUnit && !options.reviewTopics) {
-    console.log(`  ℹ️  Using ${existingUnit.topics.length} existing topics`);
-    existingUnit.topics.forEach(t => console.log(`     • ${t}`));
-    return { success: true, topics: existingUnit.topics };
+    const topicNames = existingUnit.topics.map(t => t.name);
+    console.log(`  ℹ️  Using ${topicNames.length} existing topics`);
+    topicNames.forEach(t => console.log(`     • ${t}`));
+    return { success: true, topics: topicNames };
   }
 
   // Run topic extraction
@@ -680,7 +745,7 @@ async function stepExtractTopics(
 
   if (options.dryRun) {
     console.log(`  [DRY RUN] Would run: npx tsx scripts/suggest-unit-topics.ts "${markdownPath}" ${unitId}`);
-    return { success: true, topics: existingUnit?.topics || [] };
+    return { success: true, topics: existingUnit?.topics.map(t => t.name) || [] };
   }
 
   const result = runScript('scripts/suggest-unit-topics.ts', [
@@ -712,7 +777,95 @@ async function stepExtractTopics(
   // Note: This won't work at runtime since units.ts is already imported
   // User should re-run the script after updating units.ts
   const updatedUnit = units.find(u => u.id === unitId);
-  return { success: true, topics: updatedUnit?.topics || [] };
+  return { success: true, topics: updatedUnit?.topics.map(t => t.name) || [] };
+}
+
+/**
+ * Step 2.5: Auto-update units.ts for new units
+ * Only runs when the unit doesn't already exist in units.ts.
+ */
+async function stepAutoUpdateFiles(
+  unitId: string,
+  options: PipelineOptions
+): Promise<{ success: boolean; topics?: string[] }> {
+  console.log('\n┌─────────────────────────────────────────────────────────────┐');
+  console.log('│  STEP 2.5: Auto-update Source Files (new unit)             │');
+  console.log('└─────────────────────────────────────────────────────────────┘\n');
+
+  // Read the topic extraction output
+  const topicsJsonPath = path.join(process.cwd(), 'data', `topics-${unitId}.json`);
+  if (!fs.existsSync(topicsJsonPath)) {
+    if (options.dryRun) {
+      console.log(`  [DRY RUN] Would read ${topicsJsonPath} and auto-update:`);
+      console.log('     - src/lib/units.ts (new unit entry with topic headings)');
+      return { success: true, topics: [] };
+    }
+    console.log(`  ❌ Topic extraction output not found: ${topicsJsonPath}`);
+    return { success: false };
+  }
+
+  const topicsData = JSON.parse(fs.readFileSync(topicsJsonPath, 'utf-8'));
+
+  // Log any items that need review
+  if (topicsData.reconciled?.needsReview?.length > 0) {
+    console.log('  ⚠️  Topics that may need manual review:');
+    for (const item of topicsData.reconciled.needsReview) {
+      console.log(`     ? "${item.extracted}" — ${item.reason}`);
+    }
+    console.log('     (Included in unit entry — edit units.ts after if needed)\n');
+  }
+
+  const suggestedTopics: string[] = topicsData.suggestedTopics || [];
+  const suggestedLabel: string = topicsData.suggestedLabel || 'TODO: Add label';
+  const headingMappings: Record<string, string[]> = topicsData.headingMappings || {};
+
+  if (suggestedTopics.length === 0) {
+    console.log('  ❌ No topics found in extraction output');
+    return { success: false };
+  }
+
+  console.log(`  📋 ${suggestedTopics.length} topics to add`);
+  console.log(`  🏷️  Label: "${suggestedLabel}"`);
+
+  // Build topics with headings merged in
+  const topicsWithHeadings = suggestedTopics.map(name => ({
+    name,
+    headings: headingMappings[name] || [],
+  }));
+
+  // --- Update units.ts ---
+  const unitsPath = path.join(process.cwd(), 'src', 'lib', 'units.ts');
+  const unitsContent = fs.readFileSync(unitsPath, 'utf-8');
+
+  const unitNum = unitId.replace('unit-', '');
+  const unitData = {
+    id: unitId,
+    title: `🇫🇷 Unit ${unitNum}`,
+    label: suggestedLabel,
+    description: `Unit ${unitNum} content`,
+    topics: topicsWithHeadings,
+  };
+
+  const updatedUnits = insertUnitEntry(unitsContent, unitData);
+
+  if (updatedUnits) {
+    if (options.dryRun) {
+      console.log(`\n  [DRY RUN] Would update src/lib/units.ts with ${suggestedTopics.length} topics`);
+    } else {
+      fs.writeFileSync(unitsPath, updatedUnits);
+      console.log(`  ✅ Updated src/lib/units.ts — added ${unitId}`);
+    }
+  } else {
+    console.log(`  ℹ️  Unit ${unitId} already in units.ts (skipped)`);
+  }
+
+  // Clean up temp JSON
+  if (!options.dryRun) {
+    fs.unlinkSync(topicsJsonPath);
+    console.log(`  🧹 Cleaned up ${topicsJsonPath}`);
+  }
+
+  return { success: true, topics: suggestedTopics };
 }
 
 /**
@@ -793,8 +946,20 @@ async function runPipelineForUnit(
     return;
   }
 
+  // Step 2.5: Auto-update source files (only for new units)
+  let topics = step2.topics || [];
+  const existingUnit = units.find(u => u.id === unitId);
+  if (!existingUnit) {
+    const step2_5 = await stepAutoUpdateFiles(unitId, options);
+    if (!step2_5.success) {
+      console.log('\n  ❌ Pipeline stopped at source file update');
+      return;
+    }
+    topics = step2_5.topics || topics;
+  }
+
   // Step 3: Generate questions
-  const step3 = await stepGenerateQuestions(unitId, step2.topics || [], options);
+  const step3 = await stepGenerateQuestions(unitId, topics, options);
   if (!step3.success) {
     console.log('\n  ❌ Question generation failed');
     return;

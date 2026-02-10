@@ -13,6 +13,8 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
+import { MODELS } from './lib/config';
+
 import Anthropic from '@anthropic-ai/sdk';
 import fs from 'fs';
 import path from 'path';
@@ -21,7 +23,6 @@ import {
   getAllTopics,
   findPotentialDuplicates,
   checkTopicSimilarity,
-  validateNewTopics,
 } from './lib/topic-utils';
 
 const anthropic = new Anthropic({
@@ -100,7 +101,7 @@ Return ONLY valid JSON object:
 Extract ALL topics, even if they seem to overlap with existing ones. We will deduplicate later.`;
 
   const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: MODELS.topicExtraction,
     max_tokens: 4000,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -204,22 +205,13 @@ function generateTopicsArray(
 }
 
 /**
- * Update topic-headings.ts with extracted heading patterns
- * This makes the topic extraction self-maintaining
+ * Compute heading mappings from extracted topics.
+ * Pure function — returns a Record of topic name → keyword patterns.
  */
-async function updateTopicHeadings(
+function computeHeadingMappings(
   extractedTopics: ExtractedTopic[],
   finalTopics: string[]
-): Promise<void> {
-  const topicHeadingsPath = path.join(process.cwd(), 'src', 'lib', 'topic-headings.ts');
-
-  // Read current file
-  let currentContent = '';
-  if (fs.existsSync(topicHeadingsPath)) {
-    currentContent = fs.readFileSync(topicHeadingsPath, 'utf-8');
-  }
-
-  // Build mapping from extracted topics
+): Record<string, string[]> {
   const newMappings: Record<string, string[]> = {};
 
   for (const topic of extractedTopics) {
@@ -250,12 +242,27 @@ async function updateTopicHeadings(
     }
   }
 
-  // Check if we have new mappings to add
+  return newMappings;
+}
+
+/**
+ * Log new topic-heading mappings that aren't yet in topic-headings.ts
+ */
+async function logNewHeadingMappings(
+  headingMappings: Record<string, string[]>
+): Promise<void> {
+  const topicHeadingsPath = path.join(process.cwd(), 'src', 'lib', 'topic-headings.ts');
+
+  let currentContent = '';
+  if (fs.existsSync(topicHeadingsPath)) {
+    currentContent = fs.readFileSync(topicHeadingsPath, 'utf-8');
+  }
+
   const existingMappings = currentContent.match(/'([^']+)':\s*\[/g) || [];
   const existingTopics = existingMappings.map(m => m.replace(/'([^']+)':\s*\[/, '$1'));
 
   let hasNewMappings = false;
-  for (const topic of Object.keys(newMappings)) {
+  for (const topic of Object.keys(headingMappings)) {
     if (!existingTopics.some(t => t.toLowerCase() === topic.toLowerCase())) {
       hasNewMappings = true;
       break;
@@ -264,7 +271,7 @@ async function updateTopicHeadings(
 
   if (hasNewMappings) {
     console.log('\n📝 New topic-heading mappings discovered:');
-    for (const [topic, keywords] of Object.entries(newMappings)) {
+    for (const [topic, keywords] of Object.entries(headingMappings)) {
       if (!existingTopics.some(t => t.toLowerCase() === topic.toLowerCase())) {
         console.log(`   "${topic}": [${keywords.map(k => `'${k}'`).join(', ')}]`);
       }
@@ -401,13 +408,16 @@ ${suggestedTopics.map(t => `    '${t.replace(/'/g, "\\'")}',`).join('\n')}
 },
 `);
 
-  // Save detailed results
+  // Compute heading mappings from extracted topics
+  const headingMappings = computeHeadingMappings(extraction.topics, suggestedTopics);
+
+  // Save detailed results (predictable filename for pipeline consumption)
   const outputDir = path.join(process.cwd(), 'data');
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  const outputPath = path.join(outputDir, `topics-${unitId}-${Date.now()}.json`);
+  const outputPath = path.join(outputDir, `topics-${unitId}.json`);
   fs.writeFileSync(outputPath, JSON.stringify({
     unitId,
     sourceFile: markdownPath,
@@ -416,12 +426,13 @@ ${suggestedTopics.map(t => `    '${t.replace(/'/g, "\\'")}',`).join('\n')}
     extractedTopics: extraction.topics,
     reconciled,
     suggestedTopics,
+    headingMappings,
   }, null, 2));
 
   console.log(`\n💾 Detailed results saved to: ${outputPath}`);
 
-  // Update topic-headings.ts with extracted heading sources
-  await updateTopicHeadings(extraction.topics, suggestedTopics);
+  // Log any new heading mappings that need to be added
+  await logNewHeadingMappings(headingMappings);
 
   // Summary
   console.log('\n' + '═'.repeat(60));

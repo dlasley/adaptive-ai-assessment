@@ -20,7 +20,7 @@ export const FEATURES = {
   // SKIP_FUZZY_LOGIC: process.env.SKIP_FUZZY_LOGIC === 'true',
 
   // Seconds to disable "Next Question" button after a wrong answer (0 = no countdown)
-  WRONG_ANSWER_COUNTDOWN_SECONDS: 20,
+  WRONG_ANSWER_COUNTDOWN_SECONDS: 15,
 
   // Leitner adaptive question selection (spaced repetition)
   LEITNER_MODE: process.env.NEXT_PUBLIC_ENABLE_LEITNER === 'true',

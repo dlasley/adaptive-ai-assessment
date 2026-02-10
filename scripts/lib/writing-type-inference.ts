@@ -53,32 +53,3 @@ export function inferWritingType(questionText: string): WritingType {
   return 'open_ended';
 }
 
-/**
- * Validate that a string is a valid WritingType
- * Used to guard against unknown types from AI responses
- */
-export function isValidWritingType(type: string): type is WritingType {
-  const validTypes: WritingType[] = [
-    'translation',
-    'conjugation',
-    'question_formation',
-    'sentence_building',
-    'open_ended',
-  ];
-  return validTypes.includes(type as WritingType);
-}
-
-/**
- * Get writing type with fallback validation
- * If AI returns an unknown type, infer from question text instead
- */
-export function getValidatedWritingType(
-  aiType: string | null | undefined,
-  questionText: string
-): WritingType {
-  if (aiType && isValidWritingType(aiType)) {
-    return aiType;
-  }
-  // Fall back to pattern inference
-  return inferWritingType(questionText);
-}

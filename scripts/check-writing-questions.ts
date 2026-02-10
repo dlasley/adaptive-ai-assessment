@@ -6,74 +6,28 @@
  *   --samples  Show sample question text from each type
  */
 
-import { config } from 'dotenv';
-import { resolve } from 'path';
-import { createClient } from '@supabase/supabase-js';
+import { createScriptSupabase, fetchAllQuestions, analyzeDistribution } from './lib/db-queries';
 
-// Load environment variables
-config({ path: resolve(__dirname, '../.env.local') });
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ Missing Supabase credentials');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createScriptSupabase();
 
 const showSamples = process.argv.includes('--samples');
-
-interface Question {
-  id: string;
-  unit_id: string;
-  difficulty: string;
-  type: string;
-  writing_type: string | null;
-  topic: string;
-  question: string;
-  correct_answer: string;
-}
 
 async function checkQuestions() {
   console.log('🔍 Checking questions in database...\n');
 
   try {
-    // Get all questions (paginated to bypass 1000 row limit)
-    const PAGE_SIZE = 1000;
-    let all: Question[] = [];
-    let page = 0;
-    let hasMore = true;
+    const questions = await fetchAllQuestions(
+      supabase,
+      'id, unit_id, difficulty, type, writing_type, topic, question, correct_answer',
+    );
 
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('questions')
-        .select('id, unit_id, difficulty, type, writing_type, topic, question, correct_answer')
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-
-      if (error) {
-        console.error('❌ Error fetching questions:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        all = all.concat(data as Question[]);
-        page++;
-        hasMore = data.length === PAGE_SIZE;
-      } else {
-        hasMore = false;
-      }
-    }
-
-    if (all.length === 0) {
+    if (questions.length === 0) {
       console.log('⚠️  No questions found in database!');
       console.log('\nTo add questions, run:');
       console.log('  npx tsx scripts/generate-questions.ts --sync-db');
       return;
     }
 
-    const questions = all as Question[];
     console.log(`✅ Total questions: ${questions.length}\n`);
 
     // Count by unit
@@ -92,14 +46,11 @@ async function checkQuestions() {
       }
     }
 
-    // Count by question type (MCQ, T/F, fill-in-blank, writing)
-    const byType = questions.reduce((acc, q) => {
-      acc[q.type] = (acc[q.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    // Type and writing subtype distribution (shared analysis)
+    const dist = analyzeDistribution(questions);
 
     console.log('\n📝 By Question Type:');
-    Object.entries(byType).forEach(([type, count]) => {
+    Object.entries(dist.byType).forEach(([type, count]) => {
       console.log(`  ${type}: ${count} questions`);
     });
 
@@ -114,17 +65,9 @@ async function checkQuestions() {
       console.log(`  ${difficulty}: ${count} questions`);
     });
 
-    // Count writing questions by writing_type
-    const writingQuestions = questions.filter(q => q.type === 'writing');
-    if (writingQuestions.length > 0) {
-      const byWritingType = writingQuestions.reduce((acc, q) => {
-        const wType = q.writing_type || 'unspecified';
-        acc[wType] = (acc[wType] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
+    if (dist.writingTotal > 0) {
       console.log('\n✍️  Writing Questions by Subtype:');
-      Object.entries(byWritingType).forEach(([type, count]) => {
+      Object.entries(dist.byWritingType).forEach(([type, count]) => {
         console.log(`  ${type}: ${count} questions`);
       });
     }
@@ -157,13 +100,13 @@ async function checkQuestions() {
         console.log(`\n--- ${type.toUpperCase()} ---`);
         samples.forEach((q, i) => {
           console.log(`${i + 1}. [${q.unit_id}/${q.difficulty}] ${q.topic}`);
-          const questionText = q.question.length > 100
-            ? q.question.substring(0, 100) + '...'
-            : q.question;
+          const questionText = (q.question || '').length > 100
+            ? (q.question || '').substring(0, 100) + '...'
+            : q.question || '';
           console.log(`   Q: ${questionText}`);
-          const answerText = q.correct_answer.length > 80
-            ? q.correct_answer.substring(0, 80) + '...'
-            : q.correct_answer;
+          const answerText = (q.correct_answer || '').length > 80
+            ? (q.correct_answer || '').substring(0, 80) + '...'
+            : q.correct_answer || '';
           console.log(`   A: ${answerText}`);
         });
       }

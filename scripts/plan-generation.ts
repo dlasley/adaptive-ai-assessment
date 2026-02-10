@@ -14,25 +14,13 @@
  *   --help, -h       Show this help message
  */
 
-import { config } from 'dotenv';
-import { resolve } from 'path';
-import { createClient } from '@supabase/supabase-js';
 import { spawn } from 'child_process';
 import readline from 'readline';
 import { units } from '../src/lib/units';
+import { createScriptSupabase, fetchAllQuestions, analyzeDistribution, type DistributionAnalysis } from './lib/db-queries';
+import { COST_PER_API_CALL } from './lib/config';
 
-// Load environment variables
-config({ path: resolve(__dirname, '../.env.local') });
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ Missing Supabase credentials');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createScriptSupabase();
 
 // ============================================================================
 // Configuration
@@ -91,28 +79,10 @@ const TOPIC_COMPATIBILITY: Record<string, { topics: Array<{ unitId: string; topi
   },
 };
 
-// Cost estimates (Haiku 4.5)
-const COST_PER_API_CALL = 0.008; // ~$0.008 per call (3k input + 1.5k output tokens)
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface Question {
-  id: string;
-  unit_id: string;
-  difficulty: string;
-  type: string;
-  writing_type: string | null;
-  topic: string;
-}
-
-interface DistributionAnalysis {
-  total: number;
-  byType: Record<string, number>;
-  byWritingType: Record<string, number>;
-  writingTotal: number;
-}
 
 interface GenerationStep {
   writingType: string;
@@ -195,60 +165,8 @@ Examples:
 }
 
 // ============================================================================
-// Database Queries
-// ============================================================================
-
-async function fetchAllQuestions(): Promise<Question[]> {
-  const PAGE_SIZE = 1000;
-  let all: Question[] = [];
-  let page = 0;
-  let hasMore = true;
-
-  while (hasMore) {
-    const { data, error } = await supabase
-      .from('questions')
-      .select('id, unit_id, difficulty, type, writing_type, topic')
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-
-    if (error) {
-      throw new Error(`Error fetching questions: ${error.message}`);
-    }
-
-    if (data && data.length > 0) {
-      all = all.concat(data as Question[]);
-      page++;
-      hasMore = data.length === PAGE_SIZE;
-    } else {
-      hasMore = false;
-    }
-  }
-
-  return all;
-}
-
-// ============================================================================
 // Analysis
 // ============================================================================
-
-function analyzeDistribution(questions: Question[]): DistributionAnalysis {
-  const byType: Record<string, number> = {};
-  const byWritingType: Record<string, number> = {};
-
-  for (const q of questions) {
-    byType[q.type] = (byType[q.type] || 0) + 1;
-    if (q.type === 'writing') {
-      const wt = q.writing_type || 'unspecified';
-      byWritingType[wt] = (byWritingType[wt] || 0) + 1;
-    }
-  }
-
-  return {
-    total: questions.length,
-    byType,
-    byWritingType,
-    writingTotal: byType['writing'] || 0,
-  };
-}
 
 function printAnalysis(analysis: DistributionAnalysis): void {
   console.log('📊 Current Distribution Analysis\n');
@@ -474,7 +392,7 @@ async function main() {
   console.log('🔍 Fetching current question distribution...\n');
 
   try {
-    const questions = await fetchAllQuestions();
+    const questions = await fetchAllQuestions(supabase);
 
     if (questions.length === 0) {
       console.log('⚠️  No questions found in database!');

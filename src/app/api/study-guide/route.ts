@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTopicResources, loadUnitMaterials, extractYouTubeLinks } from '@/lib/learning-materials';
+import { loadUnitMaterials, extractYouTubeLinks } from '@/lib/learning-materials';
 
 interface IncorrectQuestion {
   topic: string;

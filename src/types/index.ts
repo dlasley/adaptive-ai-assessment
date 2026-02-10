@@ -1,9 +1,14 @@
+export interface Topic {
+  name: string;
+  headings: string[];
+}
+
 export interface Unit {
   id: string;
   title: string;
   label?: string; // Short label for dropdown (e.g., "Activities & -ER Verbs")
   description: string;
-  topics: string[];
+  topics: Topic[];
 }
 
 export interface Question {

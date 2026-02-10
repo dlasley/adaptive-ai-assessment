@@ -1,24 +1,34 @@
 import fs from 'fs';
 import path from 'path';
-import { getTopicHeadings } from './topic-headings';
+import { units } from './units';
 
-// Map unit IDs to their corresponding markdown files
-const UNIT_FILE_MAP: Record<string, string> = {
-  'introduction': 'French 1 Introduction.md',
-  'unit-2': 'French 1 Unit 2.md',
-  'unit-3': 'French 1 Unit 3.md',
-};
+/**
+ * Look up heading patterns for a topic from units.ts
+ */
+function getTopicHeadings(topic: string): string[] {
+  for (const unit of units) {
+    const found = unit.topics.find(t => t.name === topic);
+    if (found) return found.headings;
+  }
+  return [];
+}
+
+/**
+ * Derive the markdown filename for a unit ID.
+ * Follows the naming convention used by regenerate.ts (line 536).
+ */
+function getMarkdownFilename(unitId: string): string {
+  if (unitId === 'introduction') return 'French 1 Introduction.md';
+  const num = unitId.replace('unit-', '');
+  return `French 1 Unit ${num}.md`;
+}
 
 /**
  * Load learning materials for a specific unit
  */
 export function loadUnitMaterials(unitId: string): string {
   try {
-    const fileName = UNIT_FILE_MAP[unitId];
-    if (!fileName) {
-      throw new Error(`Unknown unit ID: ${unitId}`);
-    }
-
+    const fileName = getMarkdownFilename(unitId);
     const filePath = path.join(process.cwd(), 'learnings', fileName);
     const content = fs.readFileSync(filePath, 'utf-8');
     return content;
@@ -145,26 +155,4 @@ export function extractYouTubeLinks(materials: string, topic?: string): { url: s
   }
 
   return youtubeLinks;
-}
-
-/**
- * Get YouTube resources for multiple topics from a unit
- */
-export function getTopicResources(unitId: string, topics: string[]): Record<string, { url: string; title: string }[]> {
-  try {
-    const materials = loadUnitMaterials(unitId);
-    const resources: Record<string, { url: string; title: string }[]> = {};
-
-    for (const topic of topics) {
-      const links = extractYouTubeLinks(materials, topic);
-      if (links.length > 0) {
-        resources[topic] = links;
-      }
-    }
-
-    return resources;
-  } catch (error) {
-    console.error(`Error getting topic resources for unit ${unitId}:`, error);
-    return {};
-  }
 }
