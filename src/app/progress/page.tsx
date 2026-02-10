@@ -125,7 +125,7 @@ export default function ProgressPage() {
           <StatCard value={totalQuizzes} label="Quizzes Completed" colorClass="text-indigo-600 dark:text-indigo-400" size="lg" />
           <StatCard value={totalQuestions} label="Questions Answered" colorClass="text-purple-600 dark:text-purple-400" size="lg" />
           <StatCard value={progress?.correctAnswers || 0} label="Correct Answers" colorClass="text-green-600 dark:text-green-400" size="lg" />
-          <StatCard value={`${overallAccuracy.toFixed(0)}%`} label="Overall Accuracy" colorClass={getAccuracyColor(overallAccuracy)} size="lg" />
+          <StatCard value={`${overallAccuracy.toFixed(0)}%`} label="Overall Accuracy" colorClass={getAccuracyColor(overallAccuracy)} size="lg" animate={overallAccuracy >= 90 ? 'glow' : 'none'} />
         </div>
       </ContextualHint>
 
@@ -241,7 +241,7 @@ export default function ProgressPage() {
                         </div>
                         <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                           <div
-                            className={`h-2 rounded-full transition-all ${getMasteryBgColor(concept.mastery_percentage)}`}
+                            className={`h-2 rounded-full transition-all ${getMasteryBgColor(concept.mastery_percentage)}${concept.mastery_percentage === 100 ? ' animate-shimmer bg-gradient-to-r from-green-500 via-green-300 to-green-500 bg-[length:200%_100%]' : ''}`}
                             style={{ width: `${concept.mastery_percentage}%` }}
                           ></div>
                         </div>

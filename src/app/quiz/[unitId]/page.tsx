@@ -4,8 +4,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Question } from '@/types';
 import { units } from '@/lib/units';
-import { getStoredStudyCode, getStudyCodeId } from '@/lib/study-codes';
-import { saveQuizResults, saveQuizResultsLocally } from '@/lib/progress-tracking';
+import { getStoredStudyCode, getStudyCodeId, getQuizHistory } from '@/lib/study-codes';
+import { saveQuizResults, saveQuizResultsLocally, getProgress } from '@/lib/progress-tracking';
 import { QuizMode, getModeConfig } from '@/lib/quiz-modes';
 import { FEATURES } from '@/lib/feature-flags';
 import {
@@ -18,6 +18,10 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import OnboardingTour from '@/components/OnboardingTour';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { Step } from 'react-joyride';
+import { useCelebration } from '@/hooks/useCelebration';
+import CelebrationOverlay from '@/components/CelebrationOverlay';
+import MicroRewardToast from '@/components/MicroRewardToast';
+import AnimatedScoreCounter from '@/components/AnimatedScoreCounter';
 
 interface TopicRecommendation {
   topic: string;
@@ -62,6 +66,10 @@ export default function QuizPage() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { shouldShowQuizTour, completeQuizTour } = useOnboarding();
   const [runQuizTour, setRunQuizTour] = useState(false);
+  const {
+    milestones, showOverlay, streakToast,
+    recordAnswer, detectAndCelebrate, dismissOverlay, dismissStreakToast,
+  } = useCelebration();
 
   const quizTourSteps: Step[] = [
     {
@@ -374,6 +382,7 @@ export default function QuizPage() {
         ...evaluationResults,
         [currentQuestion.id]: evaluationResult
       });
+      recordAnswer(isCorrect);
     }
   };
 
@@ -383,6 +392,7 @@ export default function QuizPage() {
     setUserAnswers({ ...userAnswers, [currentQuestion.id]: answer });
     setEvaluationResults({ ...evaluationResults, [currentQuestion.id]: evaluation });
     setShowExplanation(true);
+    recordAnswer(evaluation.isCorrect);
   };
 
   const fetchStudyGuide = async () => {
@@ -451,13 +461,36 @@ export default function QuizPage() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setShowExplanation(false);
     } else {
+      // Fetch pre-save data for milestone detection
+      const studyCode = getStoredStudyCode();
+      const score = calculateScore();
+      if (studyCode) {
+        try {
+          const [preHistory, preProgress] = await Promise.all([
+            getQuizHistory(studyCode, 50),
+            getProgress(studyCode),
+          ]);
+          await detectAndCelebrate({
+            scorePercentage: score.percentage,
+            unitId,
+            difficulty,
+            isAssessmentMode,
+            quizHistory: preHistory,
+            previousProgress: preProgress,
+            currentCorrectAnswers: score.correct,
+            currentTotalQuestions: score.total,
+          });
+        } catch {
+          // Milestone detection failure should not block results
+        }
+      }
       setShowResults(true);
-      saveResults(); // Save quiz results when finishing
+      saveResults();
       fetchStudyGuide();
     }
   };
@@ -546,10 +579,15 @@ export default function QuizPage() {
               ? 'bg-gradient-to-r from-amber-500 to-orange-600'
               : 'bg-gradient-to-r from-indigo-500 to-purple-600'
           }`}>
-            <div className="text-6xl font-bold mb-2">{score.percentage}%</div>
+            <AnimatedScoreCounter target={score.percentage} className="text-6xl font-bold mb-2" />
             <div className="text-xl">
               {score.correct} out of {score.total} correct
             </div>
+            {milestones?.isNewHighScore && (
+              <div className="animate-badge-pop mt-3 inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-yellow-900 rounded-full font-bold text-lg shadow-lg">
+                {milestones.isNewOverallHighScore ? '\u2B50 All-Time Best!' : '\u2B50 New Best!'}
+              </div>
+            )}
             {isAssessmentMode && (
               <div className="mt-2 text-sm opacity-90">
                 Written responses only
@@ -909,6 +947,16 @@ export default function QuizPage() {
             Practice Again
           </button>
         </div>
+        {showOverlay && milestones && (
+          <CelebrationOverlay milestones={milestones} onDismiss={dismissOverlay} />
+        )}
+        {streakToast && (
+          <MicroRewardToast
+            message={streakToast.msg}
+            icon={streakToast.icon}
+            onDismiss={dismissStreakToast}
+          />
+        )}
       </div>
     );
   }
@@ -1294,6 +1342,13 @@ export default function QuizPage() {
           }}
         />
       </div>
+      {streakToast && (
+        <MicroRewardToast
+          message={streakToast.msg}
+          icon={streakToast.icon}
+          onDismiss={dismissStreakToast}
+        />
+      )}
     </div>
   );
 }

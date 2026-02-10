@@ -40,6 +40,7 @@ next-env.d.ts
 
 # learnings (proprietary course materials)
 /learnings/PROGRESS.md
+/learnings/milestone-animations.md
 
 # session work tracker (local only)
 /PROGRESS.md

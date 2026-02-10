@@ -3,16 +3,18 @@ interface StatCardProps {
   label: string;
   colorClass?: string;
   size?: 'sm' | 'lg';
+  animate?: 'glow' | 'none';
 }
 
-export default function StatCard({ value, label, colorClass, size = 'sm' }: StatCardProps) {
+export default function StatCard({ value, label, colorClass, size = 'sm', animate = 'none' }: StatCardProps) {
   const isLarge = size === 'lg';
   const valueSize = isLarge ? 'text-4xl' : 'text-3xl';
   const padding = isLarge ? 'p-6' : 'p-4';
   const rounding = isLarge ? 'rounded-xl' : 'rounded-lg';
+  const animateClass = animate === 'glow' ? 'animate-pulse-glow' : '';
 
   return (
-    <div className={`bg-white dark:bg-gray-800 ${rounding} shadow-lg ${padding} text-center`}>
+    <div className={`bg-white dark:bg-gray-800 ${rounding} shadow-lg ${padding} text-center ${animateClass}`}>
       <div className={`${valueSize} font-bold ${colorClass || ''}${isLarge ? ' mb-2' : ''}`}>
         {value}
       </div>
