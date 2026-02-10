@@ -6,7 +6,9 @@ import { getStoredStudyCode, getQuizHistory, getConceptMastery, getWeakTopics, g
 import { getProgress } from '@/lib/progress-tracking';
 import { getVideosForTopic } from '@/lib/video-resources';
 import { StudyCodeDisplay } from '@/components/StudyCodeDisplay';
+import StatCard from '@/components/StatCard';
 import type { StudyCode, QuizHistory, ConceptMastery } from '@/lib/supabase';
+import { getAccuracyColor, getMasteryColor, getMasteryBgColor } from '@/lib/color-utils';
 
 export default function ProgressPage() {
   const router = useRouter();
@@ -112,42 +114,10 @@ export default function ProgressPage() {
 
       {/* Overall Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
-          <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">
-            {totalQuizzes}
-          </div>
-          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Quizzes Completed
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
-          <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-            {totalQuestions}
-          </div>
-          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Questions Answered
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
-          <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-2">
-            {progress?.correctAnswers || 0}
-          </div>
-          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Correct Answers
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
-          <div className={`text-4xl font-bold mb-2 ${
-            overallAccuracy >= 80 ? 'text-green-600 dark:text-green-400' :
-            overallAccuracy >= 60 ? 'text-yellow-600 dark:text-yellow-400' :
-            'text-red-600 dark:text-red-400'
-          }`}>
-            {overallAccuracy.toFixed(0)}%
-          </div>
-          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Overall Accuracy
-          </div>
-        </div>
+        <StatCard value={totalQuizzes} label="Quizzes Completed" colorClass="text-indigo-600 dark:text-indigo-400" size="lg" />
+        <StatCard value={totalQuestions} label="Questions Answered" colorClass="text-purple-600 dark:text-purple-400" size="lg" />
+        <StatCard value={progress?.correctAnswers || 0} label="Correct Answers" colorClass="text-green-600 dark:text-green-400" size="lg" />
+        <StatCard value={`${overallAccuracy.toFixed(0)}%`} label="Overall Accuracy" colorClass={getAccuracyColor(overallAccuracy)} size="lg" />
       </div>
 
       {/* Tab Navigation */}
@@ -222,11 +192,7 @@ export default function ProgressPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className={`text-2xl font-bold ${
-                            quiz.score_percentage >= 80 ? 'text-green-600 dark:text-green-400' :
-                            quiz.score_percentage >= 60 ? 'text-yellow-600 dark:text-yellow-400' :
-                            'text-red-600 dark:text-red-400'
-                          }`}>
+                          <div className={`text-2xl font-bold ${getAccuracyColor(quiz.score_percentage)}`}>
                             {quiz.score_percentage.toFixed(0)}%
                           </div>
                           <div className="text-xs text-gray-600 dark:text-gray-400">
@@ -259,22 +225,14 @@ export default function ProgressPage() {
                             <span className="text-sm text-gray-600 dark:text-gray-400">
                               {concept.correct_attempts}/{concept.total_attempts}
                             </span>
-                            <span className={`font-bold ${
-                              concept.mastery_percentage >= 85 ? 'text-green-600 dark:text-green-400' :
-                              concept.mastery_percentage >= 70 ? 'text-yellow-600 dark:text-yellow-400' :
-                              'text-red-600 dark:text-red-400'
-                            }`}>
+                            <span className={`font-bold ${getMasteryColor(concept.mastery_percentage)}`}>
                               {concept.mastery_percentage.toFixed(0)}%
                             </span>
                           </div>
                         </div>
                         <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                           <div
-                            className={`h-2 rounded-full transition-all ${
-                              concept.mastery_percentage >= 85 ? 'bg-green-600' :
-                              concept.mastery_percentage >= 70 ? 'bg-yellow-600' :
-                              'bg-red-600'
-                            }`}
+                            className={`h-2 rounded-full transition-all ${getMasteryBgColor(concept.mastery_percentage)}`}
                             style={{ width: `${concept.mastery_percentage}%` }}
                           ></div>
                         </div>

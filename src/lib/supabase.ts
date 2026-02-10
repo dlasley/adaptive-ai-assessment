@@ -54,19 +54,6 @@ export interface QuizHistory {
   time_spent_seconds: number | null;
 }
 
-export interface QuestionResult {
-  id: string;
-  quiz_history_id: string;
-  study_code_id: string;
-  question_id: string;
-  topic: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  is_correct: boolean;
-  user_answer: string | null;
-  correct_answer: string;
-  attempted_at: string;
-}
-
 export interface ConceptMastery {
   study_code_id: string;
   topic: string;
@@ -76,10 +63,3 @@ export interface ConceptMastery {
   last_attempted: string;
 }
 
-export interface WeakTopic {
-  study_code_id: string;
-  topic: string;
-  total_attempts: number;
-  correct_attempts: number;
-  mastery_percentage: number;
-}

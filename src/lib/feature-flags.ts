@@ -61,11 +61,6 @@ export function getFuzzyLogicThreshold(difficulty: string): number {
   return FUZZY_LOGIC_THRESHOLDS[difficulty as DifficultyLevel] ?? FUZZY_LOGIC_THRESHOLDS.intermediate;
 }
 
-// Helper function to check if any new feature is enabled
-export const isAnyNewFeatureEnabled = () => {
-  return Object.values(FEATURES).some(flag => flag === true);
-};
-
 // Log feature status in development
 if (process.env.NODE_ENV === 'development') {
   console.log('🎛️  Feature Flags:', FEATURES);

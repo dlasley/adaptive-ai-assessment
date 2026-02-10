@@ -19,6 +19,8 @@ import {
   type StudentDetailedProgress,
 } from '@/lib/admin';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import StatCard from '@/components/StatCard';
+import { getAccuracyColor, getMasteryColor, getMasteryBgColor } from '@/lib/color-utils';
 
 // Format date and time in PST timezone
 function formatDateTimePST(dateString: string): string {
@@ -411,34 +413,10 @@ export default function AdminPage() {
 
         {/* Student Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
-            <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-              {selectedStudent.studyCode.totalQuizzes}
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">Quizzes</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
-            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-              {selectedStudent.studyCode.totalQuestions}
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">Questions</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
-            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-              {selectedStudent.studyCode.correctAnswers}
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">Correct</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
-            <div className={`text-3xl font-bold ${
-              selectedStudent.studyCode.overallAccuracy >= 80 ? 'text-green-600 dark:text-green-400' :
-              selectedStudent.studyCode.overallAccuracy >= 60 ? 'text-yellow-600 dark:text-yellow-400' :
-              'text-red-600 dark:text-red-400'
-            }`}>
-              {selectedStudent.studyCode.overallAccuracy.toFixed(0)}%
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">Accuracy</div>
-          </div>
+          <StatCard value={selectedStudent.studyCode.totalQuizzes} label="Quizzes" colorClass="text-indigo-600 dark:text-indigo-400" />
+          <StatCard value={selectedStudent.studyCode.totalQuestions} label="Questions" colorClass="text-purple-600 dark:text-purple-400" />
+          <StatCard value={selectedStudent.studyCode.correctAnswers} label="Correct" colorClass="text-green-600 dark:text-green-400" />
+          <StatCard value={`${selectedStudent.studyCode.overallAccuracy.toFixed(0)}%`} label="Accuracy" colorClass={getAccuracyColor(selectedStudent.studyCode.overallAccuracy)} />
         </div>
 
         {/* Quiz History */}
@@ -462,11 +440,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className={`text-2xl font-bold ${
-                      quiz.score_percentage >= 80 ? 'text-green-600 dark:text-green-400' :
-                      quiz.score_percentage >= 60 ? 'text-yellow-600 dark:text-yellow-400' :
-                      'text-red-600 dark:text-red-400'
-                    }`}>
+                    <div className={`text-2xl font-bold ${getAccuracyColor(quiz.score_percentage)}`}>
                       {quiz.score_percentage.toFixed(0)}%
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-400">
@@ -496,22 +470,14 @@ export default function AdminPage() {
                       <span className="text-sm text-gray-600 dark:text-gray-400">
                         {concept.correct_attempts}/{concept.total_attempts}
                       </span>
-                      <span className={`font-bold ${
-                        concept.mastery_percentage >= 85 ? 'text-green-600 dark:text-green-400' :
-                        concept.mastery_percentage >= 70 ? 'text-yellow-600 dark:text-yellow-400' :
-                        'text-red-600 dark:text-red-400'
-                      }`}>
+                      <span className={`font-bold ${getMasteryColor(concept.mastery_percentage)}`}>
                         {concept.mastery_percentage.toFixed(0)}%
                       </span>
                     </div>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full transition-all ${
-                        concept.mastery_percentage >= 85 ? 'bg-green-600' :
-                        concept.mastery_percentage >= 70 ? 'bg-yellow-600' :
-                        'bg-red-600'
-                      }`}
+                      className={`h-2 rounded-full transition-all ${getMasteryBgColor(concept.mastery_percentage)}`}
                       style={{ width: `${concept.mastery_percentage}%` }}
                     ></div>
                   </div>
@@ -587,58 +553,12 @@ export default function AdminPage() {
       {/* Class-wide Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 text-center">
-            <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-              {stats.totalStudents}
-            </div>
-            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Total Students
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 text-center">
-            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-              {stats.totalQuizzes}
-            </div>
-            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Total Quizzes
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 text-center">
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.totalQuestions}
-            </div>
-            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Questions Answered
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 text-center">
-            <div className={`text-3xl font-bold ${
-              stats.averageAccuracy >= 80 ? 'text-green-600 dark:text-green-400' :
-              stats.averageAccuracy >= 60 ? 'text-yellow-600 dark:text-yellow-400' :
-              'text-red-600 dark:text-red-400'
-            }`}>
-              {stats.averageAccuracy.toFixed(0)}%
-            </div>
-            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Class Average
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 text-center">
-            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-              {stats.activeStudentsLast7Days}
-            </div>
-            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Active (7 days)
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 text-center">
-            <div className="text-3xl font-bold text-teal-600 dark:text-teal-400">
-              {stats.activeStudentsLast30Days}
-            </div>
-            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Active (30 days)
-            </div>
-          </div>
+          <StatCard value={stats.totalStudents} label="Total Students" colorClass="text-indigo-600 dark:text-indigo-400" />
+          <StatCard value={stats.totalQuizzes} label="Total Quizzes" colorClass="text-purple-600 dark:text-purple-400" />
+          <StatCard value={stats.totalQuestions} label="Questions Answered" colorClass="text-blue-600 dark:text-blue-400" />
+          <StatCard value={`${stats.averageAccuracy.toFixed(0)}%`} label="Class Average" colorClass={getAccuracyColor(stats.averageAccuracy)} />
+          <StatCard value={stats.activeStudentsLast7Days} label="Active (7 days)" colorClass="text-green-600 dark:text-green-400" />
+          <StatCard value={stats.activeStudentsLast30Days} label="Active (30 days)" colorClass="text-teal-600 dark:text-teal-400" />
         </div>
       )}
 
@@ -762,9 +682,7 @@ export default function AdminPage() {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`text-sm font-bold ${
-                        student.overallAccuracy >= 80 ? 'text-green-600 dark:text-green-400' :
-                        student.overallAccuracy >= 60 ? 'text-yellow-600 dark:text-yellow-400' :
-                        student.overallAccuracy > 0 ? 'text-red-600 dark:text-red-400' :
+                        student.totalQuestions > 0 ? getAccuracyColor(student.overallAccuracy) :
                         'text-gray-400 dark:text-gray-500'
                       }`}>
                         {student.totalQuestions > 0 ? `${student.overallAccuracy.toFixed(0)}%` : '-'}

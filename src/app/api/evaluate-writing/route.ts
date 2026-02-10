@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { FEATURES, getFuzzyLogicThreshold, CORRECTNESS_THRESHOLDS } from '@/lib/feature-flags';
-import { fuzzyEvaluateAnswer, calculateSimilarity } from '@/lib/writing-questions';
+import { fuzzyEvaluateAnswer, calculateSimilarity, normalizeText } from '@/lib/writing-questions';
 import { supabase, isSupabaseAvailable } from '@/lib/supabase';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 
@@ -295,18 +295,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-/**
- * Normalize text by removing accents and converting to lowercase
- */
-function normalizeText(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' '); // Normalize whitespace
 }
 
 /**
