@@ -19,6 +19,15 @@ export function normalizeText(text: string): string {
 }
 
 /**
+ * Normalize spaces before French double punctuation (? ! ; :) for comparison.
+ * In formal French typography, a space before these marks is correct.
+ * This strips the space for comparison purposes only — both forms are accepted.
+ */
+export function normalizePunctuationSpacing(text: string): string {
+  return text.replace(/\s+([?!;:])/g, '$1');
+}
+
+/**
  * Calculate Levenshtein distance between two strings
  */
 export function levenshteinDistance(str1: string, str2: string): number {
@@ -54,9 +63,10 @@ export function levenshteinDistance(str1: string, str2: string): number {
  * Compares accents but ignores capitalization
  */
 export function hasCorrectAccents(userAnswer: string, correctAnswer: string): boolean {
-  // Normalize whitespace and case, but keep accents
+  // Normalize whitespace, case, and French punctuation spacing, but keep accents
   // This means "Café" and "café" are both correct, but "cafe" is not
-  const normalize = (text: string) => text.trim().toLowerCase().replace(/\s+/g, ' ');
+  // Also prevents a punctuation space difference from being misreported as an accent issue
+  const normalize = (text: string) => normalizePunctuationSpacing(text.trim().toLowerCase().replace(/\s+/g, ' '));
   return normalize(userAnswer) === normalize(correctAnswer);
 }
 
@@ -65,8 +75,8 @@ export function hasCorrectAccents(userAnswer: string, correctAnswer: string): bo
  * Uses normalized Levenshtein distance
  */
 export function calculateSimilarity(str1: string, str2: string): number {
-  const normalized1 = normalizeText(str1);
-  const normalized2 = normalizeText(str2);
+  const normalized1 = normalizePunctuationSpacing(normalizeText(str1));
+  const normalized2 = normalizePunctuationSpacing(normalizeText(str2));
 
   const maxLength = Math.max(normalized1.length, normalized2.length);
   if (maxLength === 0) return 1.0; // Both empty = identical
@@ -91,9 +101,9 @@ export function fuzzyEvaluateAnswer(
     return null;
   }
 
-  // Check exact match first (ignoring accents)
-  const normalizedUser = normalizeText(userAnswer);
-  const normalizedCorrect = normalizeText(correctAnswer);
+  // Check exact match first (ignoring accents and French punctuation spacing)
+  const normalizedUser = normalizePunctuationSpacing(normalizeText(userAnswer));
+  const normalizedCorrect = normalizePunctuationSpacing(normalizeText(correctAnswer));
 
   if (normalizedUser === normalizedCorrect) {
     const hasAccents = hasCorrectAccents(userAnswer, correctAnswer);
@@ -118,7 +128,7 @@ export function fuzzyEvaluateAnswer(
   // Check acceptable variations (exact match first, then similarity)
   for (let i = 0; i < acceptableVariations.length; i++) {
     const variation = acceptableVariations[i];
-    const normalizedVariation = normalizeText(variation);
+    const normalizedVariation = normalizePunctuationSpacing(normalizeText(variation));
 
     // Exact match against variation
     if (normalizedVariation === normalizedUser) {

@@ -83,7 +83,7 @@ export default function QuizPage() {
     },
     {
       target: '#tour-quiz-answer-area',
-      content: 'Type or select your answer here. For written questions, don\'t worry about perfect accents \u2014 we\'ll give you credit for close answers!',
+      content: 'Type or select your answer here. For written questions, don\'t forget to press and hold letters (e) to select correct accents (\u00E9)',
     },
     {
       target: '#tour-quiz-progress',

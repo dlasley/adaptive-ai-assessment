@@ -409,7 +409,12 @@ IMPORTANT INSTRUCTIONS:
 3. Make questions appropriate for ${difficulty} level students
 4. Include clear, unambiguous correct answers
 5. Add brief explanations for the correct answers IN ENGLISH (NOT in French)
-6. Return ONLY valid JSON matching this exact format:
+6. NEVER include the answer (or a substantial part of it) in the question text:
+   - Do NOT put the French answer in parentheses as a hint (e.g., "(Use the phrase 'Il est quel jour?')")
+   - Do NOT use "Use the structure: '[answer]'" where the structure IS the expected answer
+   - For transformation/combination questions, the correct answer must require meaningful work beyond trivially prepending a word or adding punctuation
+   - If the question quotes French text, the correct answer must NOT be that same text with minor additions
+7. Return ONLY valid JSON matching this exact format:
 
 {
   "questions": [

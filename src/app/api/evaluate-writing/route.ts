@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { FEATURES, getFuzzyLogicThreshold, CORRECTNESS_THRESHOLDS } from '@/lib/feature-flags';
-import { fuzzyEvaluateAnswer, calculateSimilarity, normalizeText } from '@/lib/writing-questions';
+import { fuzzyEvaluateAnswer, calculateSimilarity, normalizeText, normalizePunctuationSpacing } from '@/lib/writing-questions';
 import { supabase, isSupabaseAvailable } from '@/lib/supabase';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 
@@ -156,9 +156,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<EvaluationResult>(result);
     }
 
-    // Tier 2: Exact match (with normalization)
-    const normalizedUser = normalizeText(userAnswer);
-    const normalizedCorrect = correctAnswer ? normalizeText(correctAnswer) : '';
+    // Tier 2: Exact match (with normalization, including French punctuation spacing)
+    const normalizedUser = normalizePunctuationSpacing(normalizeText(userAnswer));
+    const normalizedCorrect = correctAnswer ? normalizePunctuationSpacing(normalizeText(correctAnswer)) : '';
 
     console.log('🔍 Tier 2: Exact match check:', {
       normalizedUser,
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       console.log('✅ Tier 2: Exact match found');
       // Check if accents match (case-insensitive)
       // Only check for diacritical marks, not capitalization
-      const hasCorrectAccents = userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+      const hasCorrectAccents = normalizePunctuationSpacing(userAnswer.trim().toLowerCase()) === normalizePunctuationSpacing(correctAnswer.trim().toLowerCase());
 
       const result: EvaluationResult = {
         isCorrect: true,
@@ -341,6 +341,7 @@ Evaluate the student's answer considering:
 3. **Spelling**: Are words spelled correctly (ignoring accents for now)?
 4. **Accents**: Are diacritic accents used correctly? (café, été, où, etc.)
 5. **Completeness**: ${questionType === 'open_ended' ? 'Is it a complete, coherent sentence/response?' : 'Does it answer the question fully?'}
+6. **French Typography**: In traditional French, a space before double punctuation marks (?, !, ;, :) is correct (e.g., "français ?"). Accept BOTH forms — with or without the space. Do NOT mark the spaced version as incorrect or provide a "correctedAnswer" that removes it. Occasionally note the cultural difference in your feedback: if the student includes the space, acknowledge it positively as proper traditional French formatting; if they omit it, mention that in traditional French typography a space before ?, !, ;, : is standard — it's a good opportunity to highlight how punctuation conventions differ between metropolitan French and global French-speaking cultures.
 
 For open-ended questions:
 - Accept any grammatically correct and contextually appropriate answer
