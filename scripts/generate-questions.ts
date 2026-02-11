@@ -12,6 +12,9 @@
  *   --dry-run               Show what would be generated without actually generating
  *   --batch-id <id>         Custom batch ID (default: auto-generated from date)
  *   --source-file <path>    Source learning material file path for tracking
+ *   --model <model-id>      Override generation model (default: from config)
+ *                            Note: --model may be deprecated in favor of per-question
+ *                            model selection when multi-model generation is implemented.
  *
  * Examples:
  *   npx tsx scripts/generate-questions.ts --unit unit-3 --sync-db
@@ -62,10 +65,78 @@ interface CLIOptions {
   dryRun: boolean;
   batchId: string;
   sourceFile?: string;
+  // Note: --model may be deprecated in favor of per-question model selection
+  // when multi-model generation is implemented.
+  model?: string;
 }
 
 const DIFFICULTIES: ('beginner' | 'intermediate' | 'advanced')[] = ['beginner', 'intermediate', 'advanced'];
 const QUESTIONS_PER_TOPIC_PER_DIFFICULTY = 10;
+
+// Exemplar pool for difficulty calibration — rotated per topic to reduce homogeneity
+interface Exemplar { type: string; question: string; answer: string }
+const EXEMPLAR_POOL: Record<string, Exemplar[]> = {
+  beginner: [
+    { type: 'fill-in-blank', question: 'Conjugate être for the subject \'vous\': _____', answer: 'êtes' },
+    { type: 'fill-in-blank', question: 'Marie regarde le menu au restaurant. Elle _____.', answer: 'a faim' },
+    { type: 'writing', question: 'Conjugate the verb \'danser\' (to dance) in the present tense for the subject pronoun \'je\'.', answer: 'je danse' },
+    { type: 'writing', question: 'Translate to French: \'Hello, my name is Paul.\'', answer: 'Bonjour, je m\'appelle Paul.' },
+    { type: 'multiple-choice', question: 'What does \'bonjour\' mean?', answer: 'Hello' },
+  ],
+  intermediate: [
+    { type: 'fill-in-blank', question: 'Nous ______ une comédie avec nos amis.', answer: 'voyons' },
+    { type: 'fill-in-blank', question: 'Tu _____ _____ roller? Non, je _____ _____ roller.', answer: 'aimes faire / n\'aime pas faire' },
+    { type: 'writing', question: 'Conjugate the verb \'jouer\' for \'je\' in a complete sentence about playing soccer.', answer: 'Je joue au foot.' },
+    { type: 'writing', question: 'Translate to French: \'We don\'t like swimming.\'', answer: 'Nous n\'aimons pas nager.' },
+    { type: 'multiple-choice', question: 'Choose the correct sentence: "Je suis faim" / "J\'ai faim" / "Je fais faim" / "Je mange faim"', answer: 'J\'ai faim' },
+  ],
+  advanced: [
+    { type: 'fill-in-blank', question: 'Après le sport, nous _____ et nous _____ une boisson froide.', answer: 'avons soif / buvons' },
+    { type: 'fill-in-blank', question: 'En Afrique, le français est une langue officielle _____ 29 pays. Le Sénégal et le Cameroun sont _____ ces pays.', answer: 'dans / parmi' },
+    { type: 'writing', question: 'Write three sentences using different subject pronouns (tu, on, elles) with \'aimer\' or \'préférer\' conjugated correctly, each including an intensity adverb.', answer: 'Tu aimes un peu danser. On préfère bien la musique. Elles aiment beaucoup les blogs.' },
+    { type: 'writing', question: 'Write two sentences ordering at a café: one using a partitive article and one using negation.', answer: 'Je voudrais du café et un croissant. Je ne veux pas de thé.' },
+    { type: 'multiple-choice', question: 'Questions requiring knowledge of two grammar rules to identify the correct answer', answer: '(combined concepts)' },
+  ],
+};
+
+/**
+ * Select 3 exemplars per difficulty level, rotated deterministically by topic name.
+ */
+function selectExemplars(topic: string): Record<string, Exemplar[]> {
+  // djb2 hash for better distribution across pool indices
+  let hash = 5381;
+  for (let i = 0; i < topic.length; i++) {
+    hash = ((hash << 5) + hash + topic.charCodeAt(i)) >>> 0;
+  }
+
+  const selected: Record<string, Exemplar[]> = {};
+  for (const diff of DIFFICULTIES) {
+    const pool = EXEMPLAR_POOL[diff];
+    const start = hash % pool.length;
+    selected[diff] = [];
+    for (let i = 0; i < 3; i++) {
+      selected[diff].push(pool[(start + i) % pool.length]);
+    }
+  }
+  return selected;
+}
+
+function formatExemplars(exemplars: Record<string, Exemplar[]>): string {
+  const lines: string[] = [];
+  const labels: Record<string, string> = {
+    beginner: 'BEGINNER examples (single concept, direct recall)',
+    intermediate: 'INTERMEDIATE examples (apply rules in context, short sentences)',
+    advanced: 'ADVANCED examples (combine multiple concepts, multi-step production)',
+  };
+  for (const diff of DIFFICULTIES) {
+    lines.push(`${labels[diff]}:`);
+    for (const ex of exemplars[diff]) {
+      lines.push(`  ${ex.type}: "${ex.question}" → "${ex.answer}"`);
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
 
 /**
  * Parse command line arguments
@@ -127,6 +198,9 @@ function parseArgs(): CLIOptions {
       case '--source-file':
         options.sourceFile = args[++i];
         break;
+      case '--model':
+        options.model = args[++i];
+        break;
       case '--help':
       case '-h':
         printHelp();
@@ -160,6 +234,7 @@ Options:
   --dry-run               Show what would be generated without actually generating
   --batch-id <id>         Custom batch ID (default: auto-generated)
   --source-file <path>    Source learning material file path for tracking
+  --model <model-id>      Override generation model (default: from config)
   --help, -h              Show this help message
 
 Examples:
@@ -238,6 +313,7 @@ async function syncToDatabase(
   questions: Question[],
   existingHashes: Set<string>,
   batchId: string,
+  generatedBy: string,
   sourceFile?: string
 ): Promise<{ inserted: number; skipped: number }> {
   const newQuestions = questions.filter(q => q.contentHash && !existingHashes.has(q.contentHash));
@@ -270,6 +346,7 @@ async function syncToDatabase(
       content_hash: q.contentHash,
       batch_id: batchId,
       source_file: sourceFile,
+      generated_by: generatedBy,
     };
   });
 
@@ -334,7 +411,8 @@ async function generateQuestionsForTopic(
   difficulty: 'beginner' | 'intermediate' | 'advanced',
   numQuestions: number,
   questionType?: 'multiple-choice' | 'fill-in-blank' | 'true-false' | 'writing',
-  writingType?: WritingType
+  writingType?: WritingType,
+  modelOverride?: string
 ): Promise<Question[]> {
   const typeLabel = questionType ? ` ${questionType}` : '';
   const subtypeLabel = writingType ? ` (${writingType})` : '';
@@ -345,7 +423,7 @@ async function generateQuestionsForTopic(
     const topicContent = extractTopicContent(unitMaterials, topic);
 
     const message = await anthropic.messages.create({
-      model: MODELS.questionGeneration,
+      model: modelOverride || MODELS.questionGeneration,
       max_tokens: 4000,
       messages: [
         {
@@ -388,6 +466,12 @@ ${topicContent}
 - Identify and explain errors in French sentences
 - Writing: 2-3 sentences (dialogue exchanges, compound responses)
 
+## Calibration Exemplars
+These are real questions at each difficulty level. Match this calibration exactly.
+
+${formatExemplars(selectExemplars(topic))}
+Notice: Beginner = one word or one form. Intermediate = one sentence with one grammar rule applied. Advanced = multiple blanks, multiple sentences, or two concepts combined. If a question tests only one concept with a single short answer, it is NOT advanced.
+
 IMPORTANT: "Advanced" means advanced FOR FRENCH 1. All vocabulary and grammar must stay within first-year French. Never require:
 - Subjunctive, conditional, passé composé, imparfait
 - Abstract/academic vocabulary (e.g., "global job market", "relevant")
@@ -405,6 +489,7 @@ IMPORTANT: "Advanced" means advanced FOR FRENCH 1. All vocabulary and grammar mu
    - No French answer in parenthetical hints
    - No "Use the structure: '[answer]'" patterns
    - Transformation questions must require meaningful work
+7. Vary question phrasing and structure across the batch — use different sentence starters, different prompt styles (translate, complete, write, identify, choose), and different scenarios. Avoid repetitive templates.
 
 ## Type-Specific Rules
 
@@ -550,6 +635,7 @@ async function generateAllQuestions(options: CLIOptions) {
   console.log(`   Sync to DB:  ${options.syncDb ? 'yes' : 'no'}`);
   console.log(`   Dry run:     ${options.dryRun ? 'yes' : 'no'}`);
   console.log(`   Batch ID:    ${options.batchId}`);
+  console.log(`   Model:       ${options.model || MODELS.questionGeneration}`);
   if (options.sourceFile) {
     console.log(`   Source file: ${options.sourceFile}`);
   }
@@ -623,7 +709,8 @@ async function generateAllQuestions(options: CLIOptions) {
           difficulty,
           options.count,
           options.questionType,
-          options.writingType
+          options.writingType,
+          options.model
         );
 
         if (questions.length > 0) {
@@ -640,11 +727,13 @@ async function generateAllQuestions(options: CLIOptions) {
 
           // Sync to database if enabled
           if (options.syncDb && supabaseClient) {
+            const generationModel = options.model || MODELS.questionGeneration;
             const { inserted, skipped } = await syncToDatabase(
               supabaseClient,
               questionsWithHashes,
               existingHashes,
               options.batchId,
+              generationModel,
               options.sourceFile
             );
             totalInserted += inserted;
@@ -709,6 +798,38 @@ async function generateAllQuestions(options: CLIOptions) {
       } else if (collisionRate >= 30) {
         console.log('\n📝 Note: Some collisions detected (≥30%)');
         console.log('   The question pool is filling up. This is normal.');
+      }
+    }
+    // Insert batch metadata record
+    if (supabaseClient && totalInserted > 0) {
+      const generationModel = options.model || MODELS.questionGeneration;
+      const { error: batchError } = await supabaseClient
+        .from('batches')
+        .insert({
+          id: options.batchId,
+          model: generationModel,
+          unit_id: options.unitId || 'all',
+          difficulty: options.difficulty || 'all',
+          type_filter: options.questionType || 'all',
+          question_count: totalGenerated,
+          inserted_count: totalInserted,
+          duplicate_count: totalSkippedDuplicates,
+          error_count: totalAttempted - Math.ceil(totalGenerated / options.count),
+          config: {
+            args: process.argv.slice(2),
+            count: options.count,
+            model: generationModel,
+          },
+          prompt_hash: crypto.createHash('sha256')
+            .update(MODELS.questionGeneration) // tracks prompt template changes via model version
+            .digest('hex')
+            .substring(0, 16),
+        });
+
+      if (batchError) {
+        console.error('\n⚠️  Failed to insert batch metadata:', batchError.message);
+      } else {
+        console.log(`\n📦 Batch metadata saved: ${options.batchId}`);
       }
     }
   } else {

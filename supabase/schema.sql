@@ -94,6 +94,7 @@ CREATE TABLE questions (
   content_hash TEXT,                         -- MD5 hash for deduplication
   batch_id TEXT,                             -- Generation batch identifier
   source_file TEXT,                          -- Learning material source
+  generated_by TEXT,                         -- Model ID that generated this question (per-question for multi-model support)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -105,8 +106,27 @@ CREATE INDEX idx_questions_difficulty ON questions(difficulty);
 CREATE INDEX idx_questions_type ON questions(type);
 CREATE INDEX idx_questions_content_hash ON questions(content_hash);
 CREATE INDEX idx_questions_batch_id ON questions(batch_id);
+CREATE INDEX idx_questions_generated_by ON questions(generated_by);
 CREATE INDEX idx_questions_unit_topic_diff ON questions(unit_id, topic, difficulty);
 CREATE INDEX idx_questions_unit_type ON questions(unit_id, type);
+
+-- Batches Metadata Table
+-- Tracks provenance for each question generation batch run
+CREATE TABLE batches (
+  id TEXT PRIMARY KEY,                         -- e.g., 'batch_2026-02-11_1770838456766'
+  created_at TIMESTAMPTZ DEFAULT NOW(),        -- When the batch started
+  model TEXT,                                  -- Primary/default model for the batch
+  unit_id TEXT,                                -- Target unit (or 'all')
+  difficulty TEXT,                             -- Difficulty filter (or 'all')
+  type_filter TEXT,                            -- Type filter if any (or 'all')
+  question_count INTEGER DEFAULT 0,            -- Total questions generated
+  inserted_count INTEGER DEFAULT 0,            -- Questions inserted (after dedup)
+  duplicate_count INTEGER DEFAULT 0,           -- Duplicates skipped
+  error_count INTEGER DEFAULT 0,              -- Errors encountered
+  config JSONB DEFAULT '{}'::jsonb,            -- Full CLI args snapshot
+  description TEXT,                            -- Human or AI description of batch context
+  prompt_hash TEXT                             -- SHA-256 prefix of prompt template for change detection
+);
 
 -- Leitner Spaced Repetition State
 -- Tracks per-student per-question box assignments for adaptive question selection
@@ -250,6 +270,7 @@ ALTER TABLE study_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quiz_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE question_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE batches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leitner_state ENABLE ROW LEVEL SECURITY;
 
 -- Study codes policies (no DELETE for anon; INSERT/UPDATE restricted)
@@ -300,6 +321,12 @@ CREATE POLICY "anon_select_questions"
   TO anon
   USING (true);
 
+-- Batches policies (read-only for anon; scripts use secret key for writes)
+CREATE POLICY "anon_select_batches"
+  ON batches FOR SELECT
+  TO anon
+  USING (true);
+
 -- Leitner state policies (SELECT + INSERT + UPDATE; DELETE cascades from study_codes)
 CREATE POLICY "anon_select_leitner_state"
   ON leitner_state FOR SELECT
@@ -331,6 +358,8 @@ COMMENT ON COLUMN questions.requires_complete_sentence IS 'Advanced questions re
 COMMENT ON COLUMN questions.content_hash IS 'MD5 hash of normalized question content for deduplication during regeneration';
 COMMENT ON COLUMN questions.batch_id IS 'Identifies which generation batch created this question (e.g., 2026-02-04_unit3)';
 COMMENT ON COLUMN questions.source_file IS 'Path to the markdown learning file used to generate this question';
+COMMENT ON COLUMN questions.generated_by IS 'Model ID that generated this question (e.g., claude-haiku-4-5-20251001). Per-question for multi-model support.';
+COMMENT ON TABLE batches IS 'Metadata for each question generation batch run. Tracks pipeline state, model, config, and results.';
 COMMENT ON COLUMN question_results.score IS 'Evaluation score 0-100. NULL for legacy data. MCQ/TF are always 0 or 100. Typed answers use fuzzy/API evaluation score.';
 COMMENT ON TABLE leitner_state IS 'Leitner spaced repetition box assignments per student per question';
 COMMENT ON COLUMN leitner_state.box IS 'Leitner box 1-5. Box 1 = most frequent review, Box 5 = mastered';
