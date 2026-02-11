@@ -42,8 +42,10 @@ function dbToQuestion(row: DBQuestion): Question {
   };
 }
 
+const PAGE_SIZE = 1000;
+
 /**
- * Load all questions from database
+ * Load all questions from database (paginated to bypass Supabase 1000-row default limit)
  */
 export async function loadAllQuestions(): Promise<Question[]> {
   if (!isSupabaseAvailable()) {
@@ -52,17 +54,28 @@ export async function loadAllQuestions(): Promise<Question[]> {
   }
 
   try {
-    const { data, error } = await supabase!
-      .from('questions')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const allData: DBQuestion[] = [];
+    let page = 0;
 
-    if (error) {
-      console.error('Error loading questions:', error);
-      return [];
+    while (true) {
+      const { data, error } = await supabase!
+        .from('questions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (error) {
+        console.error('Error loading questions:', error);
+        return allData.length > 0 ? allData.map(dbToQuestion).filter(q => !isMetaQuestion(q)) : [];
+      }
+
+      if (!data || data.length === 0) break;
+      allData.push(...(data as unknown as DBQuestion[]));
+      if (data.length < PAGE_SIZE) break;
+      page++;
     }
 
-    const questions = (data || []).map(dbToQuestion);
+    const questions = allData.map(dbToQuestion);
 
     // Filter out meta-questions
     const validQuestions = questions.filter(q => !isMetaQuestion(q));
@@ -79,7 +92,7 @@ export async function loadAllQuestions(): Promise<Question[]> {
 }
 
 /**
- * Load questions for a specific unit
+ * Load questions for a specific unit (paginated)
  */
 export async function loadUnitQuestions(unitId: string): Promise<Question[]> {
   if (!isSupabaseAvailable()) {
@@ -88,18 +101,29 @@ export async function loadUnitQuestions(unitId: string): Promise<Question[]> {
   }
 
   try {
-    const { data, error } = await supabase!
-      .from('questions')
-      .select('*')
-      .or(`unit_id.eq.${unitId},unit_id.eq.all`)
-      .order('created_at', { ascending: false });
+    const allData: DBQuestion[] = [];
+    let page = 0;
 
-    if (error) {
-      console.error(`Error loading questions for unit ${unitId}:`, error);
-      return [];
+    while (true) {
+      const { data, error } = await supabase!
+        .from('questions')
+        .select('*')
+        .or(`unit_id.eq.${unitId},unit_id.eq.all`)
+        .order('created_at', { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (error) {
+        console.error(`Error loading questions for unit ${unitId}:`, error);
+        return allData.length > 0 ? allData.map(dbToQuestion).filter(q => !isMetaQuestion(q)) : [];
+      }
+
+      if (!data || data.length === 0) break;
+      allData.push(...(data as unknown as DBQuestion[]));
+      if (data.length < PAGE_SIZE) break;
+      page++;
     }
 
-    const questions = (data || []).map(dbToQuestion);
+    const questions = allData.map(dbToQuestion);
 
     // Filter out meta-questions
     return questions.filter(q => !isMetaQuestion(q));
