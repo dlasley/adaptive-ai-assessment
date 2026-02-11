@@ -365,7 +365,7 @@ function HomeContent() {
               <button
                 key={level}
                 onClick={() => setDifficulty(level)}
-                className={`py-3 px-4 rounded-lg border-2 transition-all capitalize font-medium ${
+                className={`py-3 px-2 sm:px-4 rounded-lg border-2 transition-all capitalize font-medium text-sm sm:text-base ${
                   difficulty === level
                     ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg'
                     : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-indigo-400 hover:shadow'
