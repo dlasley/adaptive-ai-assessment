@@ -56,7 +56,9 @@ function HomeContent() {
   const homeTourSteps: Step[] = [
     {
       target: '#tour-study-code',
-      content: 'This is your unique study code. It tracks your progress \u2014 save it or scan the QR on your phone!',
+      content: typeof window !== 'undefined' && window.innerWidth >= 768
+        ? 'This is your unique study code. It tracks your progress \u2014 save it or scan the QR on your phone!'
+        : 'This is your unique study code. It tracks your progress \u2014 save it to access from any device!',
       disableBeacon: true,
     },
     {
