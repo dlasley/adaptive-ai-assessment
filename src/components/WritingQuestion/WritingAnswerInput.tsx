@@ -3,6 +3,9 @@
  * Supports both single-line (fill-in-blank) and multi-line (writing) variants
  */
 
+import { useState, useEffect } from 'react';
+import { isHintDismissed, dismissHint } from '@/lib/onboarding';
+
 interface AnswerInputProps {
   userAnswer: string;
   onAnswerChange: (answer: string) => void;
@@ -26,6 +29,19 @@ export function AnswerInput({
   rows = 2,
   label = 'Your Answer (in French):'
 }: AnswerInputProps) {
+  const [showKeyboardTip, setShowKeyboardTip] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768 && !isHintDismissed('keyboard_french')) {
+      setShowKeyboardTip(true);
+    }
+  }, []);
+
+  const handleDismissKeyboardTip = () => {
+    dismissHint('keyboard_french');
+    setShowKeyboardTip(false);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Submit on Enter
     // For multi-line: allow Shift+Enter for newlines
@@ -47,6 +63,26 @@ export function AnswerInput({
       <label htmlFor="answer" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
         {label}
       </label>
+
+      {showKeyboardTip && (
+        <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg text-xs text-blue-800 dark:text-blue-200 flex items-start gap-2">
+          <span className="shrink-0">{'\uD83C\uDF10'}</span>
+          <div className="flex-1">
+            <span>Switch your keyboard to French to avoid auto-correct! Tap the </span>
+            <span className="font-semibold">{'\uD83C\uDF10'} globe icon</span>
+            <span> and select </span>
+            <span className="font-semibold">Fran{'\u00E7'}ais</span>
+            <span>.</span>
+          </div>
+          <button
+            onClick={handleDismissKeyboardTip}
+            className="shrink-0 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-200 font-bold"
+            aria-label="Dismiss keyboard tip"
+          >
+            {'\u2715'}
+          </button>
+        </div>
+      )}
 
       {variant === 'single-line' ? (
         <input

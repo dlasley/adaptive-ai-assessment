@@ -27,6 +27,7 @@ export default function OnboardingTour({
       steps={steps}
       run={run}
       continuous={continuous}
+      disableOverlayClose
       showSkipButton
       showProgress
       callback={handleCallback}

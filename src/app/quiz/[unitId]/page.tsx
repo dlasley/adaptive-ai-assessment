@@ -85,6 +85,10 @@ export default function QuizPage() {
       target: '#tour-quiz-answer-area',
       content: 'Type or select your answer here. For written questions, don\'t forget to press and hold letters (e) to select correct accents (\u00E9)',
     },
+    ...(typeof window !== 'undefined' && window.innerWidth < 768 ? [{
+      target: '#tour-quiz-answer-area',
+      content: 'Tip: Switch your phone keyboard to French to avoid auto-correct! On iPhone, tap the \uD83C\uDF10 globe icon on your keyboard and select "Fran\u00E7ais". This gives you accent keys (\u00E9, \u00E8, \u00EA) without long-pressing.',
+    }] : []),
     {
       target: '#tour-quiz-progress',
       content: 'This bar shows how far along you are. Keep going!',
