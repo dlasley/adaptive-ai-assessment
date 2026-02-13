@@ -8,7 +8,8 @@
  *   --topic <topic-name>    Generate for specific topic only
  *   --difficulty <level>    Generate for specific difficulty (beginner|intermediate|advanced)
  *   --count <n>             Questions per topic/difficulty (default: 10)
- *   --sync-db               Sync to database (with deduplication)
+ *   --write-db              Sync to database (with deduplication)
+ *   --sync-db               (deprecated alias for --write-db)
  *   --dry-run               Show what would be generated without actually generating
  *   --batch-id <id>         Custom batch ID (default: auto-generated from date)
  *   --source-file <path>    Source learning material file path for tracking
@@ -21,10 +22,10 @@
  *   --type auto-selects the appropriate model for that type.
  *
  * Examples:
- *   npx tsx scripts/generate-questions.ts --unit unit-3 --sync-db           # Hybrid mode
+ *   npx tsx scripts/generate-questions.ts --unit unit-3 --write-db          # Hybrid mode
  *   npx tsx scripts/generate-questions.ts --unit unit-3 --type writing      # Sonnet only
  *   npx tsx scripts/generate-questions.ts --unit unit-3 --model claude-haiku-4-5-20251001  # Force Haiku
- *   npx tsx scripts/generate-questions.ts --sync-db --dry-run
+ *   npx tsx scripts/generate-questions.ts --write-db --dry-run
  */
 
 import { config } from 'dotenv';
@@ -191,7 +192,11 @@ function parseArgs(): CLIOptions {
         }
         options.count = countVal;
         break;
+      case '--write-db':
+        options.syncDb = true;
+        break;
       case '--sync-db':
+        console.warn('⚠️  --sync-db is deprecated, use --write-db instead');
         options.syncDb = true;
         break;
       case '--dry-run':
@@ -238,7 +243,8 @@ Options:
   --type <question-type>  Generate only this type (multiple-choice|fill-in-blank|true-false|writing)
   --writing-type <wtype>  Writing subtype (translation|conjugation|question_formation|sentence_building|open_ended)
   --count <n>             Questions per topic/difficulty (default: ${QUESTIONS_PER_TOPIC_PER_DIFFICULTY})
-  --sync-db               Sync to database (with deduplication)
+  --write-db              Sync to database (with deduplication)
+  --sync-db               (deprecated alias for --write-db)
   --dry-run               Show what would be generated without actually generating
   --batch-id <id>         Custom batch ID (default: auto-generated)
   --source-file <path>    Source learning material file path for tracking
@@ -252,11 +258,11 @@ Hybrid Model Generation:
   --type auto-selects the appropriate model for that type.
 
 Examples:
-  npx tsx scripts/generate-questions.ts --unit unit-3 --sync-db           # Hybrid mode
+  npx tsx scripts/generate-questions.ts --unit unit-3 --write-db          # Hybrid mode
   npx tsx scripts/generate-questions.ts --unit unit-3 --type writing      # Sonnet auto-selected
   npx tsx scripts/generate-questions.ts --model claude-haiku-4-5-20251001 # Force single model
-  npx tsx scripts/generate-questions.ts --type writing --writing-type conjugation --sync-db
-  npx tsx scripts/generate-questions.ts --sync-db --dry-run
+  npx tsx scripts/generate-questions.ts --type writing --writing-type conjugation --write-db
+  npx tsx scripts/generate-questions.ts --write-db --dry-run
   `);
 }
 
@@ -360,6 +366,7 @@ async function syncToDatabase(
       batch_id: batchId,
       source_file: sourceFile,
       generated_by: generatedBy,
+      quality_status: 'pending',
     };
   });
 
@@ -1136,7 +1143,7 @@ async function generateAllQuestions(options: CLIOptions) {
     }
   } else {
     console.log('\n⚠️  Questions were generated but NOT saved to database.');
-    console.log('   Use --sync-db flag to persist questions to Supabase.');
+    console.log('   Use --write-db flag to persist questions to Supabase.');
   }
 }
 

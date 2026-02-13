@@ -14,14 +14,17 @@
  *   --review-topics Enable interactive topic review (for expert users)
  *   --skip-convert  Skip PDF conversion (use existing markdown)
  *   --skip-topics   Skip topic extraction (use existing topics in units.ts)
- *   --sync-db       Sync generated questions to Supabase
+ *   --write-db      Sync generated questions to Supabase
+ *   --sync-db       (deprecated alias for --write-db)
+ *   --audit         Run quality audit after generation (requires --write-db)
  *   --dry-run       Show what would be done without executing
  *
  * Examples:
  *   npx tsx scripts/regenerate.ts unit-4
- *   npx tsx scripts/regenerate.ts unit-4 --sync-db
+ *   npx tsx scripts/regenerate.ts unit-4 --write-db
+ *   npx tsx scripts/regenerate.ts unit-4 --write-db --audit
  *   npx tsx scripts/regenerate.ts unit-4 --skip-convert
- *   npx tsx scripts/regenerate.ts --all --sync-db
+ *   npx tsx scripts/regenerate.ts --all --write-db
  */
 
 import { config } from 'dotenv';
@@ -52,6 +55,7 @@ interface PipelineOptions {
   forceConvert: boolean;
   skipTopics: boolean;
   syncDb: boolean;
+  audit: boolean;
   dryRun: boolean;
 }
 
@@ -301,15 +305,29 @@ function parseArgs(): PipelineOptions {
     process.exit(0);
   }
 
+  // Handle --write-db (canonical) and --sync-db (deprecated alias)
+  const hasSyncDb = args.includes('--sync-db');
+  const hasWriteDb = args.includes('--write-db');
+  if (hasSyncDb && !hasWriteDb) {
+    console.warn('⚠️  --sync-db is deprecated, use --write-db instead');
+  }
+
   const options: PipelineOptions = {
     unitId: args[0],
     reviewTopics: args.includes('--review-topics'),
     skipConvert: args.includes('--skip-convert'),
     forceConvert: args.includes('--force-convert'),
     skipTopics: args.includes('--skip-topics'),
-    syncDb: args.includes('--sync-db'),
+    syncDb: hasWriteDb || hasSyncDb,
+    audit: args.includes('--audit'),
     dryRun: args.includes('--dry-run'),
   };
+
+  // Validate --audit requires --write-db
+  if (options.audit && !options.syncDb) {
+    console.error('❌ --audit requires --write-db (questions must be in DB to audit)');
+    process.exit(1);
+  }
 
   return options;
 }
@@ -329,19 +347,23 @@ Options:
   --skip-convert  Skip PDF conversion (use existing markdown)
   --force-convert Force PDF reconversion even if markdown exists
   --skip-topics   Skip topic extraction (use existing topics in units.ts)
-  --sync-db       Sync generated questions to database
+  --write-db      Sync generated questions to database
+  --sync-db       (deprecated alias for --write-db)
+  --audit         Run quality audit after generation (requires --write-db)
   --dry-run       Show what would be done without executing
 
 Examples:
-  npx tsx scripts/regenerate.ts unit-4           # Full pipeline for unit-4
-  npx tsx scripts/regenerate.ts unit-4 --sync-db # Generate and sync to DB
-  npx tsx scripts/regenerate.ts unit-4 --skip-convert --sync-db
-  npx tsx scripts/regenerate.ts --all --sync-db  # Regenerate all units
+  npx tsx scripts/regenerate.ts unit-4                    # Full pipeline for unit-4
+  npx tsx scripts/regenerate.ts unit-4 --write-db         # Generate and sync to DB
+  npx tsx scripts/regenerate.ts unit-4 --write-db --audit # Generate, sync, and audit
+  npx tsx scripts/regenerate.ts unit-4 --skip-convert --write-db
+  npx tsx scripts/regenerate.ts --all --write-db          # Regenerate all units
 
 Pipeline Steps:
   1. PDF → Markdown    Convert PDF to structured markdown
   2. Topic Extraction  Extract and validate topics against units.ts
   3. Question Gen      Generate questions for each topic/difficulty
+  4. Quality Audit     (optional, --audit) Promote pending → active/flagged
   `);
 }
 
@@ -885,7 +907,7 @@ async function stepGenerateQuestions(
 
   const args = ['--unit', unitId];
   if (options.syncDb) {
-    args.push('--sync-db');
+    args.push('--write-db');
   }
   if (options.dryRun) {
     args.push('--dry-run');
@@ -916,6 +938,49 @@ async function stepGenerateQuestions(
 
     proc.on('error', (err) => {
       console.error(`  ❌ Error: ${err.message}`);
+      resolve({ success: false });
+    });
+  });
+}
+
+/**
+ * Step 4: Quality audit (optional, --audit flag)
+ * Audits pending questions and promotes them to active/flagged.
+ */
+async function stepAuditQuestions(
+  unitId: string,
+  options: PipelineOptions
+): Promise<{ success: boolean }> {
+  console.log('\n┌─────────────────────────────────────────────────────────────┐');
+  console.log('│  STEP 4: Quality Audit (pending → active/flagged)          │');
+  console.log('└─────────────────────────────────────────────────────────────┘\n');
+
+  const args = ['--write-db', '--pending-only', '--unit', unitId];
+
+  console.log(`  🔍 Auditing pending questions for ${unitId}`);
+  console.log(`  🚀 Running: npx tsx scripts/audit-quality.ts ${args.join(' ')}\n`);
+
+  if (options.dryRun) {
+    console.log('  [DRY RUN] Would audit pending questions and promote to active/flagged');
+    return { success: true };
+  }
+
+  return new Promise((resolve) => {
+    const proc = spawn('npx', ['tsx', 'scripts/audit-quality.ts', ...args], {
+      stdio: 'inherit',
+      shell: true,
+    });
+
+    proc.on('close', (code) => {
+      if (code === 0) {
+        resolve({ success: true });
+      } else {
+        resolve({ success: false });
+      }
+    });
+
+    proc.on('error', (err) => {
+      console.error(`  ❌ Audit error: ${err.message}`);
       resolve({ success: false });
     });
   });
@@ -965,6 +1030,14 @@ async function runPipelineForUnit(
     return;
   }
 
+  // Step 4: Quality audit (optional)
+  if (options.audit) {
+    const step4 = await stepAuditQuestions(unitId, options);
+    if (!step4.success) {
+      console.log('\n  ⚠️  Quality audit failed (questions remain as pending)');
+    }
+  }
+
   console.log('\n  ✅ Pipeline complete for', unitId);
 }
 
@@ -986,7 +1059,8 @@ async function main() {
   console.log(`  Skip convert:  ${options.skipConvert ? 'Yes' : 'No'}`);
   console.log(`  Force convert: ${options.forceConvert ? 'Yes' : 'No'}`);
   console.log(`  Skip topics:   ${options.skipTopics ? 'Yes' : 'No'}`);
-  console.log(`  Sync to DB:    ${options.syncDb ? 'Yes' : 'No'}`);
+  console.log(`  Write to DB:   ${options.syncDb ? 'Yes' : 'No'}`);
+  console.log(`  Audit:         ${options.audit ? 'Yes (pending → active/flagged)' : 'No'}`);
   console.log(`  Dry run:       ${options.dryRun ? 'Yes' : 'No'}`);
 
   if (options.unitId === '--all') {

@@ -14,7 +14,8 @@
  *   npx tsx scripts/audit-quality.ts --model claude-haiku-4-5-20251001  # Filter by generator model
  *   npx tsx scripts/audit-quality.ts --limit 50               # Random sample of N questions
  *   npx tsx scripts/audit-quality.ts --batch batch_xyz        # Filter by batch_id
- *   npx tsx scripts/audit-quality.ts --mark-db --unit unit-2  # Write quality_status to DB
+ *   npx tsx scripts/audit-quality.ts --write-db --unit unit-2 # Write quality_status to DB
+ *   npx tsx scripts/audit-quality.ts --write-db --pending-only # Audit only pending questions
  */
 
 import { config } from 'dotenv';
@@ -25,14 +26,14 @@ import { createClient } from '@supabase/supabase-js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Use secret key when --mark-db is set (needs write access); anon key for read-only audits
-const useSecretKey = process.argv.includes('--mark-db');
+// Use secret key when --write-db/--mark-db is set (needs write access); anon key for read-only audits
+const useSecretKey = process.argv.includes('--write-db') || process.argv.includes('--mark-db');
 const supabaseKey = useSecretKey
   ? (process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
   : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 if (useSecretKey && !process.env.SUPABASE_SECRET_KEY) {
-  console.warn('⚠️  --mark-db requires SUPABASE_SECRET_KEY for write access. Falling back to anon key.');
+  console.warn('⚠️  --write-db requires SUPABASE_SECRET_KEY for write access. Falling back to anon key.');
 }
 
 const supabase = createClient(
@@ -50,6 +51,7 @@ interface CLIOptions {
   limit?: number;
   batchId?: string;
   markDb?: boolean;
+  pendingOnly?: boolean;
 }
 
 function parseArgs(): CLIOptions {
@@ -63,7 +65,12 @@ function parseArgs(): CLIOptions {
       case '--model': options.model = args[++i]; break;
       case '--limit': options.limit = parseInt(args[++i], 10); break;
       case '--batch': options.batchId = args[++i]; break;
-      case '--mark-db': options.markDb = true; break;
+      case '--write-db': options.markDb = true; break;
+      case '--mark-db':
+        console.warn('⚠️  --mark-db is deprecated, use --write-db instead');
+        options.markDb = true;
+        break;
+      case '--pending-only': options.pendingOnly = true; break;
     }
   }
   return options;
@@ -162,6 +169,7 @@ async function fetchQuestions(options: CLIOptions): Promise<QuestionRow[]> {
     if (options.type) query = query.eq('type', options.type);
     if (options.model) query = query.eq('generated_by', options.model);
     if (options.batchId) query = query.eq('batch_id', options.batchId);
+    if (options.pendingOnly) query = query.eq('quality_status', 'pending');
     query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
     const { data, error } = await query;
@@ -253,6 +261,7 @@ async function main() {
     options.type && `type=${options.type}`,
     options.model && `model=${options.model}`,
     options.limit && `limit=${options.limit}`,
+    options.pendingOnly && 'pending-only',
   ].filter(Boolean);
 
   console.log(`Fetching questions${filters.length ? ` (${filters.join(', ')})` : ''}...`);
@@ -376,7 +385,7 @@ async function main() {
     }
   }
 
-  // Write quality_status to database if --mark-db is set
+  // Write quality_status to database if --write-db is set
   if (options.markDb) {
     console.log('\n' + '═'.repeat(60));
     console.log('WRITING QUALITY STATUS TO DATABASE');
@@ -402,7 +411,7 @@ async function main() {
       }
     }
 
-    // Mark passing questions as active (in case they were previously flagged)
+    // Mark passing questions as active (promotes pending → active)
     if (passingIds.length > 0) {
       const { error: activeError } = await supabase
         .from('questions')
@@ -419,6 +428,16 @@ async function main() {
     // Parse errors are left unchanged (not enough info to judge)
     if (parseErrors.length > 0) {
       console.log(`  Skipped ${parseErrors.length} questions with parse errors (status unchanged)`);
+    }
+
+    // Promotion summary when auditing pending questions
+    if (options.pendingOnly) {
+      console.log('\n  Promotion summary (pending questions):');
+      console.log(`    Promoted to active:  ${passingIds.length}`);
+      console.log(`    Flagged:             ${flaggedIds.length}`);
+      if (parseErrors.length > 0) {
+        console.log(`    Still pending:       ${parseErrors.length} (parse errors)`);
+      }
     }
   }
 }

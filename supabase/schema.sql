@@ -95,7 +95,7 @@ CREATE TABLE questions (
   batch_id TEXT,                             -- Generation batch identifier
   source_file TEXT,                          -- Learning material source
   generated_by TEXT,                         -- Model ID that generated this question (per-question for multi-model support)
-  quality_status TEXT DEFAULT 'active' CHECK (quality_status IN ('active', 'flagged')),
+  quality_status TEXT DEFAULT 'pending' CHECK (quality_status IN ('active', 'flagged', 'pending')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -378,7 +378,7 @@ COMMENT ON COLUMN questions.content_hash IS 'MD5 hash of normalized question con
 COMMENT ON COLUMN questions.batch_id IS 'Identifies which generation batch created this question (e.g., 2026-02-04_unit3)';
 COMMENT ON COLUMN questions.source_file IS 'Path to the markdown learning file used to generate this question';
 COMMENT ON COLUMN questions.generated_by IS 'Model ID that generated this question (e.g., claude-haiku-4-5-20251001). Per-question for multi-model support.';
-COMMENT ON COLUMN questions.quality_status IS 'Audit status: active (serves to students) or flagged (excluded from quizzes, protected from deletion)';
+COMMENT ON COLUMN questions.quality_status IS 'Audit status: pending (awaiting audit, not served), active (serves to students), or flagged (excluded from quizzes, protected from deletion)';
 COMMENT ON TABLE batches IS 'Metadata for each question generation batch run. Tracks pipeline state, model, config, and results.';
 COMMENT ON COLUMN question_results.score IS 'Evaluation score 0-100. NULL for legacy data. MCQ/TF are always 0 or 100. Typed answers use fuzzy/API evaluation score.';
 COMMENT ON TABLE leitner_state IS 'Leitner spaced repetition box assignments per student per question';
