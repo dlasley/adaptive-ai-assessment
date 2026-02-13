@@ -78,7 +78,7 @@ export default function TypedAnswerQuestion({
     if (question.type === 'fill-in-blank') {
       const blankCount = (question.question.match(/___+/g) || []).length;
       return blankCount > 1
-        ? 'Type words separated by spaces...'
+        ? 'Type answers separated by commas...'
         : 'Type your answer in French...';
     }
     return question.requiresCompleteSentence

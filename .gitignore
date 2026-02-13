@@ -51,6 +51,10 @@ next-env.d.ts
 # security audit (private)
 /security-audit/
 
+# test/demo pages (not for production)
+/src/app/celebrations-test/
+/src/app/celebrations-test-v2/
+
 # generation artifacts
 generation.log
 generation.pid
