@@ -58,3 +58,7 @@ next-env.d.ts
 # generation artifacts
 generation.log
 generation.pid
+nohup.out
+
+# experiment data (generated JSON exports)
+/data/

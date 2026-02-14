@@ -59,6 +59,9 @@ interface PipelineOptions {
   audit: boolean;
   auditor: 'mistral' | 'sonnet';
   dryRun: boolean;
+  convertOnly: boolean;
+  batchId?: string;
+  markdownFile?: string;
 }
 
 // Load PDF-to-Markdown conversion prompt from file (single source of truth)
@@ -259,6 +262,14 @@ function parseArgs(): PipelineOptions {
     process.exit(1);
   }
 
+  // Parse --batch-id flag
+  const batchIdIdx = args.indexOf('--batch-id');
+  const batchIdValue = batchIdIdx >= 0 ? args[batchIdIdx + 1] : undefined;
+
+  // Parse --markdown-file flag
+  const mdFileIdx = args.indexOf('--markdown-file');
+  const mdFileValue = mdFileIdx >= 0 ? args[mdFileIdx + 1] : undefined;
+
   const options: PipelineOptions = {
     unitId: args[0],
     reviewTopics: args.includes('--review-topics'),
@@ -269,6 +280,9 @@ function parseArgs(): PipelineOptions {
     audit: args.includes('--audit'),
     auditor: auditorValue as 'mistral' | 'sonnet',
     dryRun: args.includes('--dry-run'),
+    convertOnly: args.includes('--convert-only'),
+    batchId: batchIdValue,
+    markdownFile: mdFileValue,
   };
 
   // Validate --audit requires --write-db
@@ -300,6 +314,9 @@ Options:
   --audit         Run quality audit after generation (requires --write-db)
   --auditor <m>   Audit model: 'mistral' (default) or 'sonnet'
   --dry-run       Show what would be done without executing
+  --convert-only  Stop after PDF conversion (skip topics, generation, audit)
+  --batch-id <id>         Custom batch ID for experiment tracking
+  --markdown-file <path>  Use specified markdown file (bypasses PDF conversion)
 
 Examples:
   npx tsx scripts/regenerate.ts unit-4                    # Full pipeline for unit-4
@@ -533,6 +550,17 @@ async function stepConvertPdf(
   console.log('\n┌─────────────────────────────────────────────────────────────┐');
   console.log('│  STEP 1: PDF → Markdown Conversion                         │');
   console.log('└─────────────────────────────────────────────────────────────┘\n');
+
+  // Use explicit markdown file if specified (bypasses all conversion/discovery)
+  if (options.markdownFile) {
+    const resolvedPath = path.resolve(options.markdownFile);
+    if (!fs.existsSync(resolvedPath)) {
+      console.log(`  ❌ Markdown file not found: ${resolvedPath}`);
+      return { success: false };
+    }
+    console.log(`  ⏭️  Using specified markdown: ${resolvedPath}`);
+    return { success: true, markdownPath: resolvedPath };
+  }
 
   // Skip conversion entirely if requested
   if (options.skipConvert) {
@@ -861,6 +889,12 @@ async function stepGenerateQuestions(
   if (options.dryRun) {
     args.push('--dry-run');
   }
+  if (options.batchId) {
+    args.push('--batch-id', options.batchId);
+  }
+  if (options.markdownFile) {
+    args.push('--source-file', options.markdownFile);
+  }
 
   console.log(`  🚀 Running: npx tsx scripts/generate-questions.ts ${args.join(' ')}\n`);
 
@@ -909,6 +943,9 @@ async function stepAuditQuestions(
   console.log('└─────────────────────────────────────────────────────────────┘\n');
 
   const args = ['--write-db', '--pending-only', '--unit', unitId];
+  if (options.batchId) {
+    args.push('--batch', options.batchId);
+  }
 
   console.log(`  🔍 Auditing pending questions for ${unitId} (${auditorLabel})`);
   console.log(`  🚀 Running: npx tsx scripts/${auditScript} ${args.join(' ')}\n`);
@@ -954,6 +991,12 @@ async function runPipelineForUnit(
   const step1 = await stepConvertPdf(unitId, options);
   if (!step1.success || !step1.markdownPath) {
     console.log('\n  ❌ Pipeline stopped: No markdown available');
+    return;
+  }
+
+  // --convert-only: stop after PDF conversion
+  if (options.convertOnly) {
+    console.log('\n  ✅ Conversion complete (--convert-only)');
     return;
   }
 
@@ -1015,6 +1058,15 @@ async function main() {
   console.log(`  Write to DB:   ${options.syncDb ? 'Yes' : 'No'}`);
   console.log(`  Audit:         ${options.audit ? `Yes — ${options.auditor === 'mistral' ? 'Mistral Large' : 'Sonnet'} (pending → active/flagged)` : 'No'}`);
   console.log(`  Dry run:       ${options.dryRun ? 'Yes' : 'No'}`);
+  if (options.convertOnly) {
+    console.log(`  Convert only:  Yes (stop after PDF conversion)`);
+  }
+  if (options.batchId) {
+    console.log(`  Batch ID:      ${options.batchId}`);
+  }
+  if (options.markdownFile) {
+    console.log(`  Markdown file: ${options.markdownFile}`);
+  }
 
   if (options.unitId === '--all') {
     // Process all units
