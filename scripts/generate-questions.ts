@@ -86,7 +86,6 @@ interface CLIOptions {
   generationModelStructured?: string;
   generationModelTyped?: string;
   validationModel?: string;
-  allowDirty?: boolean;
 }
 
 const DIFFICULTIES: ('beginner' | 'intermediate' | 'advanced')[] = ['beginner', 'intermediate', 'advanced'];
@@ -251,9 +250,6 @@ function parseArgs(): CLIOptions {
         break;
       case '--validation-model':
         options.validationModel = args[++i];
-        break;
-      case '--allow-dirty':
-        options.allowDirty = true;
         break;
       case '--help':
       case '-h':
@@ -1092,7 +1088,6 @@ async function generateAllQuestions(options: CLIOptions) {
   // Git safety check (records provenance for batch config)
   const gitInfo = checkGitState({
     experimentId: options.experimentId,
-    allowDirty: options.allowDirty,
   });
 
   // Determine table targets based on experiment mode

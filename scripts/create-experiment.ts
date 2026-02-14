@@ -22,7 +22,6 @@
  *   --metric <text>               Primary success metric (default: gate_pass_rate)
  *   --description <text>          Optional description
  *   --output-id                   Print only UUID to stdout (prompts go to stderr)
- *   --allow-dirty                 Allow uncommitted changes
  */
 
 import { config } from 'dotenv';
@@ -44,7 +43,6 @@ interface CLIOptions {
   metric?: string;
   description?: string;
   outputId: boolean;
-  allowDirty: boolean;
 }
 
 interface CohortEntry {
@@ -78,7 +76,6 @@ function parseArgs(): CLIOptions {
   const options: CLIOptions = {
     unit: '',
     outputId: false,
-    allowDirty: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -106,9 +103,6 @@ function parseArgs(): CLIOptions {
         break;
       case '--output-id':
         options.outputId = true;
-        break;
-      case '--allow-dirty':
-        options.allowDirty = true;
         break;
       case '--help':
       case '-h':
@@ -139,7 +133,6 @@ Options:
   --metric <text>               Primary metric (default: gate_pass_rate)
   --description <text>          Optional description
   --output-id                   Print only UUID to stdout
-  --allow-dirty                 Allow uncommitted changes
   `);
 }
 
@@ -272,7 +265,7 @@ async function main(): Promise<void> {
   const git = getGitInfo();
   log(`\nNew Experiment Setup\n`);
   log(`Git: branch ${git.branch} @ ${git.commit} (${git.clean ? 'clean' : 'dirty'})`);
-  checkGitState({ experimentId: 'new', allowDirty: options.allowDirty });
+  checkGitState({ experimentId: 'new' });
 
   // 2. Init Supabase (requires secret key for writes)
   const supabase = createScriptSupabase({ write: true });

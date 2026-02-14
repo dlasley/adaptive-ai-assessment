@@ -26,13 +26,12 @@ export function getGitInfo(): GitInfo {
 /**
  * Check git state and enforce safety rules.
  *
- * - Experiments are blocked on the `main` branch.
- * - Dirty working trees are blocked unless `allowDirty` is set.
+ * - Experiments are blocked on the `main` branch (hard block).
+ * - Dirty working trees emit a warning for experiments (informational only).
  * - Returns git info for provenance recording.
  */
 export function checkGitState(opts: {
   experimentId?: string;
-  allowDirty?: boolean;
 }): GitInfo {
   const git = getGitInfo();
 
@@ -42,14 +41,8 @@ export function checkGitState(opts: {
     process.exit(1);
   }
 
-  if (!git.clean && !opts.allowDirty) {
-    console.error('❌ Working tree has uncommitted changes.');
-    console.error('   Commit your changes first, or use --allow-dirty to override.');
-    process.exit(1);
-  }
-
-  if (!git.clean && opts.allowDirty) {
-    console.warn('⚠️  Working tree has uncommitted changes (--allow-dirty).');
+  if (opts.experimentId && !git.clean) {
+    console.warn('⚠️  Working tree has uncommitted changes — provenance may be imprecise.');
   }
 
   return git;

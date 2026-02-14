@@ -64,7 +64,6 @@ interface CLIOptions {
   experimentId?: string;
   cohort?: string;
   auditModel?: string;
-  allowDirty?: boolean;
 }
 
 
@@ -84,7 +83,6 @@ function parseArgs(): CLIOptions {
       case '--experiment-id': options.experimentId = args[++i]; break;
       case '--cohort': options.cohort = args[++i]; break;
       case '--audit-model': options.auditModel = args[++i]; break;
-      case '--allow-dirty': options.allowDirty = true; break;
     }
   }
 
@@ -289,7 +287,6 @@ async function main() {
   // Git safety check
   checkGitState({
     experimentId: options.experimentId,
-    allowDirty: options.allowDirty,
   });
 
   // Determine table target based on experiment mode

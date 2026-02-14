@@ -35,7 +35,7 @@ echo ""
 
 # Step 2: Reconvert PDF with updated prompt
 echo "=== Step 2/8: Reconvert PDF with updated prompt ==="
-npx tsx scripts/regenerate.ts "$UNIT" --force-convert --convert-only --allow-dirty
+npx tsx scripts/regenerate.ts "$UNIT" --force-convert --convert-only
 echo ""
 
 # Step 3: Save new markdown as Cohort C source
@@ -59,7 +59,6 @@ EXPERIMENT_ID=$(npx tsx scripts/create-experiment.ts \
   --hypothesis "Reconverted markdown will improve gate pass rate by 5+pp" \
   --variable source_material \
   --metric gate_pass_rate \
-  --allow-dirty \
   --output-id)
 echo "  Experiment ID: $EXPERIMENT_ID"
 echo ""
@@ -71,8 +70,7 @@ npx tsx scripts/regenerate.ts "$UNIT" \
   --skip-convert --skip-topics --write-db --audit \
   --batch-id "cohort-b-${TIMESTAMP}" \
   --markdown-file "${LEARNINGS%.md}.cohort-b.md" \
-  --experiment-id "$EXPERIMENT_ID" --cohort B \
-  --allow-dirty
+  --experiment-id "$EXPERIMENT_ID" --cohort B
 echo ""
 
 # Step 7: Generate + audit Cohort C -> experiment_questions directly
@@ -82,8 +80,7 @@ npx tsx scripts/regenerate.ts "$UNIT" \
   --skip-convert --skip-topics --write-db --audit \
   --batch-id "cohort-c-${TIMESTAMP}" \
   --markdown-file "${LEARNINGS%.md}.cohort-c.md" \
-  --experiment-id "$EXPERIMENT_ID" --cohort C \
-  --allow-dirty
+  --experiment-id "$EXPERIMENT_ID" --cohort C
 echo ""
 
 # Step 8: Compare from experiment_questions

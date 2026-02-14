@@ -68,7 +68,6 @@ interface PipelineOptions {
   generationModelTyped?: string;
   validationModel?: string;
   auditModel?: string;
-  allowDirty?: boolean;
 }
 
 // Load PDF-to-Markdown conversion prompt from file (single source of truth)
@@ -305,7 +304,6 @@ function parseArgs(): PipelineOptions {
     generationModelTyped: genTypedValue,
     validationModel: valModelValue,
     auditModel: auditModelValue,
-    allowDirty: args.includes('--allow-dirty'),
   };
 
   // Validate --audit requires --write-db
@@ -939,10 +937,6 @@ async function stepGenerateQuestions(
   if (options.validationModel) {
     args.push('--validation-model', options.validationModel);
   }
-  if (options.allowDirty) {
-    args.push('--allow-dirty');
-  }
-
   console.log(`  🚀 Running: npx tsx scripts/generate-questions.ts ${args.join(' ')}\n`);
 
   if (options.dryRun) {
@@ -1003,10 +997,6 @@ async function stepAuditQuestions(
   if (options.auditModel) {
     args.push('--audit-model', options.auditModel);
   }
-  if (options.allowDirty) {
-    args.push('--allow-dirty');
-  }
-
   console.log(`  🔍 Auditing pending questions for ${unitId} (${auditorLabel})`);
   console.log(`  🚀 Running: npx tsx scripts/${auditScript} ${args.join(' ')}\n`);
 
