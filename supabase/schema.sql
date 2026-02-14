@@ -388,3 +388,150 @@ COMMENT ON TABLE leitner_state IS 'Leitner spaced repetition box assignments per
 COMMENT ON COLUMN leitner_state.box IS 'Leitner box 1-5. Box 1 = most frequent review, Box 5 = mastered';
 COMMENT ON COLUMN leitner_state.consecutive_correct IS 'Number of consecutive correct answers. Resets to 0 on wrong answer.';
 COMMENT ON COLUMN leitner_state.last_reviewed IS 'When this question was last attempted';
+
+-- ============================================================
+-- Experiment Framework Tables
+-- Twin-store pattern: experiment_questions mirrors questions,
+-- experiment_batches mirrors batches. Fully segregated from production data.
+-- ============================================================
+
+-- Experiments: top-level experiment record
+CREATE TABLE experiments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  unit_id TEXT NOT NULL,
+
+  -- Experiment design (captured interactively at creation)
+  name TEXT NOT NULL,
+  research_question TEXT NOT NULL,
+  hypothesis TEXT NOT NULL,
+  independent_variable TEXT NOT NULL,
+  primary_metric TEXT NOT NULL DEFAULT 'gate_pass_rate',
+  description TEXT,
+
+  -- Provenance (auto-captured)
+  git_branch TEXT,
+  git_commit TEXT,
+  pipeline_config JSONB,
+
+  -- Cohort data (built incrementally)
+  cohorts JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+  -- Results (populated after comparison)
+  results JSONB,
+  conclusion TEXT,
+  report_path TEXT
+);
+
+-- Experiment Questions: mirrors questions + experiment linkage
+-- No prevent_flagged_deletion trigger (experiment data is historical)
+CREATE TABLE experiment_questions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  -- Experiment linkage
+  experiment_id UUID NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
+  cohort TEXT NOT NULL,
+  original_question_id UUID,
+
+  -- Core fields (mirrors questions table)
+  question TEXT NOT NULL,
+  correct_answer TEXT NOT NULL,
+  explanation TEXT,
+  unit_id TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  difficulty TEXT NOT NULL CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
+  type TEXT NOT NULL CHECK (type IN ('multiple-choice', 'true-false', 'fill-in-blank', 'writing')),
+
+  -- Type-specific fields
+  options TEXT[],
+  acceptable_variations TEXT[] DEFAULT '{}',
+  writing_type TEXT CHECK (writing_type IS NULL OR writing_type IN ('translation', 'conjugation', 'open_ended', 'question_formation', 'sentence_building')),
+  hints TEXT[] DEFAULT '{}',
+  requires_complete_sentence BOOLEAN DEFAULT FALSE,
+
+  -- Metadata
+  content_hash TEXT,
+  batch_id TEXT,
+  source_file TEXT,
+  generated_by TEXT,
+  quality_status TEXT DEFAULT 'pending' CHECK (quality_status IN ('active', 'flagged', 'pending')),
+  audit_metadata JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_experiment_questions_experiment ON experiment_questions(experiment_id);
+CREATE INDEX idx_experiment_questions_experiment_cohort ON experiment_questions(experiment_id, cohort);
+CREATE INDEX idx_experiment_questions_content_hash ON experiment_questions(content_hash);
+
+CREATE TRIGGER experiment_questions_updated_at
+  BEFORE UPDATE ON experiment_questions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_questions_updated_at();
+
+-- Experiment Batches: mirrors batches + experiment linkage
+CREATE TABLE experiment_batches (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  model TEXT,
+  unit_id TEXT,
+  difficulty TEXT,
+  type_filter TEXT,
+  question_count INTEGER DEFAULT 0,
+  inserted_count INTEGER DEFAULT 0,
+  duplicate_count INTEGER DEFAULT 0,
+  error_count INTEGER DEFAULT 0,
+  config JSONB DEFAULT '{}'::jsonb,
+  quality_metrics JSONB,
+  description TEXT,
+  prompt_hash TEXT,
+
+  -- Experiment linkage
+  experiment_id UUID NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
+  cohort TEXT NOT NULL
+);
+
+CREATE INDEX idx_experiment_batches_experiment ON experiment_batches(experiment_id);
+CREATE INDEX idx_experiment_batches_experiment_cohort ON experiment_batches(experiment_id, cohort);
+
+-- RLS for experiment tables
+ALTER TABLE experiments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE experiment_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE experiment_batches ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "anon_select_experiments"
+  ON experiments FOR SELECT
+  TO anon
+  USING (true);
+
+CREATE POLICY "anon_select_experiment_questions"
+  ON experiment_questions FOR SELECT
+  TO anon
+  USING (true);
+
+CREATE POLICY "anon_select_experiment_batches"
+  ON experiment_batches FOR SELECT
+  TO anon
+  USING (true);
+
+-- Experiment table comments
+COMMENT ON TABLE experiments IS 'Top-level experiment records with design metadata, provenance, cohort data, and results';
+COMMENT ON COLUMN experiments.research_question IS 'What are we trying to learn? Specific, answerable question.';
+COMMENT ON COLUMN experiments.hypothesis IS 'Falsifiable prediction with expected direction and magnitude';
+COMMENT ON COLUMN experiments.independent_variable IS 'What single factor changes between treatment cohorts';
+COMMENT ON COLUMN experiments.primary_metric IS 'Main success metric: gate_pass_rate, difficulty_mismatch_rate, per_criterion_failure, or custom';
+COMMENT ON COLUMN experiments.pipeline_config IS 'Experiment-level defaults from config.ts MODELS at creation time';
+COMMENT ON COLUMN experiments.cohorts IS 'Array of cohort metadata objects (label, source_type, question_count, batch_ids, stage2_metrics)';
+COMMENT ON COLUMN experiments.results IS 'Full comparison metrics from compare-experiments.ts';
+COMMENT ON COLUMN experiments.conclusion IS 'Auto-generated summary of whether hypothesis was supported/refuted';
+COMMENT ON COLUMN experiments.report_path IS 'Path to generated markdown comparison report';
+
+COMMENT ON TABLE experiment_questions IS 'Mirrors questions table with experiment linkage. No flagged-deletion protection (experiment data is historical).';
+COMMENT ON COLUMN experiment_questions.experiment_id IS 'Parent experiment';
+COMMENT ON COLUMN experiment_questions.cohort IS 'Cohort label: control, B, C, etc.';
+COMMENT ON COLUMN experiment_questions.original_question_id IS 'For control cohort: original question ID from production. Informational only, no FK.';
+
+COMMENT ON TABLE experiment_batches IS 'Mirrors batches table with experiment linkage. config JSONB contains comprehensive provenance (git, models, cli_args).';
+COMMENT ON COLUMN experiment_batches.experiment_id IS 'Parent experiment';
+COMMENT ON COLUMN experiment_batches.cohort IS 'Cohort label: control, B, C, etc.';
+COMMENT ON COLUMN experiment_batches.config IS 'Comprehensive provenance: { git: { branch, commit }, models: { ... }, cli_args: { ... } }';

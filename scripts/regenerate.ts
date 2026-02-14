@@ -62,6 +62,14 @@ interface PipelineOptions {
   convertOnly: boolean;
   batchId?: string;
   markdownFile?: string;
+  // Experiment framework
+  experimentId?: string;
+  cohort?: string;
+  generationModelStructured?: string;
+  generationModelTyped?: string;
+  validationModel?: string;
+  auditModel?: string;
+  allowDirty?: boolean;
 }
 
 // Load PDF-to-Markdown conversion prompt from file (single source of truth)
@@ -270,6 +278,20 @@ function parseArgs(): PipelineOptions {
   const mdFileIdx = args.indexOf('--markdown-file');
   const mdFileValue = mdFileIdx >= 0 ? args[mdFileIdx + 1] : undefined;
 
+  // Parse experiment flags
+  const expIdIdx = args.indexOf('--experiment-id');
+  const expIdValue = expIdIdx >= 0 ? args[expIdIdx + 1] : undefined;
+  const cohortIdx = args.indexOf('--cohort');
+  const cohortValue = cohortIdx >= 0 ? args[cohortIdx + 1] : undefined;
+  const genStructIdx = args.indexOf('--generation-model-structured');
+  const genStructValue = genStructIdx >= 0 ? args[genStructIdx + 1] : undefined;
+  const genTypedIdx = args.indexOf('--generation-model-typed');
+  const genTypedValue = genTypedIdx >= 0 ? args[genTypedIdx + 1] : undefined;
+  const valModelIdx = args.indexOf('--validation-model');
+  const valModelValue = valModelIdx >= 0 ? args[valModelIdx + 1] : undefined;
+  const auditModelIdx = args.indexOf('--audit-model');
+  const auditModelValue = auditModelIdx >= 0 ? args[auditModelIdx + 1] : undefined;
+
   const options: PipelineOptions = {
     unitId: args[0],
     reviewTopics: args.includes('--review-topics'),
@@ -283,11 +305,24 @@ function parseArgs(): PipelineOptions {
     convertOnly: args.includes('--convert-only'),
     batchId: batchIdValue,
     markdownFile: mdFileValue,
+    experimentId: expIdValue,
+    cohort: cohortValue,
+    generationModelStructured: genStructValue,
+    generationModelTyped: genTypedValue,
+    validationModel: valModelValue,
+    auditModel: auditModelValue,
+    allowDirty: args.includes('--allow-dirty'),
   };
 
   // Validate --audit requires --write-db
   if (options.audit && !options.syncDb) {
     console.error('❌ --audit requires --write-db (questions must be in DB to audit)');
+    process.exit(1);
+  }
+
+  // Validate experiment flags
+  if (options.experimentId && !options.cohort) {
+    console.error('❌ --experiment-id requires --cohort');
     process.exit(1);
   }
 
@@ -895,6 +930,25 @@ async function stepGenerateQuestions(
   if (options.markdownFile) {
     args.push('--source-file', options.markdownFile);
   }
+  // Pass through experiment flags
+  if (options.experimentId) {
+    args.push('--experiment-id', options.experimentId);
+  }
+  if (options.cohort) {
+    args.push('--cohort', options.cohort);
+  }
+  if (options.generationModelStructured) {
+    args.push('--generation-model-structured', options.generationModelStructured);
+  }
+  if (options.generationModelTyped) {
+    args.push('--generation-model-typed', options.generationModelTyped);
+  }
+  if (options.validationModel) {
+    args.push('--validation-model', options.validationModel);
+  }
+  if (options.allowDirty) {
+    args.push('--allow-dirty');
+  }
 
   console.log(`  🚀 Running: npx tsx scripts/generate-questions.ts ${args.join(' ')}\n`);
 
@@ -945,6 +999,19 @@ async function stepAuditQuestions(
   const args = ['--write-db', '--pending-only', '--unit', unitId];
   if (options.batchId) {
     args.push('--batch', options.batchId);
+  }
+  // Pass through experiment flags
+  if (options.experimentId) {
+    args.push('--experiment-id', options.experimentId);
+  }
+  if (options.cohort) {
+    args.push('--cohort', options.cohort);
+  }
+  if (options.auditModel) {
+    args.push('--audit-model', options.auditModel);
+  }
+  if (options.allowDirty) {
+    args.push('--allow-dirty');
   }
 
   console.log(`  🔍 Auditing pending questions for ${unitId} (${auditorLabel})`);
@@ -1042,6 +1109,25 @@ async function runPipelineForUnit(
  */
 async function main() {
   const options = parseArgs();
+
+  // Git safety check
+  const gitBranch = execSync('git branch --show-current', { encoding: 'utf-8' }).trim();
+  const gitStatus = execSync('git status --porcelain', { encoding: 'utf-8' }).trim();
+  const gitClean = gitStatus.length === 0;
+
+  if (options.experimentId && gitBranch === 'main') {
+    console.error('❌ Experiments must run on a branch, not main.');
+    process.exit(1);
+  }
+
+  if (!gitClean && !options.allowDirty) {
+    console.error('❌ Working tree has uncommitted changes. Use --allow-dirty to override.');
+    process.exit(1);
+  }
+
+  if (!gitClean && options.allowDirty) {
+    console.warn('⚠️  Working tree has uncommitted changes (--allow-dirty).');
+  }
 
   console.log(`
 ╔════════════════════════════════════════════════════════════════╗

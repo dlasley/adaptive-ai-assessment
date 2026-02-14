@@ -1,4 +1,8 @@
 /**
+ * @deprecated Use scripts/compare-experiments.ts instead.
+ * This script is kept for reference. The experiment framework replaces
+ * hardcoded 3-cohort comparison with N-cohort support via experiment_questions.
+ *
  * Three-Cohort Quality Comparison
  *
  * Compares question quality across three cohorts:

@@ -35,6 +35,7 @@ config({ path: '.env.local' });
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { execSync } from 'child_process';
 import { units } from '../src/lib/units';
 import { loadUnitMaterials, extractTopicContent } from '../src/lib/learning-materials';
 import { inferWritingType, WritingType } from './lib/writing-type-inference';
@@ -79,6 +80,13 @@ interface CLIOptions {
   // Override: uses a single model for all types (disables hybrid mode)
   model?: string;
   skipValidation?: boolean;
+  // Experiment framework
+  experimentId?: string;
+  cohort?: string;
+  generationModelStructured?: string;
+  generationModelTyped?: string;
+  validationModel?: string;
+  allowDirty?: boolean;
 }
 
 const DIFFICULTIES: ('beginner' | 'intermediate' | 'advanced')[] = ['beginner', 'intermediate', 'advanced'];
@@ -233,11 +241,39 @@ function parseArgs(): CLIOptions {
       case '--skip-validation':
         options.skipValidation = true;
         break;
+      case '--experiment-id':
+        options.experimentId = args[++i];
+        break;
+      case '--cohort':
+        options.cohort = args[++i];
+        break;
+      case '--generation-model-structured':
+        options.generationModelStructured = args[++i];
+        break;
+      case '--generation-model-typed':
+        options.generationModelTyped = args[++i];
+        break;
+      case '--validation-model':
+        options.validationModel = args[++i];
+        break;
+      case '--allow-dirty':
+        options.allowDirty = true;
+        break;
       case '--help':
       case '-h':
         printHelp();
         process.exit(0);
     }
+  }
+
+  // Validate experiment flags
+  if (options.experimentId && !options.cohort) {
+    console.error('❌ --experiment-id requires --cohort');
+    process.exit(1);
+  }
+  if (options.cohort && !options.experimentId) {
+    console.error('❌ --cohort requires --experiment-id');
+    process.exit(1);
   }
 
   // Validate --writing-type requires --type writing
@@ -324,16 +360,55 @@ function initSupabase(): SupabaseClient | null {
 }
 
 /**
- * Fetch existing content hashes from database for deduplication
- * Fetches ALL hashes to ensure cross-topic deduplication works correctly
+ * Check git state and enforce clean commit policy.
+ * Returns git info for batch provenance recording.
+ */
+function checkGitState(options: CLIOptions): { branch: string; commit: string } {
+  const branch = execSync('git branch --show-current', { encoding: 'utf-8' }).trim();
+  const commit = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+  const status = execSync('git status --porcelain', { encoding: 'utf-8' }).trim();
+  const clean = status.length === 0;
+
+  // Experiment mode: block main branch
+  if (options.experimentId && branch === 'main') {
+    console.error('❌ Experiments must run on a branch, not main.');
+    console.error('   Create a branch first: git checkout -b experiment/<name>');
+    process.exit(1);
+  }
+
+  // Dirty tree check
+  if (!clean && !options.allowDirty) {
+    console.error('❌ Working tree has uncommitted changes.');
+    console.error('   Commit your changes first, or use --allow-dirty to override.');
+    process.exit(1);
+  }
+
+  if (!clean && options.allowDirty) {
+    console.warn('⚠️  Working tree has uncommitted changes (--allow-dirty).');
+  }
+
+  return { branch, commit };
+}
+
+/**
+ * Fetch existing content hashes from database for deduplication.
+ * In experiment mode, deduplicates against experiment_questions for the same experiment only.
  */
 async function fetchExistingHashes(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  tableName: string,
+  experimentId?: string,
 ): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from('questions')
+  let query = supabase
+    .from(tableName)
     .select('content_hash')
     .not('content_hash', 'is', null);
+
+  if (experimentId && tableName === 'experiment_questions') {
+    query = query.eq('experiment_id', experimentId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching existing hashes:', error);
@@ -352,7 +427,8 @@ async function syncToDatabase(
   existingHashes: Set<string>,
   batchId: string,
   generatedBy: string,
-  sourceFile?: string
+  sourceFile?: string,
+  experimentFields?: { tableName: string; experimentId: string; cohort: string },
 ): Promise<{ inserted: number; skipped: number }> {
   const newQuestions = questions.filter(q => q.contentHash && !existingHashes.has(q.contentHash));
   const skipped = questions.length - newQuestions.length;
@@ -361,6 +437,8 @@ async function syncToDatabase(
     return { inserted: 0, skipped };
   }
 
+  const targetTable = experimentFields?.tableName || 'questions';
+
   // Convert to database format (unified questions table)
   const dbRecords = newQuestions.map(q => {
     const qType = q.type as string;
@@ -368,7 +446,7 @@ async function syncToDatabase(
     const isTypedType = qType === 'fill-in-blank' || qType === 'writing';
     const isWriting = qType === 'writing';
 
-    return {
+    const record: Record<string, unknown> = {
       question: q.question,
       correct_answer: q.correctAnswer,
       unit_id: q.unitId,
@@ -387,10 +465,17 @@ async function syncToDatabase(
       generated_by: generatedBy,
       quality_status: 'pending',
     };
+
+    if (experimentFields) {
+      record.experiment_id = experimentFields.experimentId;
+      record.cohort = experimentFields.cohort;
+    }
+
+    return record;
   });
 
   const { error } = await supabase
-    .from('questions')
+    .from(targetTable)
     .insert(dbRecords);
 
   if (error) {
@@ -1044,6 +1129,14 @@ async function generateAllQuestions(options: CLIOptions) {
   }
   console.log();
 
+  // Git safety check (records provenance for batch config)
+  const gitInfo = checkGitState(options);
+
+  // Determine table targets based on experiment mode
+  const isExperiment = !!options.experimentId;
+  const tableName = isExperiment ? 'experiment_questions' : 'questions';
+  const batchTableName = isExperiment ? 'experiment_batches' : 'batches';
+
   // Initialize Supabase if syncing to database
   let supabaseClient: ReturnType<typeof initSupabase> = null;
   let existingHashes = new Set<string>();
@@ -1056,7 +1149,7 @@ async function generateAllQuestions(options: CLIOptions) {
       process.exit(1);
     }
     console.log('📡 Fetching existing content hashes for deduplication...');
-    existingHashes = await fetchExistingHashes(supabaseClient);
+    existingHashes = await fetchExistingHashes(supabaseClient, tableName, options.experimentId);
     console.log(`   Found ${existingHashes.size} existing question hashes\n`);
   }
 
@@ -1163,7 +1256,8 @@ async function generateAllQuestions(options: CLIOptions) {
                 existingHashes,
                 options.batchId,
                 pass.model,
-                options.sourceFile
+                options.sourceFile,
+                isExperiment ? { tableName, experimentId: options.experimentId!, cohort: options.cohort! } : undefined,
               );
               totalInserted += inserted;
               totalSkippedDuplicates += skipped;
@@ -1249,45 +1343,107 @@ async function generateAllQuestions(options: CLIOptions) {
     // Insert batch metadata record
     if (supabaseClient && totalInserted > 0) {
       const batchModel = options.model || 'hybrid';
+      const structuredModel = options.generationModelStructured || MODELS.questionGenerationStructured;
+      const typedModel = options.generationModelTyped || MODELS.questionGenerationTyped;
+      const validationModel = options.validationModel || MODELS.answerValidation;
+
+      const batchRecord: Record<string, unknown> = {
+        id: options.batchId,
+        model: batchModel,
+        unit_id: options.unitId || 'all',
+        difficulty: options.difficulty || 'all',
+        type_filter: options.questionType || 'all',
+        question_count: totalGenerated,
+        inserted_count: totalInserted,
+        duplicate_count: totalSkippedDuplicates,
+        error_count: totalAttempted - Math.ceil(totalGenerated / options.count),
+        config: {
+          git: {
+            branch: gitInfo.branch,
+            commit: gitInfo.commit,
+          },
+          models: {
+            generation_structured: structuredModel,
+            generation_typed: typedModel,
+            validation: validationModel,
+            audit: MODELS.audit,
+            pdf_conversion: MODELS.pdfConversion,
+            topic_extraction: MODELS.topicExtraction,
+          },
+          cli_args: {
+            unit: options.unitId || null,
+            type: options.questionType || null,
+            difficulty: options.difficulty || null,
+            batch_id: options.batchId,
+            source_file: options.sourceFile || null,
+          },
+        },
+        quality_metrics: {
+          meta_filtered: aggregateStats.meta_filtered,
+          type_drift: aggregateStats.type_drift,
+          structural_rejected: aggregateStats.structural_rejected,
+          validation_rejected: aggregateStats.validation_rejected,
+          difficulty_relabeled: aggregateStats.difficulty_relabeled,
+          validation_pass_rate: totalGenerated + aggregateStats.structural_rejected + aggregateStats.validation_rejected > 0
+            ? +(totalGenerated / (totalGenerated + aggregateStats.structural_rejected + aggregateStats.validation_rejected) * 100).toFixed(1)
+            : 100,
+        },
+        prompt_hash: crypto.createHash('sha256')
+          .update(structuredModel + typedModel)
+          .digest('hex')
+          .substring(0, 16),
+      };
+
+      // Add experiment linkage fields
+      if (isExperiment) {
+        batchRecord.experiment_id = options.experimentId;
+        batchRecord.cohort = options.cohort;
+      }
+
       const { error: batchError } = await supabaseClient
-        .from('batches')
-        .insert({
-          id: options.batchId,
-          model: batchModel,
-          unit_id: options.unitId || 'all',
-          difficulty: options.difficulty || 'all',
-          type_filter: options.questionType || 'all',
-          question_count: totalGenerated,
-          inserted_count: totalInserted,
-          duplicate_count: totalSkippedDuplicates,
-          error_count: totalAttempted - Math.ceil(totalGenerated / options.count),
-          config: {
-            args: process.argv.slice(2),
-            count: options.count,
-            model: batchModel,
-            structuredModel: MODELS.questionGenerationStructured,
-            typedModel: MODELS.questionGenerationTyped,
-          },
-          quality_metrics: {
-            meta_filtered: aggregateStats.meta_filtered,
-            type_drift: aggregateStats.type_drift,
-            structural_rejected: aggregateStats.structural_rejected,
-            validation_rejected: aggregateStats.validation_rejected,
-            difficulty_relabeled: aggregateStats.difficulty_relabeled,
-            validation_pass_rate: totalGenerated + aggregateStats.structural_rejected + aggregateStats.validation_rejected > 0
-              ? +(totalGenerated / (totalGenerated + aggregateStats.structural_rejected + aggregateStats.validation_rejected) * 100).toFixed(1)
-              : 100,
-          },
-          prompt_hash: crypto.createHash('sha256')
-            .update(MODELS.questionGenerationStructured + MODELS.questionGenerationTyped)
-            .digest('hex')
-            .substring(0, 16),
-        });
+        .from(batchTableName)
+        .insert(batchRecord);
 
       if (batchError) {
         console.error('\n⚠️  Failed to insert batch metadata:', batchError.message);
       } else {
         console.log(`\n📦 Batch metadata saved: ${options.batchId}`);
+      }
+
+      // Update experiment cohorts JSONB with this cohort's data
+      if (isExperiment && supabaseClient && !batchError) {
+        const { data: experiment } = await supabaseClient
+          .from('experiments')
+          .select('cohorts')
+          .eq('id', options.experimentId)
+          .single();
+
+        if (experiment) {
+          const cohorts = (experiment.cohorts as any[]) || [];
+          cohorts.push({
+            label: options.cohort,
+            source_type: 'generated',
+            description: `Generated cohort ${options.cohort}`,
+            batch_id: options.batchId,
+            markdown_file: options.sourceFile || null,
+            question_count: totalInserted,
+            stage2_metrics: {
+              validation_pass_rate: totalGenerated + aggregateStats.structural_rejected + aggregateStats.validation_rejected > 0
+                ? +(totalGenerated / (totalGenerated + aggregateStats.structural_rejected + aggregateStats.validation_rejected) * 100).toFixed(1)
+                : 100,
+              meta_filtered: aggregateStats.meta_filtered,
+              type_drift: aggregateStats.type_drift,
+              structural_rejected: aggregateStats.structural_rejected,
+              validation_rejected: aggregateStats.validation_rejected,
+              difficulty_relabeled: aggregateStats.difficulty_relabeled,
+            },
+          });
+
+          await supabaseClient
+            .from('experiments')
+            .update({ cohorts })
+            .eq('id', options.experimentId);
+        }
       }
     }
   } else {

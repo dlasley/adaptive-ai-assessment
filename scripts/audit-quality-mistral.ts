@@ -27,6 +27,7 @@ import { Mistral } from '@mistralai/mistralai';
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+import { execSync } from 'child_process';
 
 // Validate Mistral API key
 if (!process.env.MISTRAL_API_KEY) {
@@ -71,6 +72,34 @@ interface CLIOptions {
   writeDb?: boolean;
   pendingOnly?: boolean;
   exportPath?: string;
+  // Experiment framework
+  experimentId?: string;
+  cohort?: string;
+  auditModel?: string;
+  allowDirty?: boolean;
+}
+
+function checkGitState(options: CLIOptions): { branch: string; commit: string } {
+  const branch = execSync('git branch --show-current', { encoding: 'utf-8' }).trim();
+  const commit = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+  const status = execSync('git status --porcelain', { encoding: 'utf-8' }).trim();
+  const clean = status.length === 0;
+
+  if (options.experimentId && branch === 'main') {
+    console.error('Error: Experiments must run on a branch, not main.');
+    process.exit(1);
+  }
+
+  if (!clean && !options.allowDirty) {
+    console.error('Error: Working tree has uncommitted changes. Use --allow-dirty to override.');
+    process.exit(1);
+  }
+
+  if (!clean && options.allowDirty) {
+    console.warn('Warning: Working tree has uncommitted changes (--allow-dirty).');
+  }
+
+  return { branch, commit };
 }
 
 function parseArgs(): CLIOptions {
@@ -86,8 +115,18 @@ function parseArgs(): CLIOptions {
       case '--write-db': options.writeDb = true; break;
       case '--pending-only': options.pendingOnly = true; break;
       case '--export': options.exportPath = args[++i]; break;
+      case '--experiment-id': options.experimentId = args[++i]; break;
+      case '--cohort': options.cohort = args[++i]; break;
+      case '--audit-model': options.auditModel = args[++i]; break;
+      case '--allow-dirty': options.allowDirty = true; break;
     }
   }
+
+  if (options.experimentId && !options.cohort) {
+    console.error('Error: --experiment-id requires --cohort');
+    process.exit(1);
+  }
+
   return options;
 }
 
@@ -132,13 +171,16 @@ export interface MistralAuditResult {
 
 const PAGE_SIZE = 1000;
 
-async function fetchQuestions(options: CLIOptions): Promise<QuestionRow[]> {
+async function fetchQuestions(options: CLIOptions, tableName: string): Promise<QuestionRow[]> {
   let all: QuestionRow[] = [];
   let page = 0;
   while (true) {
     let query = supabase
-      .from('questions')
+      .from(tableName)
       .select('id, question, correct_answer, type, difficulty, topic, unit_id, writing_type, generated_by, options, acceptable_variations');
+    if (options.experimentId && tableName === 'experiment_questions') {
+      query = query.eq('experiment_id', options.experimentId).eq('cohort', options.cohort!);
+    }
     if (options.unitId) query = query.eq('unit_id', options.unitId);
     if (options.difficulty) query = query.eq('difficulty', options.difficulty);
     if (options.type) query = query.eq('type', options.type);
@@ -273,6 +315,12 @@ function sleep(ms: number): Promise<void> {
 async function main() {
   const options = parseArgs();
 
+  // Git safety check
+  checkGitState(options);
+
+  // Determine table target based on experiment mode
+  const tableName = options.experimentId ? 'experiment_questions' : 'questions';
+
   const filters = [
     options.unitId && `unit=${options.unitId}`,
     options.difficulty && `difficulty=${options.difficulty}`,
@@ -280,10 +328,12 @@ async function main() {
     options.limit && `limit=${options.limit}`,
     options.batchId && `batch=${options.batchId}`,
     options.pendingOnly && 'pending-only',
+    options.experimentId && `experiment=${options.experimentId}`,
+    options.cohort && `cohort=${options.cohort}`,
   ].filter(Boolean);
 
   console.log(`Fetching questions${filters.length ? ` (${filters.join(', ')})` : ''}...`);
-  const questions = await fetchQuestions(options);
+  const questions = await fetchQuestions(options, tableName);
   console.log(`Found ${questions.length} questions to audit with Mistral Large.\n`);
 
   if (questions.length === 0) {
@@ -565,7 +615,7 @@ async function main() {
       let flaggedCount = 0;
       for (const r of flaggedResults) {
         const { error } = await supabase
-          .from('questions')
+          .from(tableName)
           .update({
             quality_status: 'flagged',
             audit_metadata: buildAuditMetadata(r),
@@ -615,7 +665,7 @@ async function main() {
         }
 
         const { error } = await supabase
-          .from('questions')
+          .from(tableName)
           .update(updateData)
           .eq('id', r.id);
 
