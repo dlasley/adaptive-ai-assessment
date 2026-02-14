@@ -127,6 +127,7 @@ CREATE TABLE batches (
   duplicate_count INTEGER DEFAULT 0,           -- Duplicates skipped
   error_count INTEGER DEFAULT 0,              -- Errors encountered
   config JSONB DEFAULT '{}'::jsonb,            -- Full CLI args snapshot
+  quality_metrics JSONB,                       -- Stage 1+2 filtering stats (meta_filtered, validation_pass_rate, etc.)
   description TEXT,                            -- Human or AI description of batch context
   prompt_hash TEXT                             -- SHA-256 prefix of prompt template for change detection
 );

@@ -88,25 +88,39 @@ const QUESTIONS_PER_TOPIC_PER_DIFFICULTY = 10;
 interface Exemplar { type: string; question: string; answer: string }
 const EXEMPLAR_POOL: Record<string, Exemplar[]> = {
   beginner: [
+    // Single-concept recall: vocabulary identification, single conjugation, simple facts
     { type: 'fill-in-blank', question: 'Conjugate être for the subject \'vous\': _____', answer: 'êtes' },
     { type: 'fill-in-blank', question: 'Marie regarde le menu au restaurant. Elle _____.', answer: 'a faim' },
+    { type: 'fill-in-blank', question: 'The French word for \'dog\' is _____.', answer: 'chien' },
     { type: 'writing', question: 'Conjugate the verb \'danser\' (to dance) in the present tense for the subject pronoun \'je\'.', answer: 'je danse' },
     { type: 'writing', question: 'Translate to French: \'Hello, my name is Paul.\'', answer: 'Bonjour, je m\'appelle Paul.' },
+    { type: 'writing', question: 'Write the French greeting you would use in the morning.', answer: 'Bonjour' },
     { type: 'multiple-choice', question: 'What does \'bonjour\' mean?', answer: 'Hello' },
+    { type: 'multiple-choice', question: 'Which word means \'goodbye\'?', answer: 'Au revoir' },
+    { type: 'true-false', question: 'Vrai ou Faux: \'Chat\' means \'cat\' in French.', answer: 'Vrai' },
   ],
   intermediate: [
+    // One grammar rule applied in context: conjugation in sentence, article choice, agreement
     { type: 'fill-in-blank', question: 'Nous ______ une comédie avec nos amis.', answer: 'voyons' },
-    { type: 'fill-in-blank', question: 'Tu _____ le football et il _____ le tennis.', answer: 'aimes préfère' },
+    { type: 'fill-in-blank', question: 'Tu _____ le football et il _____ le tennis.', answer: 'aimes, préfère' },
+    { type: 'fill-in-blank', question: 'Elle _____ au cinéma avec ses amis.', answer: 'va' },
     { type: 'writing', question: 'Conjugate the verb \'jouer\' for \'je\' in a complete sentence about playing soccer.', answer: 'Je joue au foot.' },
     { type: 'writing', question: 'Translate to French: \'We don\'t like swimming.\'', answer: 'Nous n\'aimons pas nager.' },
+    { type: 'writing', question: 'Write a sentence saying you are hungry using the verb avoir.', answer: 'J\'ai faim.' },
     { type: 'multiple-choice', question: 'Choose the correct sentence: "Je suis faim" / "J\'ai faim" / "Je fais faim" / "Je mange faim"', answer: 'J\'ai faim' },
+    { type: 'multiple-choice', question: 'Which article completes the sentence: "_____ école est grande"?', answer: 'L\'' },
+    { type: 'true-false', question: 'Vrai ou Faux: \'On mange\' uses third person singular conjugation.', answer: 'Vrai' },
   ],
   advanced: [
-    { type: 'fill-in-blank', question: 'Nous _____ soif et nous _____ une boisson froide.', answer: 'avons buvons' },
-    { type: 'fill-in-blank', question: 'Le français est une langue officielle _____ 29 pays et le Sénégal est _____ ces pays.', answer: 'dans parmi' },
+    // Two+ grammar concepts combined: negation + partitive, conjugation + agreement, multi-blank
+    { type: 'fill-in-blank', question: 'Nous _____ soif et nous _____ une boisson froide.', answer: 'avons, buvons' },
+    { type: 'fill-in-blank', question: 'Le français est une langue officielle _____ 29 pays et le Sénégal est _____ ces pays.', answer: 'dans, parmi' },
+    { type: 'fill-in-blank', question: 'Je _____ au café et je _____ un croissant.', answer: 'vais, prends' },
     { type: 'writing', question: 'Write three sentences using different subject pronouns (tu, on, elles) with \'aimer\' or \'préférer\' conjugated correctly, each including an intensity adverb.', answer: 'Tu aimes un peu danser. On préfère bien la musique. Elles aiment beaucoup les blogs.' },
     { type: 'writing', question: 'Write two sentences ordering at a café: one using a partitive article and one using negation.', answer: 'Je voudrais du café et un croissant. Je ne veux pas de thé.' },
-    { type: 'multiple-choice', question: 'Questions requiring knowledge of two grammar rules to identify the correct answer', answer: '(combined concepts)' },
+    { type: 'writing', question: 'Write a sentence using aller + infinitive to say what you are going to do this weekend.', answer: 'Je vais jouer au foot ce week-end.' },
+    { type: 'multiple-choice', question: 'Which sentence correctly uses both negation and a partitive article? "Je ne mange pas de pain" / "Je ne mange pas du pain" / "Je mange pas de pain" / "Je ne mange de pain pas"', answer: 'Je ne mange pas de pain' },
+    { type: 'true-false', question: 'Vrai ou Faux: "Nous allons au cinéma" uses the verb aller conjugated for nous + a contracted article.', answer: 'Vrai' },
   ],
 };
 
@@ -397,6 +411,7 @@ function isMetaQuestion(question: Question): boolean {
 
   // Patterns that indicate meta-questions
   const metaPatterns = [
+    // Learning philosophy / growth mindset
     /making mistakes.*(discourage|should|part of learning|important|essential)/i,
     /language acquisition/i,
     /growth mindset/i,
@@ -408,21 +423,33 @@ function isMetaQuestion(question: Question): boolean {
     /learning.*emphasized/i,
     /practice.*key.*success/i,
     /consistency.*key/i,
-    /mr\.\s*/i,
-    /mrs\.\s*/i,
-    /m\.\s*/i,
-    /monsieur /i,
+    // Teacher biographical info (generic patterns — no PII)
+    /\b(mr|mrs|mme|m)\.\s*[a-z]{2,}/i,
+    /\bmonsieur\s+[a-z]{2,}/i,
+    /\bmadame\s+[a-z]{2,}/i,
     /teacher.*lived/i,
     /teacher.*speaks.*languages/i,
     /teacher.*interests/i,
     /teacher.*hobbies/i,
     /teacher.*books/i,
+    /teacher.*(favorite|favourite)/i,
+    // Pedagogical tips and study advice
+    /study\s*(tip|technique|strategy|method)/i,
+    /best way to (learn|study|memorize|practice)/i,
+    /tip.*for.*(pronounc|learn|study|memoriz)/i,
+    /how to study/i,
+    // Classroom retrospection
+    /did we.*learn/i,
+    /what.*we.*cover/i,
+    /what.*we.*study/i,
+    /what.*we.*learn.*in class/i,
+    // Course structure
     /four key skills/i,
     /course structure/i,
     /class structure/i,
+    // Material meta-references
     /mentioned in (the )?(vocabulary|materials|list)/i,
-    /provided (vocabulary|materials)/i,
-    /(listed|included) in the/i,
+    /\b(listed|included) in the (vocabulary|materials|list)/i,
     /not.*mentioned/i,
     /which.*not.*(classroom object|vocabulary item)/i,
   ];
@@ -488,6 +515,14 @@ function structuralValidation(questions: Question[]): { valid: Question[]; rejec
     }
   }
 
+  // Cross-type check: explicit answer labels leaked into question text
+  for (let i = valid.length - 1; i >= 0; i--) {
+    const q = valid[i];
+    if (/\(\s*(answer|réponse|response)\s*:/i.test(q.question)) {
+      rejected.push({ question: valid.splice(i, 1)[0], reason: 'Explicit answer label in question text' });
+    }
+  }
+
   return { valid, rejected };
 }
 
@@ -540,11 +575,12 @@ For each question:
    - ADVANCED: Combines TWO+ distinct grammar concepts simultaneously (e.g., negation + partitive, conjugation + agreement)
    A true/false about one fact = beginner. A single fill-in-blank with one verb form = beginner. Choosing tu vs. vous = intermediate. One short sentence with one grammar rule = intermediate.
    Set suggested_difficulty to the correct level. If the label is already correct, repeat the labeled difficulty.
+7. Questions should only test grammar and vocabulary that appears in or is directly implied by the question's topic context. If a question requires grammar concepts clearly beyond what would be covered for this topic in a first-year French course (e.g., literary tenses, subjunctive mood, complex relative pronouns), mark answer_valid as false with a note explaining the scope issue.
 
 Respond with ONLY valid JSON (no markdown, no code fences):
 {"results": [{"id": "q1", "answer_valid": true, "acceptable_variations": ["var1", "var2"], "suggested_difficulty": "beginner", "notes": "OK"}, ...]}
 
-Set answer_valid to false ONLY if the answer is factually wrong or has a grammar error. Do NOT reject questions just because multiple answers could work — that's expected for typed-answer questions.`;
+Set answer_valid to false ONLY if the answer is factually wrong, has a grammar error, or requires grammar clearly outside the course scope. Do NOT reject questions just because multiple answers could work — that's expected for typed-answer questions.`;
 
 interface ValidationResult {
   id: string;
@@ -652,6 +688,22 @@ async function callGenerationModel(model: string, prompt: string): Promise<strin
   return message.content[0].type === 'text' ? message.content[0].text : '';
 }
 
+interface GenerationStats {
+  meta_filtered: number;
+  type_drift: number;
+  structural_rejected: number;
+  validation_rejected: number;
+  difficulty_relabeled: number;
+}
+
+const EMPTY_STATS: GenerationStats = {
+  meta_filtered: 0,
+  type_drift: 0,
+  structural_rejected: 0,
+  validation_rejected: 0,
+  difficulty_relabeled: 0,
+};
+
 async function generateQuestionsForTopic(
   unitId: string,
   topic: string,
@@ -662,7 +714,7 @@ async function generateQuestionsForTopic(
   modelOverride?: string,
   allowedTypes?: QuestionType[],
   skipValidation?: boolean
-): Promise<Question[]> {
+): Promise<{ questions: Question[]; stats: GenerationStats }> {
   const typeLabel = questionType ? ` ${questionType}` : allowedTypes ? ` [${allowedTypes.join('/')}]` : '';
   const subtypeLabel = writingType ? ` (${writingType})` : '';
   console.log(`  Generating ${numQuestions} ${difficulty}${typeLabel}${subtypeLabel} questions for: ${topic}`);
@@ -747,7 +799,14 @@ IMPORTANT: "Advanced" means advanced FOR FRENCH 1. All vocabulary and grammar mu
 
 ## Type-Specific Rules
 
-**multiple-choice**: 4 plausible options. Distractors should test common mistakes (wrong gender, wrong conjugation, false cognates). correctAnswer must exactly match one option.
+**multiple-choice**: 4 plausible options. Each MCQ should use at least 2 different distractor categories from this taxonomy:
+- **Gender/agreement confusion**: wrong article or adjective form (le/la, un/une, petit/petite, bon/bonne)
+- **Conjugation errors**: wrong verb form for the subject (tu parle → tu parles, nous mange → nous mangeons)
+- **False cognates**: French words resembling English but meaning something different (librairie ≠ library, attendre ≠ attend)
+- **Article misuse**: definite vs indefinite vs partitive confusion (le/un/du, aimer les vs manger des)
+- **Avoir/Être confusion**: wrong auxiliary or idiom (je suis faim → j'ai faim, il a froid → il est froid)
+- **Near-miss vocabulary**: semantically related but incorrect word (matin/soir, frère/sœur, ville/village)
+Distractors must be plausible — a student who hasn't mastered the concept should find them tempting. Avoid obviously absurd options. correctAnswer must exactly match one option.
 
 **true-false**: Clearly, unambiguously true or false statements. options: ["Vrai", "Faux"]. No trick statements based on technicalities.
 
@@ -872,11 +931,15 @@ Return ONLY the JSON, no additional text.`;
       difficulty,
     }));
 
+    // Track per-topic quality metrics
+    const stats: GenerationStats = { ...EMPTY_STATS };
+
     // Filter out any meta-questions that slipped through
     let validQuestions = questions.filter(q => !isMetaQuestion(q));
+    stats.meta_filtered = questions.length - validQuestions.length;
 
-    if (validQuestions.length < questions.length) {
-      console.log(`    ⚠️  Filtered out ${questions.length - validQuestions.length} meta-question(s)`);
+    if (stats.meta_filtered > 0) {
+      console.log(`    ⚠️  Filtered out ${stats.meta_filtered} meta-question(s)`);
     }
 
     // Enforce type constraint when --type flag is used (prevent AI type drift)
@@ -884,6 +947,7 @@ Return ONLY the JSON, no additional text.`;
       const beforeTypeFilter = validQuestions.length;
       validQuestions = validQuestions.filter(q => q.type === questionType);
       const typeDrift = beforeTypeFilter - validQuestions.length;
+      stats.type_drift += typeDrift;
       if (typeDrift > 0) {
         console.log(`    ⚠️  Filtered out ${typeDrift} question(s) with wrong type (type drift)`);
       }
@@ -894,6 +958,7 @@ Return ONLY the JSON, no additional text.`;
       const beforeGroupFilter = validQuestions.length;
       validQuestions = validQuestions.filter(q => (allowedTypes as string[]).includes(q.type));
       const groupDrift = beforeGroupFilter - validQuestions.length;
+      stats.type_drift += groupDrift;
       if (groupDrift > 0) {
         console.log(`    ⚠️  Filtered out ${groupDrift} question(s) outside type group (type drift)`);
       }
@@ -907,6 +972,7 @@ Return ONLY the JSON, no additional text.`;
         return inferredType === writingType;
       });
       const writingDrift = beforeWritingFilter - validQuestions.length;
+      stats.type_drift += writingDrift;
       if (writingDrift > 0) {
         console.log(`    ⚠️  Filtered out ${writingDrift} question(s) with wrong writing type (writing type drift)`);
       }
@@ -916,6 +982,7 @@ Return ONLY the JSON, no additional text.`;
     if (!skipValidation && validQuestions.length > 0) {
       // Step 1: Structural validation (no API call)
       const structural = structuralValidation(validQuestions);
+      stats.structural_rejected = structural.rejected.length;
       if (structural.rejected.length > 0) {
         const reasons = structural.rejected.map(r => r.reason);
         const summary = [...new Set(reasons)].join('; ');
@@ -924,6 +991,8 @@ Return ONLY the JSON, no additional text.`;
 
       // Step 2: AI answer validation + variation generation
       const aiValidation = await validateAnswers(structural.valid);
+      stats.validation_rejected = aiValidation.rejected.length;
+      stats.difficulty_relabeled = aiValidation.difficultyRelabeled;
       if (aiValidation.rejected.length > 0) {
         for (const r of aiValidation.rejected) {
           console.log(`    ⚠️  Validation rejected: "${r.question.question.substring(0, 60)}..." — ${r.reason}`);
@@ -945,10 +1014,10 @@ Return ONLY the JSON, no additional text.`;
       validQuestions = validQuestions.slice(0, numQuestions);
     }
 
-    return validQuestions;
+    return { questions: validQuestions, stats };
   } catch (error) {
     console.error(`  ❌ Error generating questions for ${topic} (${difficulty}):`, error);
-    return [];
+    return { questions: [], stats: { ...EMPTY_STATS } };
   }
 }
 
@@ -996,6 +1065,7 @@ async function generateAllQuestions(options: CLIOptions) {
   let totalAttempted = 0;
   let totalSkippedDuplicates = 0;
   let totalInserted = 0;
+  const aggregateStats: GenerationStats = { ...EMPTY_STATS };
 
   // Filter units based on CLI options
   const unitsToProcess = options.unitId
@@ -1056,7 +1126,7 @@ async function generateAllQuestions(options: CLIOptions) {
         }
 
         for (const pass of passes) {
-          const questions = await generateQuestionsForTopic(
+          const result = await generateQuestionsForTopic(
             unit.id,
             topic,
             difficulty,
@@ -1068,9 +1138,14 @@ async function generateAllQuestions(options: CLIOptions) {
             options.skipValidation
           );
 
-          if (questions.length > 0) {
+          // Aggregate quality stats across all passes
+          for (const key of Object.keys(result.stats) as (keyof GenerationStats)[]) {
+            aggregateStats[key] += result.stats[key];
+          }
+
+          if (result.questions.length > 0) {
             // Add content hashes and batch metadata to each question
-            const questionsWithHashes = questions.map(q => ({
+            const questionsWithHashes = result.questions.map((q: Question) => ({
               ...q,
               contentHash: computeContentHash(q.question, q.correctAnswer, q.topic, q.difficulty),
               batchId: options.batchId,
@@ -1099,12 +1174,12 @@ async function generateAllQuestions(options: CLIOptions) {
               }
 
               if (inserted > 0 || skipped > 0) {
-                console.log(`    ✅ Generated ${questions.length} | Inserted ${inserted} | Skipped ${skipped} duplicates`);
+                console.log(`    ✅ Generated ${result.questions.length} | Inserted ${inserted} | Skipped ${skipped} duplicates`);
               } else {
-                console.log(`    ✅ Generated ${questions.length} questions`);
+                console.log(`    ✅ Generated ${result.questions.length} questions`);
               }
             } else {
-              console.log(`    ✅ Generated ${questions.length} questions`);
+              console.log(`    ✅ Generated ${result.questions.length} questions`);
             }
           }
 
@@ -1127,6 +1202,22 @@ async function generateAllQuestions(options: CLIOptions) {
   console.log(`📊 Statistics:`);
   console.log(`   Topics processed:     ${totalAttempted}`);
   console.log(`   Questions generated:  ${totalGenerated}`);
+
+  // Quality metrics summary
+  const totalFiltered = aggregateStats.meta_filtered + aggregateStats.type_drift +
+    aggregateStats.structural_rejected + aggregateStats.validation_rejected;
+  if (totalFiltered > 0 || aggregateStats.difficulty_relabeled > 0) {
+    console.log(`   Quality filtering:`);
+    if (aggregateStats.meta_filtered > 0) console.log(`     Meta-filtered:      ${aggregateStats.meta_filtered}`);
+    if (aggregateStats.type_drift > 0) console.log(`     Type drift:         ${aggregateStats.type_drift}`);
+    if (aggregateStats.structural_rejected > 0) console.log(`     Structural rejects: ${aggregateStats.structural_rejected}`);
+    if (aggregateStats.validation_rejected > 0) console.log(`     Validation rejects: ${aggregateStats.validation_rejected}`);
+    if (aggregateStats.difficulty_relabeled > 0) console.log(`     Difficulty relabeled: ${aggregateStats.difficulty_relabeled}`);
+    if (totalGenerated + totalFiltered > 0) {
+      const passRate = (totalGenerated / (totalGenerated + totalFiltered) * 100).toFixed(1);
+      console.log(`     Validation pass rate: ${passRate}%`);
+    }
+  }
 
   if (options.syncDb) {
     console.log(`   Inserted to DB:       ${totalInserted}`);
@@ -1176,6 +1267,16 @@ async function generateAllQuestions(options: CLIOptions) {
             model: batchModel,
             structuredModel: MODELS.questionGenerationStructured,
             typedModel: MODELS.questionGenerationTyped,
+          },
+          quality_metrics: {
+            meta_filtered: aggregateStats.meta_filtered,
+            type_drift: aggregateStats.type_drift,
+            structural_rejected: aggregateStats.structural_rejected,
+            validation_rejected: aggregateStats.validation_rejected,
+            difficulty_relabeled: aggregateStats.difficulty_relabeled,
+            validation_pass_rate: totalGenerated + aggregateStats.structural_rejected + aggregateStats.validation_rejected > 0
+              ? +(totalGenerated / (totalGenerated + aggregateStats.structural_rejected + aggregateStats.validation_rejected) * 100).toFixed(1)
+              : 100,
           },
           prompt_hash: crypto.createHash('sha256')
             .update(MODELS.questionGenerationStructured + MODELS.questionGenerationTyped)

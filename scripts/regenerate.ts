@@ -61,74 +61,11 @@ interface PipelineOptions {
   dryRun: boolean;
 }
 
-// PDF to Markdown conversion prompt (same as convert-pdfs.ts)
-const CONVERSION_PROMPT = `You are converting French language course materials from PDF to clean, structured markdown.
-
-## Output Requirements
-
-**CRITICAL - DO NOT include these artifacts:**
-- No introductory commentary like "Here's the content..." or "I'll convert this..."
-- No code fence wrappers (\`\`\`markdown ... \`\`\`)
-- No concluding summaries like "This markdown preserves..." or "Perfect for..."
-- No meta-commentary about the conversion process
-- START IMMEDIATELY with the heading: # French I - [Unit Name]
-
-## Structure Format
-
-Use this exact structure:
-
-# French I - [Unit Name]
-
-## [Section Title]
-[Content]
-
----
-
-## Vocabulaire actif
-- **french_word** - english_translation
-- **un(e) élève** - a student
-
-### Grammar Notes
-[Explanations]
-
-### Réponses (Answers)
-1. Answer one
-2. Answer two
-
----
-
-## [Next Section]
-
-## Formatting Rules
-
-1. **Section Separators**: Use \`---\` between major sections
-2. **Vocabulary Lists**: Use \`- **word** - translation\` format
-3. **Numbered Lists**: Preserve from source (exercises, rules, etc.)
-4. **YouTube Links**: Preserve as-is when present
-5. **French-English Pairs**: Format as \`**French phrase** - English translation\`
-6. **Grammar Tables**: Use markdown tables when appropriate
-7. **Answer Keys**: Include under \`### Réponses\` subsections
-8. **Headings**: Use ## for main sections, ### for subsections
-
-## Content Preservation
-
-MUST preserve:
-- All French vocabulary with accents (é, è, ê, ë, à, â, ù, û, ô, ç, etc.)
-- All answer keys and exercise solutions
-- YouTube video links
-- Grammar explanations and conjugation tables
-- Cultural notes and context
-- Activity instructions
-
-DO NOT add:
-- Your own commentary or observations
-- Suggestions for teachers
-- Quality assessments of the content
-- Explanations of what the markdown is "good for"
-
-Now convert the following PDF text content to clean markdown:
-
-`;
+// Load PDF-to-Markdown conversion prompt from file (single source of truth)
+const CONVERSION_PROMPT = fs.readFileSync(
+  path.join(process.cwd(), 'scripts', 'prompts', 'pdf-to-markdown.txt'),
+  'utf-8'
+) + '\n\nNow convert the following PDF text content to clean markdown:\n\n';
 
 /**
  * Extract text from PDF using pdftotext (from poppler)
