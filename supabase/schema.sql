@@ -54,7 +54,7 @@ CREATE TABLE question_results (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   quiz_history_id UUID REFERENCES quiz_history(id) ON DELETE CASCADE,
   study_code_id UUID REFERENCES study_codes(id) ON DELETE CASCADE,
-  question_id TEXT NOT NULL,
+  question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   topic TEXT NOT NULL,
   difficulty TEXT NOT NULL,
   is_correct BOOLEAN NOT NULL,
@@ -92,7 +92,7 @@ CREATE TABLE questions (
 
   -- Metadata for tracking/deduplication
   content_hash TEXT,                         -- MD5 hash for deduplication
-  batch_id TEXT,                             -- Generation batch identifier
+  batch_id TEXT NOT NULL REFERENCES batches(id) ON DELETE CASCADE, -- Generation batch identifier
   source_file TEXT,                          -- Learning material source
   generated_by TEXT,                         -- Model ID that generated this question (per-question for multi-model support)
   quality_status TEXT DEFAULT 'pending' CHECK (quality_status IN ('active', 'flagged', 'pending')),
@@ -136,7 +136,7 @@ CREATE TABLE batches (
 -- Tracks per-student per-question box assignments for adaptive question selection
 CREATE TABLE leitner_state (
   study_code_id UUID NOT NULL REFERENCES study_codes(id) ON DELETE CASCADE,
-  question_id TEXT NOT NULL,
+  question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   box INTEGER NOT NULL DEFAULT 1 CHECK (box >= 1 AND box <= 5),
   consecutive_correct INTEGER NOT NULL DEFAULT 0,
   last_reviewed TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -163,7 +163,7 @@ CREATE TABLE learning_resources (
   metadata JSONB DEFAULT '{}'::jsonb,
   content_hash TEXT,
   source_file TEXT,
-  batch_id TEXT,
+  batch_id TEXT REFERENCES batches(id) ON DELETE CASCADE,
   quality_status TEXT DEFAULT 'active' CHECK (quality_status IN ('active', 'flagged', 'pending')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -296,23 +296,6 @@ CREATE TRIGGER questions_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_questions_updated_at();
 
--- Prevent accidental deletion of flagged questions
--- Flagged questions must be preserved so their content_hash prevents re-insertion
-CREATE OR REPLACE FUNCTION prevent_flagged_deletion()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF OLD.quality_status = 'flagged' THEN
-    RAISE EXCEPTION 'Cannot delete flagged question %. Change quality_status to ''active'' first.', OLD.id;
-  END IF;
-  RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER protect_flagged_questions
-  BEFORE DELETE ON questions
-  FOR EACH ROW
-  EXECUTE FUNCTION prevent_flagged_deletion();
-
 -- Auto-update updated_at on learning_resources (reuses existing trigger function)
 CREATE TRIGGER learning_resources_updated_at
   BEFORE UPDATE ON learning_resources
@@ -421,7 +404,7 @@ COMMENT ON COLUMN questions.content_hash IS 'MD5 hash of normalized question con
 COMMENT ON COLUMN questions.batch_id IS 'Identifies which generation batch created this question (e.g., 2026-02-04_unit3)';
 COMMENT ON COLUMN questions.source_file IS 'Path to the markdown learning file used to generate this question';
 COMMENT ON COLUMN questions.generated_by IS 'Model ID that generated this question (e.g., claude-haiku-4-5-20251001). Per-question for multi-model support.';
-COMMENT ON COLUMN questions.quality_status IS 'Audit status: pending (awaiting audit, not served), active (serves to students), or flagged (excluded from quizzes, protected from deletion)';
+COMMENT ON COLUMN questions.quality_status IS 'Audit status: pending (awaiting audit, not served), active (serves to students), or flagged (excluded from quizzes)';
 COMMENT ON COLUMN questions.audit_metadata IS 'Stage 3 audit & remediation diagnostic snapshot: criteria results, suggested_difficulty, missing/invalid variations. Written by audit scripts alongside quality_status. Mistral applies difficulty relabeling + invalid variation removal.';
 COMMENT ON TABLE batches IS 'Metadata for each question generation batch run. Tracks pipeline state, model, config, and results.';
 COMMENT ON COLUMN question_results.score IS 'Evaluation score 0-100. NULL for legacy data. MCQ/TF are always 0 or 100. Typed answers use fuzzy/API evaluation score.';

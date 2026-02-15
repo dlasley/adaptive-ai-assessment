@@ -356,8 +356,22 @@ async function main() {
       return;
     }
 
-    // Batch insert (Supabase handles arrays)
+    // Create batch record first (FK constraint requires it)
     const batchId = `resources_${new Date().toISOString().split('T')[0]}_${Date.now()}`;
+    const { error: batchErr } = await supabase
+      .from('batches')
+      .insert({
+        id: batchId,
+        description: `Learning resource extraction (${toInsert.length} resources)`,
+        question_count: toInsert.length,
+        inserted_count: 0,
+      });
+
+    if (batchErr) {
+      console.error(`❌ Failed to create batch record: ${batchErr.message}`);
+      process.exit(1);
+    }
+
     const rows = toInsert.map(r => ({
       ...r,
       batch_id: batchId,
@@ -379,6 +393,12 @@ async function main() {
         insertedTotal += chunk.length;
       }
     }
+
+    // Update batch record with actual counts
+    await supabase
+      .from('batches')
+      .update({ inserted_count: insertedTotal, duplicate_count: duplicates })
+      .eq('id', batchId);
 
     console.log(`\n✅ Inserted ${insertedTotal} resources (batch: ${batchId})`);
     console.log(`   Duplicates skipped: ${duplicates}`);
