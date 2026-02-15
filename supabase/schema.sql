@@ -147,6 +147,34 @@ CREATE TABLE leitner_state (
 CREATE INDEX idx_leitner_state_study_code ON leitner_state(study_code_id);
 CREATE INDEX idx_leitner_state_box ON leitner_state(study_code_id, box);
 
+-- Learning Resources Table
+-- Stores learning resources (videos, articles, etc.) organized by unit and topic
+CREATE TABLE learning_resources (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  unit_id TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  resource_type TEXT NOT NULL CHECK (resource_type IN ('video', 'article', 'audio', 'interactive')),
+  url TEXT NOT NULL,
+  title TEXT NOT NULL,
+  provider TEXT,
+  difficulty TEXT CHECK (difficulty IS NULL OR difficulty IN ('beginner', 'intermediate', 'advanced')),
+  duration_seconds INTEGER,
+  thumbnail_url TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  content_hash TEXT,
+  source_file TEXT,
+  batch_id TEXT,
+  quality_status TEXT DEFAULT 'active' CHECK (quality_status IN ('active', 'flagged', 'pending')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_lr_unit ON learning_resources(unit_id);
+CREATE INDEX idx_lr_unit_topic ON learning_resources(unit_id, topic);
+CREATE INDEX idx_lr_topic ON learning_resources(topic);
+CREATE INDEX idx_lr_content_hash ON learning_resources(content_hash);
+CREATE INDEX idx_lr_quality ON learning_resources(quality_status);
+
 -- Concept Mastery View
 -- Aggregates performance by topic for each student
 CREATE VIEW concept_mastery AS
@@ -173,7 +201,7 @@ SELECT
   correct_attempts,
   mastery_percentage
 FROM concept_mastery
-WHERE mastery_percentage < 70 AND total_attempts >= 3
+WHERE mastery_percentage < 70 AND total_attempts >= 1
 ORDER BY mastery_percentage ASC;
 
 -- Strong Topics View
@@ -285,6 +313,12 @@ CREATE TRIGGER protect_flagged_questions
   FOR EACH ROW
   EXECUTE FUNCTION prevent_flagged_deletion();
 
+-- Auto-update updated_at on learning_resources (reuses existing trigger function)
+CREATE TRIGGER learning_resources_updated_at
+  BEFORE UPDATE ON learning_resources
+  FOR EACH ROW
+  EXECUTE FUNCTION update_questions_updated_at();
+
 -- Row Level Security (RLS) Policies
 -- Enable RLS on all tables
 ALTER TABLE study_codes ENABLE ROW LEVEL SECURITY;
@@ -293,6 +327,7 @@ ALTER TABLE question_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE batches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leitner_state ENABLE ROW LEVEL SECURITY;
+ALTER TABLE learning_resources ENABLE ROW LEVEL SECURITY;
 
 -- Study codes policies (no DELETE for anon; INSERT/UPDATE restricted)
 CREATE POLICY "anon_select_study_codes"
@@ -364,6 +399,12 @@ CREATE POLICY "anon_update_leitner_state"
   TO anon
   USING (true);
 
+-- Learning resources policies (read-only for anon; scripts use secret key for writes)
+CREATE POLICY "anon_select_learning_resources"
+  ON learning_resources FOR SELECT
+  TO anon
+  USING (true);
+
 -- Table and column comments
 COMMENT ON TABLE study_codes IS 'Anonymous student identifiers';
 COMMENT ON TABLE quiz_history IS 'Individual quiz attempts';
@@ -388,6 +429,11 @@ COMMENT ON TABLE leitner_state IS 'Leitner spaced repetition box assignments per
 COMMENT ON COLUMN leitner_state.box IS 'Leitner box 1-5. Box 1 = most frequent review, Box 5 = mastered';
 COMMENT ON COLUMN leitner_state.consecutive_correct IS 'Number of consecutive correct answers. Resets to 0 on wrong answer.';
 COMMENT ON COLUMN leitner_state.last_reviewed IS 'When this question was last attempted';
+COMMENT ON TABLE learning_resources IS 'Learning resources (videos, articles, etc.) organized by unit and topic. Resource-type-agnostic for future extensibility.';
+COMMENT ON COLUMN learning_resources.provider IS 'Content host identifier: youtube, vimeo, etc.';
+COMMENT ON COLUMN learning_resources.metadata IS 'Extensible JSON: videoId, isShort, channelName, language, etc.';
+COMMENT ON COLUMN learning_resources.content_hash IS 'MD5(url|unit_id|topic) for deduplication during extraction';
+COMMENT ON VIEW weak_topics IS 'Topics where student needs help (< 70% accuracy, >= 1 attempt)';
 
 -- ============================================================
 -- Experiment Framework Tables

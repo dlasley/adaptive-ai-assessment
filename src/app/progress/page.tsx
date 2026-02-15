@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getStoredStudyCode, getQuizHistory, getConceptMastery, getWeakTopics, getStudyCodeDetails } from '@/lib/study-codes';
 import { getProgress } from '@/lib/progress-tracking';
-import { getVideosForTopic } from '@/lib/video-resources';
+import { getResourcesForTopics } from '@/lib/learning-resources-client';
 import { StudyCodeDisplay } from '@/components/StudyCodeDisplay';
 import StatCard from '@/components/StatCard';
+import ResourceCard from '@/components/ResourceCard';
 import type { StudyCode, QuizHistory, ConceptMastery } from '@/lib/supabase';
+import type { LearningResource } from '@/types';
 import { getAccuracyColor, getMasteryColor, getMasteryBgColor } from '@/lib/color-utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ContextualHint from '@/components/ContextualHint';
@@ -21,6 +23,7 @@ export default function ProgressPage() {
   const [quizHistory, setQuizHistory] = useState<QuizHistory[]>([]);
   const [conceptMastery, setConceptMastery] = useState<ConceptMastery[]>([]);
   const [weakTopics, setWeakTopics] = useState<ConceptMastery[]>([]);
+  const [topicResources, setTopicResources] = useState<Map<string, LearningResource[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'quizzes' | 'mastery' | 'practice'>('quizzes');
 
@@ -52,6 +55,20 @@ export default function ProgressPage() {
         setQuizHistory(history);
         setConceptMastery(mastery);
         setWeakTopics(weak);
+
+        // Load resources for weak topics
+        if (weak.length > 0) {
+          const weakTopicNames = weak.map(w => w.topic);
+          const resources = await getResourcesForTopics(weakTopicNames);
+          // Group by topic
+          const grouped = new Map<string, LearningResource[]>();
+          for (const r of resources) {
+            const existing = grouped.get(r.topic) || [];
+            existing.push(r);
+            grouped.set(r.topic, existing);
+          }
+          setTopicResources(grouped);
+        }
       } catch (error) {
         console.error('Error loading progress:', error);
       } finally {
@@ -265,7 +282,7 @@ export default function ProgressPage() {
                       These topics need more practice (below 70% accuracy)
                     </p>
                     {weakTopics.map((topic) => {
-                      const videos = getVideosForTopic(topic.topic);
+                      const resources = topicResources.get(topic.topic) || [];
                       return (
                         <div key={topic.topic} className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-5 border border-orange-200 dark:border-orange-800">
                           <div className="flex items-center justify-between mb-3">
@@ -284,52 +301,15 @@ export default function ProgressPage() {
                             </div>
                           </div>
 
-                          {/* Recommended Videos */}
-                          {videos.length > 0 && (
+                          {/* Recommended Resources */}
+                          {resources.length > 0 && (
                             <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-700">
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                                Recommended Videos
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                Recommended Resources
                               </h4>
                               <div className="space-y-2">
-                                {videos.slice(0, 3).map((video, idx) => (
-                                  <a
-                                    key={idx}
-                                    href={video.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors group border border-transparent hover:border-orange-300 dark:hover:border-orange-700"
-                                  >
-                                    <svg
-                                      className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path d="M10 0C4.477 0 0 4.477 0 10s4.477 10 10 10 10-4.477 10-10S15.523 0 10 0zm3.5 10.5l-5 3a.5.5 0 01-.75-.433v-6a.5.5 0 01.75-.433l5 3a.5.5 0 010 .866z" />
-                                    </svg>
-                                    <div className="flex-1 min-w-0">
-                                      <h5 className="font-medium text-sm text-gray-900 dark:text-white group-hover:text-orange-700 dark:group-hover:text-orange-300">
-                                        {video.title}
-                                      </h5>
-                                      {video.difficulty && (
-                                        <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300">
-                                          {video.difficulty}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <svg
-                                      className="w-4 h-4 text-gray-400 group-hover:text-orange-600 dark:group-hover:text-orange-400 flex-shrink-0"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                      />
-                                    </svg>
-                                  </a>
+                                {resources.slice(0, 3).map((resource) => (
+                                  <ResourceCard key={resource.id} resource={resource} variant="orange" />
                                 ))}
                               </div>
                             </div>

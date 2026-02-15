@@ -5,6 +5,8 @@
  * 1. PDF → Markdown conversion (convert-pdfs.ts logic)
  * 2. Topic extraction & validation (suggest-unit-topics.ts logic)
  * 3. Question generation (generate-questions.ts)
+ * 4. Quality audit (audit-quality-mistral.ts / audit-quality.ts)
+ * 5. Learning resource extraction (extract-learning-resources.ts)
  *
  * Usage:
  *   npx tsx scripts/regenerate.ts <unit-id> [options]
@@ -57,6 +59,7 @@ interface PipelineOptions {
   syncDb: boolean;
   audit: boolean;
   auditor: 'mistral' | 'sonnet';
+  skipResources: boolean;
   dryRun: boolean;
   convertOnly: boolean;
   batchId?: string;
@@ -294,6 +297,7 @@ function parseArgs(): PipelineOptions {
     syncDb: hasWriteDb,
     audit: args.includes('--audit'),
     auditor: auditorValue as 'mistral' | 'sonnet',
+    skipResources: args.includes('--skip-resources'),
     dryRun: args.includes('--dry-run'),
     convertOnly: args.includes('--convert-only'),
     batchId: batchIdValue,
@@ -339,6 +343,7 @@ Options:
   --write-db      Sync generated questions to database
   --audit         Run quality audit after generation (requires --write-db)
   --auditor <m>   Audit model: 'mistral' (default) or 'sonnet'
+  --skip-resources Skip learning resource extraction
   --dry-run       Show what would be done without executing
   --convert-only  Stop after PDF conversion (skip topics, generation, audit)
   --batch-id <id>         Custom batch ID for experiment tracking
@@ -356,6 +361,7 @@ Pipeline Steps:
   2. Topic Extraction  Extract and validate topics against units.ts
   3. Question Gen      Generate questions for each topic/difficulty
   4. Quality Audit     (optional, --audit) Promote pending → active/flagged
+  5. Resource Extract  Extract learning resources from markdown to DB
   `);
 }
 
@@ -1084,6 +1090,19 @@ async function runPipelineForUnit(
     }
   }
 
+  // Step 5: Learning resource extraction (default, skip with --skip-resources)
+  if (!options.skipResources && options.syncDb) {
+    console.log('\n┌─────────────────────────────────────────────────────────────┐');
+    console.log('│  STEP 5: Learning Resource Extraction                       │');
+    console.log('└─────────────────────────────────────────────────────────────┘\n');
+
+    const resourceArgs = ['--unit', unitId, '--write-db'];
+    const step5 = runScript('scripts/extract-learning-resources.ts', resourceArgs, options.dryRun);
+    if (!step5.success) {
+      console.log('\n  ⚠️  Resource extraction failed (non-fatal)');
+    }
+  }
+
   console.log('\n  ✅ Pipeline complete for', unitId);
 }
 
@@ -1107,6 +1126,7 @@ async function main() {
   console.log(`  Skip topics:   ${options.skipTopics ? 'Yes' : 'No'}`);
   console.log(`  Write to DB:   ${options.syncDb ? 'Yes' : 'No'}`);
   console.log(`  Audit:         ${options.audit ? `Yes — ${options.auditor === 'mistral' ? 'Mistral Large' : 'Sonnet'} (pending → active/flagged)` : 'No'}`);
+  console.log(`  Resources:     ${options.skipResources ? 'Skip' : 'Yes (extract from markdown)'}`);
   console.log(`  Dry run:       ${options.dryRun ? 'Yes' : 'No'}`);
   if (options.convertOnly) {
     console.log(`  Convert only:  Yes (stop after PDF conversion)`);

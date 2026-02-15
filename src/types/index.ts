@@ -28,3 +28,15 @@ export interface Question {
   hints?: string[];
   requiresCompleteSentence?: boolean;
 }
+
+export interface LearningResource {
+  id: string;
+  unit_id: string;
+  topic: string;
+  resource_type: 'video' | 'article' | 'audio' | 'interactive';
+  url: string;
+  title: string;
+  provider?: string;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  metadata?: Record<string, unknown>;
+}

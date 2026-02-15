@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadUnitMaterials, extractYouTubeLinks } from '@/lib/learning-materials';
+import { supabase, isSupabaseAvailable } from '@/lib/supabase';
 
 interface IncorrectQuestion {
   topic: string;
@@ -35,21 +35,44 @@ export async function POST(request: NextRequest) {
       .sort(([, a], [, b]) => b.count - a.count)
       .slice(0, 5); // Top 5 topics to focus on
 
-    // Get YouTube resources for each topic
+    // Query learning resources from the database
     const recommendations: TopicRecommendation[] = [];
 
-    for (const [topic, data] of sortedTopics) {
-      try {
-        const materials = loadUnitMaterials(data.unitId);
-        const resources = extractYouTubeLinks(materials, topic);
+    if (isSupabaseAvailable()) {
+      const topics = sortedTopics.map(([topic]) => topic);
+      const unitIds = [...new Set(sortedTopics.map(([, data]) => data.unitId))];
 
+      const { data: resources, error } = await supabase!
+        .from('learning_resources')
+        .select('topic, url, title')
+        .in('topic', topics)
+        .in('unit_id', unitIds)
+        .eq('quality_status', 'active')
+        .order('title');
+
+      if (error) {
+        console.error('Error fetching learning resources:', error);
+      }
+
+      // Group resources by topic
+      const resourcesByTopic = new Map<string, { url: string; title: string }[]>();
+      for (const r of resources || []) {
+        const existing = resourcesByTopic.get(r.topic) || [];
+        existing.push({ url: r.url, title: r.title });
+        resourcesByTopic.set(r.topic, existing);
+      }
+
+      for (const [topic, data] of sortedTopics) {
+        const topicResources = resourcesByTopic.get(topic) || [];
         recommendations.push({
           topic,
           count: data.count,
-          resources: resources.slice(0, 3), // Limit to 3 videos per topic
+          resources: topicResources.slice(0, 3),
         });
-      } catch (error) {
-        console.error(`Error loading resources for topic ${topic}:`, error);
+      }
+    } else {
+      // Fallback: no DB available, return empty resources
+      for (const [topic, data] of sortedTopics) {
         recommendations.push({
           topic,
           count: data.count,
