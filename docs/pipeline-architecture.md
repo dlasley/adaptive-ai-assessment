@@ -200,6 +200,37 @@ No single model failure can put bad questions in front of students. The `pending
 
 The hybrid model split routes cheap structured types (MCQ, T-F) to Haiku and expensive typed answers (fill-in-blank, writing) to Sonnet. Advanced difficulty always uses Sonnet regardless of type, since Haiku showed 80%+ difficulty miscalibration at that level.
 
+## Data Hygiene via Cascade Deletes
+
+All foreign key relationships use `ON DELETE CASCADE` so that deleting a parent record automatically cleans up all dependent data. No orphaned rows, no manual cleanup required.
+
+### Production chain
+
+Deleting a **batch** cascades through:
+```
+batches → questions → question_results
+                    → leitner_state
+batches → learning_resources
+```
+
+Deleting a **study code** cascades through:
+```
+study_codes → quiz_history → question_results
+study_codes → question_results (direct FK)
+study_codes → leitner_state
+```
+
+These chains are independent — deleting a batch does not affect student data, and deleting a student does not affect questions.
+
+### Experiment chain
+
+```
+experiments → experiment_batches → experiment_questions
+experiments → experiment_questions (direct FK)
+```
+
+Fully isolated from production tables.
+
 ## File Map
 
 ```
