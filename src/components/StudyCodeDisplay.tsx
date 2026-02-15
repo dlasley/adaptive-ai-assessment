@@ -88,7 +88,7 @@ export function StudyCodeDisplay({
             {studyCode}
           </code>
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-3">
-            Use this code to access your progress from any device.
+            Remember or write down this code to access your progress from any device.
           </p>
           {onSwitchCode && (
             <button

@@ -604,6 +604,7 @@ For each question:
    Set suggested_difficulty to the correct level. If the label is already correct, repeat the labeled difficulty.
 7. Questions should only test grammar and vocabulary that appears in or is directly implied by the question's topic context. If a question requires grammar concepts clearly beyond what would be covered for this topic in a first-year French course (e.g., literary tenses, subjunctive mood, complex relative pronouns), mark answer_valid as false with a note explaining the scope issue.
 8. For questions with gendered answers (il/elle, masculine/feminine adjective forms), if the question does not explicitly specify gender, include both gendered forms in acceptable_variations.
+9. Variations must match the linguistic form the question is testing. If a question asks students to write a number in French words, do NOT include digit forms (e.g., "47") as variations — the whole point is testing the written French form ("quarante-sept"). Similarly, if a question tests spelling out a date, time, or ordinal, only accept the written-out French form.
 
 Respond with ONLY valid JSON (no markdown, no code fences):
 {"results": [{"id": "q1", "answer_valid": true, "acceptable_variations": ["var1", "var2"], "suggested_difficulty": "beginner", "notes": "OK"}, ...]}
