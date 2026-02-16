@@ -105,14 +105,14 @@ Questions go through three independent stages before reaching students. Each sta
                          │ Audit fails
                          │
                          ▼
-                      flagged  (excluded from quizzes, protected from deletion)
+                      flagged  (excluded from quizzes)
 ```
 
 | Status | Visible to students | Can be deleted | How it gets here |
 |--------|-------------------|----------------|------------------|
 | `pending` | No | Yes | Inserted by generation after passing validation |
 | `active` | Yes | Yes | Promoted by audit (all gate criteria pass) |
-| `flagged` | No | No (protected) | Demoted by audit (any gate criterion fails) |
+| `flagged` | No | Yes (via batch cascade) | Demoted by audit (any gate criterion fails) |
 
 ## Model Assignments
 
@@ -257,7 +257,7 @@ data/markdown/                    # Converted learning materials (Stage 0 output
 
 ## Cross-Validation Findings (Sonnet vs Mistral)
 
-Full-corpus cross-validation (1,039 questions, Feb 2026) informed the decision to make Mistral the default Stage 3 auditor. See [cross-validation-report.md](cross-validation-report.md) for full details.
+Full-corpus cross-validation (1,039 questions, Feb 2026) informed the decision to make Mistral the default Stage 3 auditor.
 
 ### Agreement on Core 4 Criteria
 
