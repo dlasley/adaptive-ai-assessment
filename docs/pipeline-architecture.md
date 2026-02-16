@@ -182,7 +182,7 @@ npx tsx scripts/generate-questions.ts --unit unit-2 --model mistral-large-latest
 Each stage can be run, re-run, or swapped independently:
 
 - **Re-audit without regenerating**: Update audit prompts and re-run `audit-quality.ts` against existing questions
-- **Swap generators**: `--model mistral-large-latest` uses Mistral for Stage 1 while Stages 2-3 remain unchanged (see [Mistral experiment](mistral-generation-experiment.md))
+- **Swap generators**: `--model mistral-large-latest` uses Mistral for Stage 1 while Stages 2-3 remain unchanged
 - **Tune thresholds per stage**: Validation rejects structurally broken questions; audit evaluates content quality — different concerns, different prompts
 
 ### Safety net layering

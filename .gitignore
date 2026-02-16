@@ -77,5 +77,8 @@ nohup.out
 # experiment data (generated JSON exports)
 /data/
 
+# Claude Code local settings
+.claude/
+
 # database backups (contain full DB data)
 /backups/
