@@ -43,7 +43,7 @@ let supabase!: ReturnType<typeof createScriptSupabase>;
 
 const MISTRAL_MODEL = 'mistral-large-latest';
 const BATCH_SIZE = 5;
-const RATE_LIMIT_DELAY_MS = 1000; // Base delay between batches to respect rate limits
+const RATE_LIMIT_DELAY_MS = 1000; // Base delay between batches (Scale tier: 6 req/s, 2M tokens/min)
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 2000; // Exponential backoff: 2s, 4s, 8s
 
