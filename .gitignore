@@ -38,9 +38,11 @@ yarn-error.log*
 next-env.d.ts
 *.env*.local
 
-# learnings (proprietary course materials)
-/learnings/PROGRESS.md
-/learnings/milestone-animations.md
+# source content (proprietary course materials)
+/PDF/*
+!/PDF/.gitkeep
+/learnings/*
+!/learnings/.gitkeep
 
 # session work tracker (local only)
 /PROGRESS.md
