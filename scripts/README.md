@@ -250,7 +250,7 @@ Step functions for the pipeline orchestrators. Used by `corpus-generate.ts` and 
 
 - `stepConvertPdf()` — PDF → Markdown conversion
 - `stepExtractTopics()` — Topic discovery
-- `stepAutoUpdateFiles()` — Auto-update units.ts for new units
+- `stepAutoUpdateFiles()` — Auto-update units table in DB for new units
 - `stepGenerateQuestions()` — Spawn question generation
 - `stepAuditQuestions()` — Spawn quality audit
 - `stepExtractResources()` — Spawn resource extraction
@@ -286,10 +286,6 @@ Topic name normalization, similarity detection, deduplication.
 ### lib/writing-type-inference.ts
 
 Pattern-based writing subtype inference from question text.
-
-### lib/file-updaters.ts
-
-Auto-update `units.ts` with new unit entries.
 
 ### prompts/
 

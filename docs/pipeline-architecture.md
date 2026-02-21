@@ -7,7 +7,7 @@ Questions go through three independent stages before reaching students. Each sta
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        CONTENT SOURCES                              │
-│  PDF/  ──→ data/markdown/  ──→ src/lib/units.ts (topics)           │
+│  PDF/  ──→ data/markdown/  ──→ units table (topics)                │
 │  (Sonnet 4)   (Sonnet 4)        (Sonnet 4)                        │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
@@ -257,12 +257,11 @@ scripts/
     ├── git-utils.ts                 # Git state capture + safety checks
     ├── config.ts                    # Model IDs, type classifications
     ├── writing-type-inference.ts    # Writing subtype detection
-    ├── topic-utils.ts               # Topic name normalization
-    └── file-updaters.ts             # units.ts auto-update utilities
+    └── topic-utils.ts               # Topic name normalization
 
 src/lib/
 ├── question-loader.ts               # Runtime: loads active questions for quizzes
-├── units.ts                         # Unit definitions with topics + heading mappings
+├── units-db.ts                      # Fetch units from Supabase (scripts + server)
 └── learning-materials.ts            # Loads markdown content for topic extraction
 
 data/markdown/                       # Converted learning materials (Stage 0 output)
