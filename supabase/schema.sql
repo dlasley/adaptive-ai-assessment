@@ -184,9 +184,25 @@ CREATE INDEX idx_lr_topic ON learning_resources(topic);
 CREATE INDEX idx_lr_content_hash ON learning_resources(content_hash);
 CREATE INDEX idx_lr_quality ON learning_resources(quality_status);
 
+-- Study Code Source Words Table
+-- Adjective/animal pools for server-side code generation (never exposed via anon key)
+CREATE TABLE study_code_source_words (
+  id SERIAL PRIMARY KEY,
+  category TEXT NOT NULL CHECK (category IN ('adjective', 'animal')),
+  word TEXT NOT NULL,
+  first_letter CHAR(1) NOT NULL GENERATED ALWAYS AS (LEFT(word, 1)) STORED,
+  UNIQUE(category, word)
+);
+
+CREATE INDEX idx_study_code_source_words_category_letter
+  ON study_code_source_words(category, first_letter);
+
+ALTER TABLE study_code_source_words ENABLE ROW LEVEL SECURITY;
+-- No anon policies → invisible to public API, only accessible via service role
+
 -- Concept Mastery View
 -- Aggregates performance by topic for each student
-CREATE VIEW concept_mastery AS
+CREATE VIEW concept_mastery WITH (security_invoker = true) AS
 SELECT
   study_code_id,
   topic,
@@ -202,7 +218,7 @@ GROUP BY study_code_id, topic;
 
 -- Weak Topics View
 -- Identifies topics where student is struggling (< 70% accuracy)
-CREATE VIEW weak_topics AS
+CREATE VIEW weak_topics WITH (security_invoker = true) AS
 SELECT
   study_code_id,
   topic,
@@ -215,7 +231,7 @@ ORDER BY mastery_percentage ASC;
 
 -- Strong Topics View
 -- Identifies topics where student has mastered (>= 85% accuracy)
-CREATE VIEW strong_topics AS
+CREATE VIEW strong_topics WITH (security_invoker = true) AS
 SELECT
   study_code_id,
   topic,
@@ -435,6 +451,8 @@ COMMENT ON COLUMN leitner_state.box IS 'Leitner box 1-5. Box 1 = most frequent r
 COMMENT ON COLUMN leitner_state.consecutive_correct IS 'Number of consecutive correct answers. Resets to 0 on wrong answer.';
 COMMENT ON COLUMN leitner_state.last_reviewed IS 'When this question was last attempted';
 COMMENT ON TABLE learning_resources IS 'Learning resources (videos, articles, etc.) organized by unit and topic. Resource-type-agnostic for future extensibility.';
+COMMENT ON TABLE study_code_source_words IS 'Adjective/animal word pools for server-side study code generation. No anon RLS — only service role can access.';
+COMMENT ON COLUMN study_code_source_words.first_letter IS 'Generated column for efficient alliterative pair lookups';
 COMMENT ON COLUMN learning_resources.provider IS 'Content host identifier: youtube, vimeo, etc.';
 COMMENT ON COLUMN learning_resources.metadata IS 'Extensible JSON: videoId, isShort, channelName, language, etc.';
 COMMENT ON COLUMN learning_resources.content_hash IS 'MD5(url|unit_id|topic) for deduplication during extraction';

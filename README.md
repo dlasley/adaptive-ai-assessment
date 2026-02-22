@@ -145,6 +145,7 @@ The system is configurable via environment variables to support model routing, f
 
 Supabase (PostgreSQL) schema includes:
 
+- `units`: Unit definitions with topics and heading aliases
 - `study_codes`: Anonymous student identifiers with per-user settings
 - `quiz_history`: Individual quiz attempts
 - `question_results`: Per-question results for analytics
@@ -175,16 +176,20 @@ adaptive-ai-assessment/
 ├── docs/                  # Architecture and analysis documentation
 │   └── pipeline-architecture.md
 ├── scripts/               # Question generation, audit, and experiment tooling
-│   ├── regenerate.ts      # Pipeline orchestrator
-│   ├── generate-questions.ts
-│   ├── audit-quality-mistral.ts
-│   ├── audit-quality.ts
-│   ├── create-experiment.ts
-│   ├── compare-experiments.ts
-│   ├── extract-learning-resources.ts
-│   ├── suggest-unit-topics.ts
-│   ├── plan-generation.ts
-│   ├── run-experiment.sh
+│   ├── corpus-generate.ts           # Pipeline orchestrator
+│   ├── corpus-generate-questions.ts # Question generation
+│   ├── corpus-suggest-topics.ts     # Topic extraction from markdown
+│   ├── corpus-plan-generation.ts    # Coverage analysis and planning
+│   ├── corpus-extract-resources.ts  # Learning resource extraction
+│   ├── audit-mistral.ts             # Cross-provider audit (Mistral)
+│   ├── audit-sonnet.ts              # Same-provider audit (Sonnet)
+│   ├── audit-compare-auditors.ts    # Auditor comparison tooling
+│   ├── experiment-create.ts         # Create experiment definitions
+│   ├── experiment-generate.ts       # Run experiment pipelines
+│   ├── experiment-compare.ts        # Compare experiment results
+│   ├── db-seed-units.ts             # Seed units table
+│   ├── db-export-questions.ts       # Export questions to JSON
+│   ├── db-test-connection.ts        # Verify DB connectivity
 │   ├── prompts/
 │   └── lib/
 ├── supabase/
