@@ -262,7 +262,8 @@ BEGIN
     END IF;
   END LOOP;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 -- Function to update last_active timestamp
 CREATE OR REPLACE FUNCTION update_last_active()
@@ -273,7 +274,8 @@ BEGIN
   WHERE id = NEW.study_code_id;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 -- Trigger to auto-update last_active on quiz submission
 CREATE TRIGGER update_study_code_last_active
@@ -304,7 +306,8 @@ BEGIN
   LEFT JOIN question_results qr ON qr.quiz_history_id = qh.id
   WHERE qh.study_code_id = code_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 -- Function to update questions.updated_at timestamp
 CREATE OR REPLACE FUNCTION update_questions_updated_at()
@@ -313,7 +316,8 @@ BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 -- Trigger to auto-update updated_at on questions
 CREATE TRIGGER questions_updated_at
