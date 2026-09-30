@@ -568,7 +568,7 @@ GROUP BY 1, 2;
 ## Evaluation framework
 
 A separate set of tables and commands (`eval-set-create`, `eval-seed-grading`, `eval-run`,
-`eval-compare`, `eval-rescore`, `eval-finding`) for testing whether a different model, provider, or setting holds up on a given
+`eval-compare`, `eval-rescore`, `eval-finding`, `eval-judge`) for testing whether a different model, provider, or setting holds up on a given
 task before it's adopted, without touching production questions. See
 [`docs/cli-guide-content-ingestion-and-question-pipeline.md`](cli-guide-content-ingestion-and-question-pipeline.md#10-workflow-evaluating-models)
 for the workflow and [`apps/pipeline/README.md`](../apps/pipeline/README.md) for full flag
@@ -667,6 +667,16 @@ numbered experiment or not relate to one at all; `--runs` and `--items` are the 
 each validated (a run must resolve, an item must belong to the set of one of the cited runs) before
 insert. Dry run by default, printing the row it would insert; `--write-db` inserts it with
 `decided_by: user`.
+
+`eval-judge` is a reference-free alternative to `eval-compare` for the transcription task: instead of
+scoring against a checked transcript (itself seeded from production's own model output, so a run
+compared through it is partly scored against that model's choices), a third model looks directly at
+the slide image and the two runs' transcripts and picks the more complete and faithful one. Every
+shared item is judged twice with the two runs' positions swapped, and a run wins the item only when
+it wins in both orders, cancelling the judge's position bias. `--write-db` merges a keyed entry into
+each judged item's `eval_results.judge_verdict` (so a run can be judged against several others without
+clobbering earlier comparisons) and stamps `judge_model`/`judge_prompt_hash` on both `eval_runs` rows.
+Dry run by default, projecting the judge cost from the model registry's list price.
 
 ### The durable layer: experiments, model registry, findings
 

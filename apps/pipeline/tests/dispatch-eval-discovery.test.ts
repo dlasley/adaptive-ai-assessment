@@ -13,6 +13,7 @@ import { COMMANDS_DIR } from '../src/lib/paths';
 const EXPECTED_EVAL_COMMANDS = [
   'eval-compare',
   'eval-finding',
+  'eval-judge',
   'eval-rescore',
   'eval-review-export',
   'eval-review-import',

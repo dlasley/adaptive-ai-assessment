@@ -52,6 +52,9 @@ export function baseFakeEvalStore(): EvalStore {
     async updateResult() {
       throw new Error('not used by this test');
     },
+    async updateResultJudgeVerdict() {
+      throw new Error('not used by this test');
+    },
     async getExperiment() {
       throw new Error('not used by this test');
     },

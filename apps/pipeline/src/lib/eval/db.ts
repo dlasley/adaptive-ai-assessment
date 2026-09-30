@@ -177,6 +177,10 @@ export interface EvalStore {
   insertResults(rows: NewEvalResultRow[]): Promise<void>;
   listResults(runId: string): Promise<EvalResultRow[]>;
   updateResult(id: string, patch: Partial<Pick<EvalResultRow, 'score'>>): Promise<void>;
+  /** Replaces one eval_results row's judge_verdict column wholesale — `eval-judge` reads the row's
+   * current value first and passes the merged object, so a run judged against several others
+   * accumulates one keyed entry per comparison instead of the column being overwritten each time. */
+  updateResultJudgeVerdict(id: string, verdict: Record<string, unknown>): Promise<void>;
   /** Resolves `idOrSlug` against `eval_experiments.id` first, then `.slug` — --experiment accepts either. */
   getExperiment(idOrSlug: string): Promise<EvalExperimentRow | null>;
   updateExperiment(id: string, patch: Partial<Pick<EvalExperimentRow, 'status' | 'decided_at' | 'notes'>>): Promise<void>;
@@ -273,6 +277,10 @@ export function createSupabaseEvalStore(supabase: SupabaseClient): EvalStore {
     async updateResult(id, patch) {
       const { error } = await supabase.from('eval_results').update(patch).eq('id', id);
       if (error) fail(`update eval_results row ${id}`, error);
+    },
+    async updateResultJudgeVerdict(id, verdict) {
+      const { error } = await supabase.from('eval_results').update({ judge_verdict: verdict }).eq('id', id);
+      if (error) fail(`update eval_results judge_verdict for row ${id}`, error);
     },
     async getExperiment(idOrSlug) {
       // eval_experiments.id is a UUID column — an id.eq. clause with a non-UUID string errors in

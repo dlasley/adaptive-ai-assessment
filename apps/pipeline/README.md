@@ -774,6 +774,39 @@ Options:
 
 Plus the shared Database target and Logging flags above.
 
+### eval-judge.ts
+
+A reference-free, paired judge comparison of two completed transcription runs on the same set, for
+when scoring both against `eval-compare`'s checked-transcript reference isn't the question: that
+reference was itself seeded from production's own model output, so a run compared through it is
+partly scored against that model's own choices. `eval-judge` instead has a third model look directly
+at the slide image, the PDF text-layer hint, and the two runs' transcripts (labelled A and B), and
+pick the more complete and faithful one. Every shared item (present with non-error output on both
+runs) is judged twice, with the two runs' positions swapped between the two calls, so a run wins the
+item only when it wins in both orders; a split decision, or either call returning a tie, is a tie.
+This cancels a judge's tendency to favor whichever transcript it sees first.
+
+Dry run by default, printing the projected judge cost from the model registry's list price against
+the same candidate budget cap `eval-run` uses; an unpriced judge model is refused unless
+`--allow-unpriced`. `--write-db` calls the judge and, on each shared item's result row for both runs,
+merges an entry into `eval_results.judge_verdict` keyed by the other run's id
+(`{"<other_run_id>": {"outcome", "judge_model", "reasons", "judged_at"}}`), merged rather than
+replaced, so a run judged against several others accumulates one entry per comparison, and stamps
+`judge_model`/`judge_prompt_hash` on both `eval_runs` rows. Prints items judged, wins for each run,
+ties, the item keys of every non-tie, and projected versus actual judge cost.
+
+```bash
+npx tsx apps/pipeline/src/commands/eval-judge.ts --runs <run_a,run_b> --judge-model <slug> [options]
+
+Options:
+  --runs <ids>             Comma-separated eval_runs ids to judge against each other (exactly two, both completed transcription runs on the same set) (required)
+  --judge-model <slug>     OpenRouter model slug for the judge (required)
+  --provider <pin>         Provider tag to pin the judge call to (single upstream, fallbacks disabled)
+  --allow-unpriced         Call the judge model even when it has no listed price, so its cost cannot be projected or capped
+```
+
+Plus the shared Database target and Logging flags above.
+
 ### eval-review-export.ts
 
 Exports a frozen eval set's items for a human reviewer to fill in reference. Audit and grading get a
