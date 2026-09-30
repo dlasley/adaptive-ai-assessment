@@ -127,7 +127,7 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
     return planInterleavedCalls(items, variants, blockSize);
   },
 
-  async prepareContext({ set, items }) {
+  async prepareContext({ set, items, renderDpi }) {
     const pdfPath = (set.selection as { pdfPath?: string }).pdfPath!;
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-transcription-slides-'));
     // Each slide's rendered image is independent of which model will transcribe it, so it's
@@ -137,7 +137,7 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
     for (const item of items) {
       const slide = item.payload.slide as number;
       if (!imageBySlide.has(slide)) {
-        imageBySlide.set(slide, renderSlideImage(pdfPath, slide, tmpDir));
+        imageBySlide.set(slide, renderSlideImage(pdfPath, slide, tmpDir, renderDpi));
       }
     }
     return { tmpDir, imageBySlide };

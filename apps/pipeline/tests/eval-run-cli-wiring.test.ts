@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { main, projectExclusionPassCostUsd } from '../src/commands/eval-run';
+import { main, projectExclusionPassCostUsd, cli } from '../src/commands/eval-run';
 import { projectVariantCostUsd, registryPriceOf } from '../src/lib/eval/tolerances';
 import type {
   EvalStore,
@@ -332,6 +332,8 @@ describe('eval-run CLI wiring', () => {
 
     // Deliverable 3: every new run's summary carries a top-level primary_metric.
     expect(runs[0].summary?.primary_metric).toBeDefined();
+    // renderDpi is only meaningful for the transcription task.
+    expect(runs[0].settings.renderDpi).toBeNull();
   });
 
   it('resolves --experiment by its row id, not only its slug', async () => {
@@ -779,7 +781,7 @@ describe('eval-run CLI wiring: task transcription', () => {
     });
 
     expect(renderSlideImage).toHaveBeenCalledTimes(1);
-    expect(renderSlideImage).toHaveBeenCalledWith('unit-1.pdf', 1, expect.any(String));
+    expect(renderSlideImage).toHaveBeenCalledWith('unit-1.pdf', 1, expect.any(String), 120);
     expect(callLlmFn).toHaveBeenCalledTimes(1);
     expect(runs).toHaveLength(1);
     expect(runs[0].status).toBe('completed');
@@ -793,6 +795,25 @@ describe('eval-run CLI wiring: task transcription', () => {
     expect(result.served_model).toBe('google/gemini-2.5-flash');
     expect(result.served_provider).toBe('Google AI Studio');
     expect(result.error).toBeNull();
+  });
+
+  it('forwards --render-dpi to renderSlideImage and records it on the run settings', async () => {
+    const { store, runs } = makeTranscriptionFakeStore();
+    const stubResult: LlmResult = {
+      text: 'Hello everyone',
+      model: 'google/gemini-2.5-flash',
+      raw: {},
+    };
+    const callLlmFn = vi.fn(async (_options: LlmCallOptions) => stubResult);
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'transcription', '--models', 'google/gemini-2.5-flash', '--render-dpi', '200', '--write-db'],
+      store,
+      callLlmFn,
+    });
+
+    expect(renderSlideImage).toHaveBeenCalledWith('unit-1.pdf', 1, expect.any(String), 200);
+    expect(runs[0].settings.renderDpi).toBe(200);
   });
 
   describe('--exclusion-pass', () => {
@@ -981,5 +1002,128 @@ describe('eval-run CLI wiring: task transcription', () => {
       expect(runs[0].projected_cost_usd).toBeCloseTo(transcriptionOnly + classifierOnly);
       expect(runs[0].projected_cost_usd).toBeGreaterThan(transcriptionOnly);
     });
+  });
+});
+
+describe('eval-run cli: --render-dpi', () => {
+  beforeEach(() => {
+    vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new ProcessExitError(code ?? 0);
+    }) as unknown as typeof process.exit);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const base = ['--set', 'set-1', '--task', 'transcription', '--models', 'google/gemini-2.5-flash'];
+
+  it('defaults to 120', () => {
+    expect(cli.parse(base).renderDpi).toBe(120);
+  });
+
+  it('parses an explicit value', () => {
+    expect(cli.parse([...base, '--render-dpi', '200']).renderDpi).toBe(200);
+  });
+
+  it('rejects a value below the 72 minimum', () => {
+    expect(() => cli.parse([...base, '--render-dpi', '50'])).toThrow(ProcessExitError);
+  });
+
+  it('rejects a value above the 400 maximum', () => {
+    expect(() => cli.parse([...base, '--render-dpi', '500'])).toThrow(ProcessExitError);
+  });
+
+  it('rejects a fractional value', () => {
+    expect(() => cli.parse([...base, '--render-dpi', '100.5'])).toThrow(ProcessExitError);
+  });
+});
+
+describe('eval-run: a variant whose every call errors finalises failed', () => {
+  beforeEach(() => {
+    vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new ProcessExitError(code ?? 0);
+    }) as unknown as typeof process.exit);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('every call erroring finalises the run failed, with summary.error naming the error kind', async () => {
+    const { store, runs } = makeFakeStore();
+    const callLlmFn = vi.fn(async () => {
+      throw new Error('model rejects this reasoning setting');
+    });
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--write-db'],
+      store,
+      callLlmFn,
+    });
+
+    expect(runs).toHaveLength(1);
+    expect(runs[0].status).toBe('failed');
+    expect(runs[0].summary?.error).toBe("every call errored (1 of 1, all 'api')");
+  });
+
+  it('one of several calls erroring leaves the run completed', async () => {
+    const itemOne = makeEvalItemRow({
+      id: 'item-1',
+      item_key: 'item-1',
+      payload: {
+        question: 'Comment dit-on "hello"?',
+        submitted_answer: 'bonjour',
+        correct_answer: 'bonjour',
+        type: 'fill-in-blank',
+        difficulty: 'easy',
+        label_class: 'correct',
+      },
+    });
+    const itemTwo = makeEvalItemRow({
+      id: 'item-2',
+      item_key: 'item-2',
+      payload: {
+        question: 'Comment dit-on "goodbye"?',
+        submitted_answer: 'au revoir',
+        correct_answer: 'au revoir',
+        type: 'fill-in-blank',
+        difficulty: 'easy',
+        label_class: 'correct',
+      },
+    });
+    const { store, runs, results } = makeFakeStore({
+      async listItems(setId) {
+        return setId === 'set-1' ? [itemOne, itemTwo] : [];
+      },
+    });
+
+    let callCount = 0;
+    const callLlmFn = vi.fn(async (_options: LlmCallOptions) => {
+      callCount += 1;
+      if (callCount === 1) {
+        return {
+          text: JSON.stringify({ isCorrect: true, score: 95, hasCorrectAccents: true, feedback: 'Correct.', corrections: {} }),
+          model: 'openai/gpt-4.1-nano',
+          raw: {},
+        } satisfies LlmResult;
+      }
+      throw new Error('transient failure');
+    });
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--write-db'],
+      store,
+      callLlmFn,
+    });
+
+    expect(runs).toHaveLength(1);
+    expect(runs[0].status).toBe('completed');
+    expect(results).toHaveLength(2);
+    expect(results.filter((r) => r.error !== null)).toHaveLength(1);
   });
 });

@@ -601,7 +601,11 @@ Transcription renders each slide's image once per invocation (shared across ever
 repeat, since the image doesn't depend on which model transcribes it) and checks the production slide
 cache before calling a model. A baseline run whose model matches production's own reuses an
 already-transcribed slide for free, but never writes to it, so an eval run never mutates production's
-cache.
+cache. `--render-dpi <n>` (72 to 400, default 120) overrides the resolution slides are rendered at
+before being sent to the model; production and `eval-judge` always render at 120, so a `--render-dpi`
+run measures the transcription model's sensitivity to image resolution rather than production
+behaviour. The resolved value is recorded as `settings.renderDpi` on the run (`null` for every other
+task).
 
 Transcription also accepts `--exclusion-pass <model>`, a separate teaching-content classifier that
 gates each slide before the transcription call: a slide it judges not to teach the course language
@@ -622,11 +626,12 @@ actually served, as distinct from `--provider`'s request). Every finished run's 
 top-level `primary_metric: {name, value, direction}`, the value the comparison views select
 generically across tasks.
 
-Every variant's `eval_runs` row reaches a terminal status before the process exits: `completed` on
-a normal finish, `failed` (with the error message in `summary.error`) when something outside the
-per-item error handling breaks that variant without stopping the others, and `aborted` for every
-non-errored variant when SIGINT is received (finishing the call already in flight first, then
-stopping). A row is never left `running`.
+Every variant's `eval_runs` row reaches a terminal status before the process exits: `completed` on a
+normal finish, `failed` (with the error message in `summary.error`) either when something outside
+the per-item error handling breaks that variant without stopping the others, or when every one of
+its result rows carries a non-null `error` (every call errored individually, e.g. a model that
+rejects the task's reasoning setting), and `aborted` for every non-errored variant when SIGINT is
+received (finishing the call already in flight first, then stopping). A row is never left `running`.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-run.ts --set <id> --task <audit|grading|mapping|transcription> --models <slug>[,<slug>...] [options]
@@ -647,6 +652,7 @@ Options:
   --shuffle-groups <n>  Audit task: seed permuting item order before grouping, so a repeat can be deterministically regrouped
   --exclusion-pass <model>     Transcription task: model slug for a teaching-content classifier gating each slide before its transcription call (off by default)
   --exclusion-provider <tag>   Provider tag to pin the --exclusion-pass call to, when it must differ from --provider
+  --render-dpi <n>      Transcription task: resolution the slide images are rendered at before being sent to the model (72 to 400, default: 120)
 ```
 
 Plus the shared Database target and Logging flags above. A Mistral-family model is throttled to one

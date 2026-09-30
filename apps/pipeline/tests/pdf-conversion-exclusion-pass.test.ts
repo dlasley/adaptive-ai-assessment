@@ -1,6 +1,7 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LlmCallOptions, LlmContentPart, LlmResult } from '@adaptive/shared/llm';
 
 /**
@@ -28,7 +29,7 @@ vi.mock('@adaptive/shared/llm', async (importOriginal) => ({
   callLlm: callLlmMock,
 }));
 
-import { convertPdfToMarkdown, NO_CONTENT_MARKER, slideCacheKey, TRANSCRIPTION_PROMPT } from '../src/lib/pdf-conversion';
+import { convertPdfToMarkdown, renderSlideImage, NO_CONTENT_MARKER, slideCacheKey, TRANSCRIPTION_PROMPT } from '../src/lib/pdf-conversion';
 import { PDF_SLIDE_CACHE_DIR } from '../src/lib/paths';
 import { MODELS } from '../src/lib/pipeline-config';
 
@@ -97,5 +98,44 @@ describe('convertPdfToMarkdown — exclusionPass', () => {
     const plainCalls = callLlmMock.mock.calls.filter(([opts]) => !(opts as LlmCallOptions).jsonMode);
     expect(jsonModeCalls).toHaveLength(2);
     expect(plainCalls).toHaveLength(1);
+  });
+});
+
+describe('renderSlideImage: dpi argument', () => {
+  let tmpDir: string;
+
+  function stubPdftoppm() {
+    execFileSyncMock.mockImplementation((cmd: string, args: string[] = []) => {
+      const prefix = args[args.length - 1];
+      fs.mkdirSync(path.dirname(prefix), { recursive: true });
+      fs.writeFileSync(`${prefix}-1.png`, Buffer.from('fake-png-bytes'));
+      return '';
+    });
+  }
+
+  function dpiArgOf(): string {
+    const [, args] = execFileSyncMock.mock.calls[0] as [string, string[]];
+    return args[args.indexOf('-r') + 1];
+  }
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'render-dpi-test-'));
+  });
+
+  afterEach(() => {
+    execFileSyncMock.mockReset();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('passes -r 120 to pdftoppm by default', () => {
+    stubPdftoppm();
+    renderSlideImage('/fake/unit.pdf', 1, tmpDir);
+    expect(dpiArgOf()).toBe('120');
+  });
+
+  it('passes the given dpi to pdftoppm', () => {
+    stubPdftoppm();
+    renderSlideImage('/fake/unit.pdf', 1, tmpDir, 300);
+    expect(dpiArgOf()).toBe('300');
   });
 });

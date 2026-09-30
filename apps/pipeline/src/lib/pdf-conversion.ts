@@ -55,8 +55,10 @@ const SKIPPED_TEXT_PREVIEW_LENGTH = 80;
  * with that file by hand, since the prompt isn't machine-checkable against this constant. */
 export const NO_CONTENT_MARKER = '<!-- no teaching content -->';
 
-/** Resolution for rendered slide images — high enough to keep slide text legible at reasonable token cost. */
-const RENDER_DPI = 120;
+/** Default resolution for rendered slide images, high enough to keep slide text legible at
+ * reasonable token cost. Exported so a caller that overrides it (see `renderSlideImage`) can refer
+ * to the same value eval-run's `--render-dpi` defaults to. */
+export const DEFAULT_RENDER_DPI = 120;
 
 /** Bounded slide-transcription concurrency. Rate-limit responses are handled separately via backoff
  * (see callLlmWithRateLimitBackoff) since a fixed worker count alone doesn't guarantee staying
@@ -108,14 +110,16 @@ export function extractSlideText(pdfPath: string, slideNum: number): string {
 }
 
 /** Renders a single slide to a PNG and returns its bytes. Each slide gets its own subdirectory so
- * pdftoppm's output filename never has to be guessed or risk colliding with a concurrent slide. */
-export function renderSlideImage(pdfPath: string, slideNum: number, tmpDir: string): Buffer {
+ * pdftoppm's output filename never has to be guessed or risk colliding with a concurrent slide.
+ * `dpi` defaults to `DEFAULT_RENDER_DPI`; production and `eval-judge` never override it, `eval-run`'s
+ * `--render-dpi` is the only caller that does. */
+export function renderSlideImage(pdfPath: string, slideNum: number, tmpDir: string, dpi: number = DEFAULT_RENDER_DPI): Buffer {
   const slideDir = path.join(tmpDir, String(slideNum));
   fs.mkdirSync(slideDir, { recursive: true });
   const prefix = path.join(slideDir, 'slide');
   execFileSync('pdftoppm', [
     '-png',
-    '-r', String(RENDER_DPI),
+    '-r', String(dpi),
     '-f', String(slideNum),
     '-l', String(slideNum),
     pdfPath,

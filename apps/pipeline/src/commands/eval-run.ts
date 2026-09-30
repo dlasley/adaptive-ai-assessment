@@ -29,6 +29,7 @@ import { createSupabaseEvalStore, type EvalStore, type EvalRunRow, type EvalExpe
 import { vendorForModelSlug } from '../lib/eval/model-vendor';
 import { stampSummary } from '../lib/eval/summary-stamp';
 import { AUDIT_GROUP_SIZE } from '../lib/pipeline-config';
+import { DEFAULT_RENDER_DPI } from '../lib/pdf-conversion';
 import { runVariantsLoop } from '../lib/eval/run-loop';
 import { mulberry32, shuffle } from '../lib/eval/sampling';
 import { BUDGET_CAPS_USD, isWithinBudget, projectCostUsd, projectVariantCostUsd, registryPriceOf, type ModelPrice } from '../lib/eval/tolerances';
@@ -47,6 +48,8 @@ const logger = createLogger('eval-run');
 
 const BLOCK_SIZE = 25;
 const MISTRAL_MIN_INTERVAL_MS = 1000;
+const RENDER_DPI_MIN = 72;
+const RENDER_DPI_MAX = 400;
 
 const REASONING_CHOICES = ['off', 'none', 'minimal', 'low', 'medium', 'high'] as const;
 
@@ -82,6 +85,7 @@ export const cli = defineCli(
     'shuffle-groups': { type: 'number', help: 'Audit task: seed permuting item order before grouping, so a repeat can be deterministically regrouped' },
     'exclusion-pass': { type: 'string', help: 'Transcription task only: model slug for a separate teaching-content classifier that gates each slide before the transcription call, skipping it when the slide is judged not to teach the course language (off by default)' },
     'exclusion-provider': { type: 'string', help: 'Provider tag to pin the --exclusion-pass classifier call to, when it must differ from --provider' },
+    'render-dpi': { type: 'number', default: DEFAULT_RENDER_DPI, min: RENDER_DPI_MIN, help: `Transcription task only: resolution the slide images are rendered at before being sent to the model (${RENDER_DPI_MIN} to ${RENDER_DPI_MAX}, default ${DEFAULT_RENDER_DPI})` },
   },
   {
     name: 'eval-run',
@@ -91,6 +95,10 @@ export const cli = defineCli(
       'npx tsx apps/pipeline/src/commands/eval-run.ts --set <id> --task grading --models anthropic/claude-opus-5.5,anthropic/claude-sonnet-5 --repeat 2 --label sonnet-vs-opus --write-db',
       'npx tsx apps/pipeline/src/commands/eval-run.ts --set <id> --task mapping --models anthropic/claude-sonnet-5,anthropic/claude-haiku-4.5 --repeat 3 --label baseline-vs-haiku --write-db',
     ],
+    validate: (o) => {
+      if (!Number.isInteger(o.renderDpi)) return '--render-dpi must be a whole number';
+      if (o.renderDpi > RENDER_DPI_MAX) return `--render-dpi must be at most ${RENDER_DPI_MAX}`;
+    },
   },
 );
 
@@ -165,6 +173,30 @@ export function buildEffectiveCallSettings(
  * --shuffle-groups's determinism is unit-testable without a live Supabase connection. */
 export function orderItemsForRun<T>(items: T[], shuffleSeed: number | undefined): T[] {
   return shuffleSeed !== undefined ? shuffle(items, mulberry32(shuffleSeed)) : items;
+}
+
+/** True when every one of `resultRows` carries a non-null `error`: a variant whose loop finished
+ * without an unhandled exception (the loop's own `completed` status) but whose calls all failed
+ * individually, each caught and recorded by the task's own per-item error handling. */
+function everyResultErrored(resultRows: NewEvalResultRow[]): boolean {
+  return resultRows.length > 0 && resultRows.every((row) => row.error != null);
+}
+
+/** Describes an all-errored variant for `summary.error`: the error kind carried on each result row
+ * (never the provider's own message, which isn't stored on the row), naming a single kind when
+ * every row shares one and a breakdown by kind otherwise. */
+function describeAllErrored(resultRows: NewEvalResultRow[]): string {
+  const total = resultRows.length;
+  const counts = new Map<string, number>();
+  for (const row of resultRows) {
+    const kind = String(row.error);
+    counts.set(kind, (counts.get(kind) ?? 0) + 1);
+  }
+  if (counts.size === 1) {
+    return `every call errored (${total} of ${total}, all '${[...counts.keys()][0]}')`;
+  }
+  const breakdown = [...counts.entries()].map(([kind, count]) => `${count} '${kind}'`).join(', ');
+  return `every call errored (${total} of ${total}: ${breakdown})`;
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -365,6 +397,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
       exclusionPass: exclusionPass
         ? { model: exclusionPass.model, provider: exclusionPass.provider?.order?.[0] ?? null, promptHash: exclusionPass.promptHash }
         : null,
+      renderDpi: options.task === 'transcription' ? options.renderDpi : null,
     };
     const run = await store.insertRun({
       set_id: options.set,
@@ -406,7 +439,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
 
   try {
     const calls = taskDef.planCalls(orderedItems, activeVariants, { blockSize: BLOCK_SIZE, groupSize });
-    taskContext = await taskDef.prepareContext({ set, items: orderedItems, supabase, fetchUnitsFromDbFn: deps.fetchUnitsFromDbFn ?? fetchUnitsFromDb });
+    taskContext = await taskDef.prepareContext({ set, items: orderedItems, supabase, fetchUnitsFromDbFn: deps.fetchUnitsFromDbFn ?? fetchUnitsFromDb, renderDpi: options.renderDpi });
 
     const outcomesByVariant = new Map<string, unknown[]>();
     const resultRowsByVariant = new Map<string, NewEvalResultRow[]>();
@@ -454,6 +487,15 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
           logger.error(`Variant ${key}: ${message}`);
           status = 'failed';
           errorMessage = errorMessage === undefined ? message : `${errorMessage}; ${message}`;
+        }
+
+        // A variant whose loop finished without an unhandled exception still isn't a usable run
+        // when every one of its calls errored individually (e.g. a model that rejects the task's
+        // reasoning setting, so every slide comes back an API error). That's a failed run with a
+        // summary of zero scored items, not a completed one.
+        if (status === 'completed' && everyResultErrored(resultRows)) {
+          status = 'failed';
+          errorMessage = describeAllErrored(resultRows);
         }
 
         const builtSummary = taskDef.buildSummary(outcomesByVariant.get(key)!);

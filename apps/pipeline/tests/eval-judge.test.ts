@@ -14,7 +14,7 @@ vi.mock('../src/lib/pdf-conversion', async (importOriginal) => {
 });
 import { renderSlideImage } from '../src/lib/pdf-conversion';
 
-import { main, combineJudgeOrders, parseJudgeVerdict, JudgeParseError, type JudgeVerdict } from '../src/commands/eval-judge';
+import { main, combineJudgeOrders, parseJudgeVerdict, JudgeParseError, JUDGE_PROMPT, type JudgeVerdict } from '../src/commands/eval-judge';
 import type { EvalStore, EvalRunRow, EvalItemRow, EvalResultRow, EvalModelCurrentRow, EvalSetRow } from '../src/lib/eval/db';
 import type { LlmCallOptions, LlmResult } from '@adaptive/shared/llm';
 import { baseFakeEvalStore, makeEvalSetRow, makeEvalItemRow, makeEvalRunRow, makeEvalResultRow } from './helpers/eval-store';
@@ -45,6 +45,12 @@ function jsonResult(verdict: JudgeVerdict, costUsd = 0.001): LlmResult {
     raw: {},
   };
 }
+
+describe('JUDGE_PROMPT', () => {
+  it('names the exercise and answer-key subsection conventions the transcription prompt mandates, so a transcript is not penalised for following them', () => {
+    expect(JUDGE_PROMPT.includes('### Exercices') && JUDGE_PROMPT.includes('### Réponses')).toBe(true);
+  });
+});
 
 describe('combineJudgeOrders', () => {
   it('a run that wins both orders wins the item', () => {

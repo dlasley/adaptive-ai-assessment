@@ -45,6 +45,9 @@ export interface TaskPrepareDeps {
    * test can supply units without a live Supabase connection, the same role `callLlmFn` plays for
    * model calls. Defaults to the real `fetchUnitsFromDb`. */
   fetchUnitsFromDbFn: typeof fetchUnitsFromDb;
+  /** `--render-dpi`: the resolution the transcription task renders each slide image at. Every
+   * other task ignores it. */
+  renderDpi?: number;
 }
 
 /** The transcription task's exclusion-pass classifier, resolved once per `eval-run` invocation
