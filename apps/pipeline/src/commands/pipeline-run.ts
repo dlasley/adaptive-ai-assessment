@@ -11,6 +11,7 @@
 
 import fs from 'fs';
 import type { Unit } from '@adaptive/shared/types';
+import { MODELS } from '@adaptive/shared/models';
 import { bootstrapCommand } from '../lib/command-bootstrap';
 import { MARKDOWN_DIR, PDF_DIR } from '../lib/unit-discovery';
 import {
@@ -80,7 +81,7 @@ export const cli = defineCli(
     },
     'batch-id': { type: 'string', help: 'Custom batch ID' },
     'markdown-file': { type: 'string', help: 'Use specified markdown file (bypasses PDF conversion)' },
-    'exclusion-pass': { type: 'string', help: 'Model slug for a separate teaching-content classifier that gates each slide before its transcription call (off by default)' },
+    'exclusion-pass': { type: 'string', default: MODELS.slideContentClassifier, help: 'Model slug for the teaching-content classifier that gates each slide before its transcription call; pass "off" to transcribe every slide' },
   },
   {
     name: 'pipeline-run',
@@ -235,7 +236,7 @@ export async function main() {
   console.log(`  Skip convert:  ${options.skipConvert ? 'Yes' : 'No'}`);
   console.log(`  Force convert: ${options.forceConvert ? 'Yes' : 'No'}`);
   console.log(`  Skip topics:   ${options.skipTopics ? 'Yes' : 'No'}`);
-  console.log(`  Exclusion pass: ${options.exclusionPass ?? 'No (off by default)'}`);
+  console.log(`  Exclusion pass: ${options.exclusionPass && options.exclusionPass !== 'off' ? options.exclusionPass : 'No'}`);
   console.log(`  Write to DB:   ${options.writeDb ? 'Yes' : 'No'}`);
   console.log(`  Audit:         ${options.audit ? `Yes — ${options.auditor === 'mistral' ? 'Mistral Large' : 'Sonnet'} (pending → active/flagged)` : 'No'}`);
   console.log(`  Resources:     ${options.skipResources ? 'Skip' : 'Yes (extract from markdown)'}`);

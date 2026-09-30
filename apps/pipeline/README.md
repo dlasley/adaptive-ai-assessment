@@ -251,7 +251,7 @@ Options:
   --convert-only            Stop after PDF conversion (skip topics, generation, audit)
   --batch-id <id>           Custom batch ID
   --markdown-file <path>    Use specified markdown file (bypasses PDF conversion)
-  --exclusion-pass <model>  Model slug for a teaching-content classifier gating each slide before its transcription call (off by default)
+  --exclusion-pass <model>  Model slug for the teaching-content classifier gating each slide before its transcription call (default: MODELS.slideContentClassifier in packages/shared; pass "off" to transcribe every slide)
   --dry-run                 Show what would be done without executing
 ```
 

@@ -211,7 +211,7 @@ export async function stepConvertPdf(
       try {
         const { markdown, report } = await convertPdfToMarkdown(
           pdfPath, pdfName, sessionId,
-          options.exclusionPass ? { model: options.exclusionPass } : undefined
+          options.exclusionPass && options.exclusionPass !== 'off' ? { model: options.exclusionPass } : undefined
         );
         console.log(`     Converted to ${markdown.length.toLocaleString()} characters of markdown`);
 

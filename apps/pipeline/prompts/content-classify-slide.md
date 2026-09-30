@@ -14,14 +14,19 @@ Decide whether this slide teaches {{COURSE_LANGUAGE}} itself, as opposed to bein
 - Exercises and their answer keys
 - Dialogues or example sentences in {{COURSE_LANGUAGE}}
 - Cultural notes about the countries and speakers of {{COURSE_LANGUAGE}}
-- Activity instructions that can be completed using only what's on the slide
+- Activity instructions, exercises and answer keys, including listening or video activities whose
+  audio or video is not on the slide: the printed questions, answer choices and keys are still
+  {{COURSE_LANGUAGE}} content
 
 **Does NOT count as teaching content:**
 - Reasons to learn the language, or why the course matters
 - Course expectations, study tips, or learning-philosophy statements
 - Classroom rules, grading policies, supply lists, schedules, or contact details
 - Title slides, section dividers, and other slides with no lesson content of their own
-- Activities that depend on audio, a handout, or other material not visible on the slide
+- Slides that carry only links to external videos or pages, with no lesson content printed on the
+  slide itself
+- Descriptions of proficiency frameworks or level scales (what an A1 or B2 learner can do) rather
+  than the language itself
 
 A slide that mixes the two — a study tip alongside a vocabulary list, for example — counts as
 teaching content: the presence of any of the above is enough.

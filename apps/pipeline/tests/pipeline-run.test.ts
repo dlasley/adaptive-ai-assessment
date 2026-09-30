@@ -47,7 +47,7 @@ describe('pipeline-run.ts CLI', () => {
     convertOnly: false,
     batchId: undefined,
     markdownFile: undefined,
-    exclusionPass: undefined,
+    exclusionPass: 'google/gemini-3.1-flash-lite',
   };
 
   const goldenRows: { name: string; args: string[]; expected: ReturnType<typeof cli.parse> }[] = [
@@ -78,6 +78,11 @@ describe('pipeline-run.ts CLI', () => {
       name: 'unit-4 --exclusion-pass',
       args: ['unit-4', '--exclusion-pass', 'anthropic/claude-sonnet-5'],
       expected: { ...DEFAULTS, unit: 'unit-4', exclusionPass: 'anthropic/claude-sonnet-5' },
+    },
+    {
+      name: 'unit-4 --exclusion-pass off',
+      args: ['unit-4', '--exclusion-pass', 'off'],
+      expected: { ...DEFAULTS, unit: 'unit-4', exclusionPass: 'off' },
     },
     {
       name: 'every flag at once',

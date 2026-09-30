@@ -4,6 +4,10 @@
 
 export const MODELS = {
   pdfConversion: 'anthropic/claude-sonnet-5',
+  /** Teaching-content classifier that gates each slide before its transcription call. A
+   * different vendor from the transcriber, chosen for matching the course owner's slide rulings at
+   * a fraction of a cent per slide. */
+  slideContentClassifier: 'google/gemini-3.1-flash-lite',
   topicExtraction: 'anthropic/claude-sonnet-5',
   topicSimilarity: 'anthropic/claude-haiku-4.5',
   /** MCQ and true-false generation (structured types with fixed answer sets) */
