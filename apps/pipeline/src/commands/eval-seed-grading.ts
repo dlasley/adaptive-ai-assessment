@@ -25,7 +25,7 @@ import {
   renderSeedGradingPrompt,
   SeedGradingParseError,
 } from '../lib/eval/grading-seed';
-import { projectCostUsd } from '../lib/eval/tolerances';
+import { projectCostUsd, registryPriceOf } from '../lib/eval/tolerances';
 import { callLlm } from '@adaptive/shared/llm';
 import { renderCoursePrompt } from '@adaptive/shared/course';
 import { defineCli } from '../lib/options/define-cli';
@@ -219,7 +219,8 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
       for (const line of deterministicPreview) console.log(line);
     }
     if (groupsNeedingModel > 0) {
-      const projected = projectCostUsd(options.model, groupsNeedingModel, SEED_PROMPT_TOKENS_PER_CALL, SEED_COMPLETION_TOKENS_PER_CALL);
+      const registryRow = await store.getModelBySlug(options.model).catch(() => null);
+      const projected = projectCostUsd(registryPriceOf(registryRow ?? undefined), groupsNeedingModel, SEED_PROMPT_TOKENS_PER_CALL, SEED_COMPLETION_TOKENS_PER_CALL);
       const projectedLabel = projected !== undefined ? `$${projected.toFixed(4)}` : 'unknown (unpriced model)';
       console.log(`\n  Model calls needed: ${groupsNeedingModel} question(s), projected cost ${projectedLabel}.`);
     }
