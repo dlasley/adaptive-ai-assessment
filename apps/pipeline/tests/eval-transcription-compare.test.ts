@@ -118,6 +118,52 @@ describe('transcriptionNonInferiorityVerdict', () => {
     expect(verdict.nonInferior).toBe(true);
   });
 
+  describe('on word measures, when the pairing carried the reference transcripts', () => {
+    const stats = (scores: number[]) => transcriptionRunStats(scores.map((score, i) => makeResult({ item_id: `s${i}`, score })));
+
+    it('passes a slide whose edit score collapsed on formatting alone, since its words all match', () => {
+      const outcomes = [
+        { itemId: 'a', baselineScore: 1, candidateScore: 0.66, baselineWordRecall: 1, candidateWordRecall: 1, baselineWordPrecision: 1, candidateWordPrecision: 1 },
+        { itemId: 'b', baselineScore: 0.9, candidateScore: 0.9, baselineWordRecall: 0.95, candidateWordRecall: 0.95, baselineWordPrecision: 0.97, candidateWordPrecision: 0.97 },
+      ];
+      const verdict = transcriptionNonInferiorityVerdict(stats([1, 0.9]), stats([0.66, 0.9]), outcomes, noAgreement);
+      expect(verdict.nonInferior).toBe(true);
+      expect(verdict.reason).toContain('mean word recall');
+    });
+
+    it('fails when one slide loses more than 0.15 of the words the baseline captured', () => {
+      const outcomes = [
+        { itemId: 'a', baselineScore: 0.9, candidateScore: 0.9, baselineWordRecall: 0.97, candidateWordRecall: 0.48, baselineWordPrecision: 0.9, candidateWordPrecision: 0.9 },
+        { itemId: 'b', baselineScore: 0.9, candidateScore: 0.9, baselineWordRecall: 0.95, candidateWordRecall: 0.95, baselineWordPrecision: 0.97, candidateWordPrecision: 0.97 },
+        { itemId: 'c', baselineScore: 0.9, candidateScore: 0.9, baselineWordRecall: 0.95, candidateWordRecall: 0.95, baselineWordPrecision: 0.97, candidateWordPrecision: 0.97 },
+      ];
+      const verdict = transcriptionNonInferiorityVerdict(stats([0.9, 0.9, 0.9]), stats([0.9, 0.9, 0.9]), outcomes, noAgreement);
+      expect(verdict.nonInferior).toBe(false);
+      expect(verdict.reason).toContain('largest word recall drop 0.4900 on item a');
+    });
+
+    it('fails on a slide padded with words the baseline did not add, whatever the recall', () => {
+      const outcomes = [
+        { itemId: 'a', baselineScore: 0.9, candidateScore: 0.9, baselineWordRecall: 0.9, candidateWordRecall: 1, baselineWordPrecision: 0.97, candidateWordPrecision: 0.5 },
+        { itemId: 'b', baselineScore: 0.9, candidateScore: 0.9, baselineWordRecall: 0.95, candidateWordRecall: 0.95, baselineWordPrecision: 0.97, candidateWordPrecision: 0.97 },
+      ];
+      const verdict = transcriptionNonInferiorityVerdict(stats([0.9, 0.9]), stats([0.9, 0.9]), outcomes, noAgreement);
+      expect(verdict.nonInferior).toBe(false);
+      expect(verdict.reason).toContain('largest word precision drop 0.4700 on item a');
+    });
+
+    it('computes the word measures from stored outputs when given the reference transcripts', () => {
+      const reference = new Map([['item-1', '| A | ah |\n|---|---|\n| B | bé |']]);
+      const a = [makeResult({ run_id: 'run-a', item_id: 'item-1', score: 1, output: { markdown: '| A | ah |\n|---|---|\n| B | bé |' } })];
+      const b = [makeResult({ run_id: 'run-b', item_id: 'item-1', score: 0.6, output: { markdown: '- **A** - ah\n- **B** - bé\n- extra' } })];
+      const [outcome] = extractTranscriptionPairedOutcomes(a, b, reference);
+      expect(outcome.baselineWordRecall).toBe(1);
+      expect(outcome.candidateWordRecall).toBe(1);
+      expect(outcome.baselineWordPrecision).toBe(1);
+      expect(outcome.candidateWordPrecision).toBeCloseTo(0.8, 10);
+    });
+  });
+
   it('fails when one slide drops far below the baseline\'s own score on that slide', () => {
     const baseline = transcriptionRunStats([makeResult({ item_id: 'a', score: 0.95 }), makeResult({ item_id: 'b', score: 0.9 })]);
     const candidate = transcriptionRunStats([makeResult({ item_id: 'a', score: 0.48 }), makeResult({ item_id: 'b', score: 0.89 })]);

@@ -456,7 +456,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
         referenceFree: false,
         noPairLabel: 'scored items',
         buildVariant: (candidate, baselineResults, candidateResults) => {
-          const outcomes = extractTranscriptionPairedOutcomes(baselineResults, candidateResults);
+          const outcomes = extractTranscriptionPairedOutcomes(baselineResults, candidateResults, referenceMarkdownByItemId);
           if (outcomes.length === 0) return undefined;
           const candidateStats = transcriptionRunStats(candidateResults);
           const noContentAgreement = transcriptionNoContentAgreementVsReference(candidateResults, referenceMarkdownByItemId);

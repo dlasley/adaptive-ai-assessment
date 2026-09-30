@@ -64,7 +64,9 @@ export function scoreTranscription(reference: string, output: string): number {
 
 /**
  * The set of words in a transcript with markdown syntax removed: table pipes, emphasis, heading
- * marks, list dashes and colons become whitespace, then the text is lower-cased and split. Accents
+ * marks, list dashes and colons become whitespace, a number standing alone with a trailing dot
+ * (an ordered-list marker, "1. ") keeps its number and loses the dot so "1. B", "- 1. B" and
+ * "- 1-B" yield the same words, then the text is lower-cased and split. Accents
  * survive, so an accent error is still a different word. Used for the formatting-blind
  * recall/precision pair, which asks whether the content was captured regardless of whether the
  * model chose a table, a list or a bold run to present it.
@@ -72,6 +74,7 @@ export function scoreTranscription(reference: string, output: string): number {
 export function wordSetForScoring(markdown: string): Set<string> {
   const words = markdown
     .replace(/[|*#_`>\-:]+/g, ' ')
+    .replace(/(^|\s)(\d+)\.(?=\s|$)/g, '$1$2')
     .toLowerCase()
     .split(/\s+/)
     .filter((w) => w.length > 0);
@@ -177,8 +180,9 @@ export interface TranscriptionItemOutcome {
   output?: string;
   score?: number;
   deterministicChecks?: TranscriptionDeterministicChecks;
-  /** Only 'api' and 'empty' occur for this task: the output is raw Markdown with no parse step.
-   * The union matches the other tasks so the shared summary helpers apply unchanged. */
+  /** 'parse' occurs only when an exclusion pass is active and its classifier call returns
+   * malformed JSON; otherwise only 'api' and 'empty' occur, since the transcription output itself
+   * is raw Markdown with no parse step. */
   error?: 'parse' | 'api' | 'empty';
   latencyMs?: number;
   costUsd?: number;

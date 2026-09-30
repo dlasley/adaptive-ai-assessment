@@ -11,28 +11,57 @@
  */
 
 import { meanAndCi95, signTestPValue } from '../scoring';
-import { scoreTranscription, countMarkdownTable, NO_CONTENT_MARKER } from '../transcription-scoring';
+import { scoreTranscription, scoreTranscriptionWords, countMarkdownTable, NO_CONTENT_MARKER } from '../transcription-scoring';
 import { TASK_TOLERANCES, TRANSCRIPTION_MAX_SLIDE_DROP } from '../tolerances';
 import type { EvalResultRow } from '../db';
 import { resultByItem, runCostLatency, formatOrNA, buildNoiseFloorSection, type RunCostLatency } from './shared';
 
 export interface PairedTranscriptionOutcome {
   itemId: string;
+  /** Edit-distance similarity to the reference (`eval_results.score`), which also counts formatting. */
   baselineScore: number;
   candidateScore: number;
+  /** Formatting-blind word measures, present when the pairing was given the reference transcripts. */
+  baselineWordRecall?: number;
+  candidateWordRecall?: number;
+  baselineWordPrecision?: number;
+  candidateWordPrecision?: number;
+}
+
+function outputMarkdown(result: EvalResultRow): string | undefined {
+  const markdown = (result.output as { markdown?: unknown } | null)?.markdown;
+  return typeof markdown === 'string' ? markdown : undefined;
 }
 
 /** Pairs two transcription runs' per-slide scores on their shared, scored items. Callers pass rows
  * whose `score` has been computed against the current reference (`eval-compare` rescores stored
- * transcripts before pairing). */
-export function extractTranscriptionPairedOutcomes(aResults: EvalResultRow[], bResults: EvalResultRow[]): PairedTranscriptionOutcome[] {
+ * transcripts before pairing). With `referenceMarkdownByItemId`, each pair also carries the
+ * formatting-blind word recall of both sides and the candidate's word precision, computed from the
+ * stored outputs against that reference. */
+export function extractTranscriptionPairedOutcomes(
+  aResults: EvalResultRow[],
+  bResults: EvalResultRow[],
+  referenceMarkdownByItemId?: Map<string, string>,
+): PairedTranscriptionOutcome[] {
   const aByItem = resultByItem(aResults);
   const bByItem = resultByItem(bResults);
   const outcomes: PairedTranscriptionOutcome[] = [];
   for (const [itemId, a] of aByItem) {
     const b = bByItem.get(itemId);
     if (a.score === null || !b || b.score === null) continue;
-    outcomes.push({ itemId, baselineScore: a.score, candidateScore: b.score });
+    const outcome: PairedTranscriptionOutcome = { itemId, baselineScore: a.score, candidateScore: b.score };
+    const reference = referenceMarkdownByItemId?.get(itemId);
+    const aMarkdown = outputMarkdown(a);
+    const bMarkdown = outputMarkdown(b);
+    if (reference !== undefined && aMarkdown !== undefined && bMarkdown !== undefined) {
+      const baselineWords = scoreTranscriptionWords(reference, aMarkdown);
+      const candidateWords = scoreTranscriptionWords(reference, bMarkdown);
+      outcome.baselineWordRecall = baselineWords.wordRecall;
+      outcome.baselineWordPrecision = baselineWords.wordPrecision;
+      outcome.candidateWordRecall = candidateWords.wordRecall;
+      outcome.candidateWordPrecision = candidateWords.wordPrecision;
+    }
+    outcomes.push(outcome);
   }
   return outcomes;
 }
@@ -173,15 +202,20 @@ export interface TranscriptionNonInferiorityVerdict {
 }
 
 /**
- * The transcription task's non-inferiority verdict: the mean-score tolerance from
- * `TASK_TOLERANCES.transcription`, a per-slide check the mean alone can't catch — a candidate
- * whose mean holds up but that garbles one slide outright, relative to how the baseline itself did on
- * that same slide, is still not non-inferior — and no-content agreement against reference. The per-slide
- * check only considers `pairedOutcomes` (slides scored in both runs); a slide missing from either run
- * is silently excluded rather than counted as a drop, and empty `pairedOutcomes` fails outright —
- * no overlap means there's no evidence of non-inferiority to find. No-content agreement requires a
- * perfect match whenever there's at least one reference item to check it against
- * (`noContentAgreement.n > 0`); with none, there's nothing to check and that part passes.
+ * The transcription task's non-inferiority verdict. When every paired outcome carries the word
+ * measures (the pairing was given the reference transcripts), the checks run on words captured,
+ * which is blind to whether a model chose a table or a list: the candidate's mean word recall over
+ * the paired slides must be within `TASK_TOLERANCES.transcription.tolerance` of the baseline's, and
+ * on no slide may the candidate fall more than `TRANSCRIPTION_MAX_SLIDE_DROP` below the baseline's
+ * word recall (content lost) or the baseline's word precision (content added that is not on the
+ * slide) on that same slide. Both per-slide checks are relative to the baseline, so a habit the
+ * baseline shares (a bilingual heading the prompt asks for) is not held against a candidate, while
+ * padding a slide the baseline transcribed cleanly is. Without the word measures the same mean and
+ * recall-drop shapes run on the edit-distance score, with no precision check. In
+ * both modes the per-slide checks only consider `pairedOutcomes` (slides scored in both runs), a
+ * slide missing from either run is excluded rather than counted as a drop, and empty
+ * `pairedOutcomes` fails outright: no overlap is no evidence of non-inferiority. No-content
+ * agreement must be perfect whenever there is at least one reference item to check it against.
  */
 export function transcriptionNonInferiorityVerdict(
   baselineStats: TranscriptionRunStats,
@@ -190,31 +224,58 @@ export function transcriptionNonInferiorityVerdict(
   noContentAgreement: AgreementRate,
 ): TranscriptionNonInferiorityVerdict {
   const tolerance = TASK_TOLERANCES.transcription;
-  const meanFloor = baselineStats.meanScore - tolerance.tolerance;
-  const meanOk = candidateStats.meanScore >= meanFloor;
+  const onWords = pairedOutcomes.length > 0 && pairedOutcomes.every(
+    (o) => o.baselineWordRecall !== undefined && o.candidateWordRecall !== undefined
+      && o.baselineWordPrecision !== undefined && o.candidateWordPrecision !== undefined,
+  );
+  const measure = onWords ? 'word recall' : 'score';
+  const baselineOf = (o: PairedTranscriptionOutcome) => (onWords ? o.baselineWordRecall! : o.baselineScore);
+  const candidateOf = (o: PairedTranscriptionOutcome) => (onWords ? o.candidateWordRecall! : o.candidateScore);
+
+  const baselineMean = onWords
+    ? pairedOutcomes.reduce((a, o) => a + o.baselineWordRecall!, 0) / pairedOutcomes.length
+    : baselineStats.meanScore;
+  const candidateMean = onWords
+    ? pairedOutcomes.reduce((a, o) => a + o.candidateWordRecall!, 0) / pairedOutcomes.length
+    : candidateStats.meanScore;
+  const meanFloor = baselineMean - tolerance.tolerance;
+  const meanOk = candidateMean >= meanFloor;
 
   let worstDrop = -Infinity;
   let worstDropItemId = '';
+  let worstPrecisionDrop = -Infinity;
+  let worstPrecisionDropItemId = '';
   for (const o of pairedOutcomes) {
-    const drop = o.baselineScore - o.candidateScore;
+    const drop = baselineOf(o) - candidateOf(o);
     if (drop > worstDrop) {
       worstDrop = drop;
       worstDropItemId = o.itemId;
     }
+    if (onWords) {
+      const precisionDrop = o.baselineWordPrecision! - o.candidateWordPrecision!;
+      if (precisionDrop > worstPrecisionDrop) {
+        worstPrecisionDrop = precisionDrop;
+        worstPrecisionDropItemId = o.itemId;
+      }
+    }
   }
   const worstOk = pairedOutcomes.length > 0 && worstDrop <= TRANSCRIPTION_MAX_SLIDE_DROP;
+  const precisionOk = !onWords || worstPrecisionDrop <= TRANSCRIPTION_MAX_SLIDE_DROP;
 
   const noContentOk = noContentAgreement.n === 0 || noContentAgreement.agreementRate === 1;
   const noContentAgreeCount = Math.round(noContentAgreement.agreementRate * noContentAgreement.n);
 
   return {
-    nonInferior: meanOk && worstOk && noContentOk,
-    reason: `mean score ${candidateStats.meanScore.toFixed(4)} ${meanOk ? '>=' : '<'} ${meanFloor.toFixed(4)} `
-      + `(baseline ${baselineStats.meanScore.toFixed(4)}, tolerance ${tolerance.tolerance}); `
+    nonInferior: meanOk && worstOk && precisionOk && noContentOk,
+    reason: `mean ${measure} ${candidateMean.toFixed(4)} ${meanOk ? '>=' : '<'} ${meanFloor.toFixed(4)} `
+      + `(baseline ${baselineMean.toFixed(4)}, tolerance ${tolerance.tolerance}); `
       + (pairedOutcomes.length === 0
         ? 'no slides scored in both runs'
-        : `largest drop ${worstDrop.toFixed(4)} on item ${worstDropItemId} (limit ${TRANSCRIPTION_MAX_SLIDE_DROP}), `
+        : `largest ${onWords ? 'word recall drop' : 'drop'} ${worstDrop.toFixed(4)} on item ${worstDropItemId} (limit ${TRANSCRIPTION_MAX_SLIDE_DROP}), `
           + `${pairedOutcomes.length} slide${pairedOutcomes.length === 1 ? '' : 's'} compared`)
+      + (onWords
+        ? `; largest word precision drop ${worstPrecisionDrop.toFixed(4)} on item ${worstPrecisionDropItemId} (limit ${TRANSCRIPTION_MAX_SLIDE_DROP})`
+        : '')
       + '; '
       + (noContentAgreement.n === 0
         ? 'no-content agreement n/a (no reference items)'

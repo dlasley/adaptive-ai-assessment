@@ -35,6 +35,7 @@ export interface TaskTolerance {
  * `compare/transcription.ts`'s transcription verdict alongside the mean tolerance below. */
 export const TRANSCRIPTION_MAX_SLIDE_DROP = 0.15;
 
+
 export const TASK_TOLERANCES: Record<EvalTask, TaskTolerance> = {
   grading: {
     primaryMetric: 'false_negative_rate',
@@ -65,7 +66,7 @@ export const TASK_TOLERANCES: Record<EvalTask, TaskTolerance> = {
     primaryMetric: 'mean_transcription_score',
     direction: 'higher-is-better',
     tolerance: 0.02,
-    description: `Mean slide score (1 - normalized edit distance) >= baseline - 0.02; no slide more than ${TRANSCRIPTION_MAX_SLIDE_DROP} below the baseline's score on the same slide; no-content agreement 100%.`,
+    description: `Mean words captured (formatting-blind word recall against the checked transcript) >= baseline - 0.02; no slide more than ${TRANSCRIPTION_MAX_SLIDE_DROP} below the baseline's word recall on the same slide; no slide more than ${TRANSCRIPTION_MAX_SLIDE_DROP} below the baseline's word precision on the same slide (content added that is not on the slide); no-content agreement 100%. Without reference transcripts the same mean and per-slide checks run on the edit-distance score.`,
   },
   mapping: {
     primaryMetric: 'mean_heading_f1',

@@ -164,6 +164,12 @@ describe('wordSetForScoring', () => {
   it('keeps accents, so an accent error is a different word', () => {
     expect(wordSetForScoring('défilé').has('defile')).toBe(false);
   });
+
+  it('reads an ordered-list marker as its number, so a numbered key and a bulleted key match', () => {
+    expect(wordSetForScoring('1. 1-B\n2. 2-F')).toEqual(wordSetForScoring('- 1-B\n- 2-F'));
+    expect([...wordSetForScoring('1. A\n2. D\n3. le 14 juillet')].sort())
+      .toEqual(['1', '14', '2', '3', 'a', 'd', 'juillet', 'le']);
+  });
 });
 
 describe('scoreTranscriptionWords', () => {
