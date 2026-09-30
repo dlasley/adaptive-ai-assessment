@@ -1,0 +1,24 @@
+{
+  "name": "@adaptive/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./enums": "./src/enums.ts",
+    "./llm": "./src/llm.ts",
+    "./grading-prompt": "./src/grading-prompt.ts",
+    "./models": "./src/models.ts",
+    "./course": "./src/course.ts",
+    "./types": "./src/types.ts",
+    "./meta-question-filter": "./src/meta-question-filter.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.6",
+    "typescript": "^5",
+    "vitest": "^5"
+  }
+}

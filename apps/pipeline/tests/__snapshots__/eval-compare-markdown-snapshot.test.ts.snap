@@ -1,0 +1,251 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`eval-compare markdown golden snapshots > audit, reference-backed, with a failed criterion and a disagreement 1`] = `
+"# Eval compare — audit — set set-1
+
+Generated: 2026-09-26T00:00:00Z
+Baseline: run run-baseline (mistralai/mistral-large-2512)
+
+## Variants
+
+Non-inferior here is the per-criterion verdict below (all six criteria pass their own
+recall/precision tolerance) — not the pooled statistic in this table, which is informational only.
+
+| Candidate | n | Baseline rate | Candidate rate | Diff | Pooled McNemar p (correlated pairs) | 95% CI |
+|---|---|---|---|---|---|---|
+| google/gemini-2.5-flash (run run-candidate) | 1 | 1.0000 | 1.0000 | +0.0000 | 1.0000 | [0.0000, 0.0000] |
+
+## Per-criterion verdict (audit headline)
+
+### google/gemini-2.5-flash (run run-candidate)
+
+**Failed: grammar_correct.**
+
+| Criterion | Baseline recall | Candidate recall | Baseline precision | Candidate precision | Pass |
+|---|---|---|---|---|---|
+| answer_correct | n/a | n/a | n/a | n/a | yes |
+| grammar_correct | 1.0000 | 0.0000 | 1.0000 | n/a | no |
+| no_hallucination | n/a | n/a | n/a | n/a | yes |
+| question_coherent | n/a | n/a | n/a | n/a | yes |
+| natural_language | n/a | n/a | n/a | n/a | yes |
+| register_appropriate | n/a | n/a | n/a | n/a | yes |
+
+## Items to adjudicate — google/gemini-2.5-flash (run run-candidate)
+
+| Item | Criterion | Baseline | Candidate | Baseline notes | Candidate notes |
+|---|---|---|---|---|---|
+| 1 | grammar_correct | false | true | OK | looked fine to me |
+"
+`;
+
+exports[`eval-compare markdown golden snapshots > audit, reference-free, with per-criterion flips and flag rates 1`] = `
+"# Eval compare — audit — set set-1
+
+**no reference: stability and agreement only; no accuracy verdict**
+
+Generated: 2026-09-26T00:00:00Z
+Baseline: run run-baseline (mistralai/mistral-large-2512)
+
+## Item-level verdict agreement
+
+| Candidate | n | Baseline rate | Candidate rate | Diff | Discordant (baseline-only / candidate-only) | McNemar p | 95% CI |
+|---|---|---|---|---|---|---|---|
+| mistralai/mistral-large-2512 (run run-candidate) | 1 | 1.0000 | 0.0000 | -1.0000 | 1 / 0 | 1.0000 | [-1.0000, -1.0000] |
+
+## Per-criterion flip counts
+
+### mistralai/mistral-large-2512 (run run-candidate)
+
+| Criterion | n | Flips | Flip rate |
+|---|---|---|---|
+| answer_correct | 1 | 0 | 0.0000 |
+| grammar_correct | 1 | 1 | 1.0000 |
+| no_hallucination | 1 | 0 | 0.0000 |
+| question_coherent | 1 | 0 | 0.0000 |
+| natural_language | 1 | 0 | 0.0000 |
+| register_appropriate | 1 | 0 | 0.0000 |
+
+## Flag rate per criterion
+
+### Baseline: mistralai/mistral-large-2512 (run run-baseline)
+
+| Criterion | n | Flagged | Flag rate |
+|---|---|---|---|
+| answer_correct | 1 | 0 | 0.0000 |
+| grammar_correct | 1 | 0 | 0.0000 |
+| no_hallucination | 1 | 0 | 0.0000 |
+| question_coherent | 1 | 0 | 0.0000 |
+| natural_language | 1 | 0 | 0.0000 |
+| register_appropriate | 1 | 0 | 0.0000 |
+
+### mistralai/mistral-large-2512 (run run-candidate)
+
+| Criterion | n | Flagged | Flag rate |
+|---|---|---|---|
+| answer_correct | 1 | 0 | 0.0000 |
+| grammar_correct | 1 | 1 | 1.0000 |
+| no_hallucination | 1 | 0 | 0.0000 |
+| question_coherent | 1 | 0 | 0.0000 |
+| natural_language | 1 | 0 | 0.0000 |
+| register_appropriate | 1 | 0 | 0.0000 |
+
+## Cost and latency per run
+
+| Run | n | Cost/item | Latency p50 | Latency p95 |
+|---|---|---|---|---|
+| mistralai/mistral-large-2512 (run run-baseline, baseline) | 1 | n/a | n/a | n/a |
+| mistralai/mistral-large-2512 (run run-candidate) | 1 | n/a | n/a | n/a |
+
+## Noise floor (repeats of the same variant)
+
+| Model | Runs | Grouping | n | Diff | McNemar p | 95% CI |
+|---|---|---|---|---|---|---|
+| mistralai/mistral-large-2512 | run-a, run-b | different-groupings | 1 | -1.0000 | 1.0000 | [-1.0000, -1.0000] |
+
+A between-variant difference smaller than the noise floor above is not a finding.
+
+## Items to adjudicate — mistralai/mistral-large-2512 (run run-candidate)
+
+| Item | Criterion | Baseline | Candidate | Baseline notes | Candidate notes |
+|---|---|---|---|---|---|
+| 1 | grammar_correct | true | false | OK | awkward |
+"
+`;
+
+exports[`eval-compare markdown golden snapshots > grading, reference-backed, with a noise floor 1`] = `
+"# Eval compare — grading — set set-1
+
+Generated: 2026-09-26T00:00:00Z
+Baseline: run run-baseline (anthropic/claude-opus-5.5)
+
+Rejected-key questions: 1 (2 item(s) excluded from the accuracy figures below) — pass --include-rejected-keys to include them.
+
+| question_group | question |
+|---|---|
+| q7 | Vrai ou faux: ... |
+
+## Variants
+
+| Candidate | n | Baseline rate | Candidate rate | Diff | McNemar p | 95% CI | Non-inferior |
+|---|---|---|---|---|---|---|---|
+| anthropic/claude-sonnet-5 (run run-candidate) | 2 | 0.5000 | 0.5000 | +0.0000 | 1.0000 | [0.0000, 0.0000] | yes |
+
+- **anthropic/claude-sonnet-5**: false_negative_rate: candidate 0.5000 <= 0.5100 (baseline 0.5000, tolerance 0.01)
+
+## Noise floor (repeats of the same variant)
+
+| Model | Runs | n | Diff | McNemar p | 95% CI |
+|---|---|---|---|---|---|
+| anthropic/claude-opus-5.5 | run-baseline, run-baseline-2 | 2 | +0.0000 | 1.0000 | [0.0000, 0.0000] |
+
+A between-variant difference smaller than the noise floor above is not a finding.
+"
+`;
+
+exports[`eval-compare markdown golden snapshots > grading, reference-free 1`] = `
+"# Eval compare — grading — set set-1
+
+**no reference: stability and agreement only; no accuracy verdict**
+
+Generated: 2026-09-26T00:00:00Z
+Baseline: run run-baseline (anthropic/claude-opus-5.5)
+
+## Item-level verdict agreement
+
+| Candidate | n | Baseline rate | Candidate rate | Diff | Discordant (baseline-only / candidate-only) | McNemar p | 95% CI |
+|---|---|---|---|---|---|---|---|
+| anthropic/claude-sonnet-5 (run run-candidate) | 1 | 1.0000 | 1.0000 | +0.0000 | 0 / 0 | 1.0000 | [0.0000, 0.0000] |
+
+## Cost and latency per run
+
+| Run | n | Cost/item | Latency p50 | Latency p95 |
+|---|---|---|---|---|
+| anthropic/claude-opus-5.5 (run run-baseline, baseline) | 1 | $0.001000 | 100ms | 100ms |
+| anthropic/claude-sonnet-5 (run run-candidate) | 1 | $0.000500 | 80ms | 80ms |
+"
+`;
+
+exports[`eval-compare markdown golden snapshots > mapping, with a noise floor 1`] = `
+"# Eval compare — mapping — set set-1
+
+Generated: 2026-09-27T00:00:00Z
+Baseline: run run-baseline (anthropic/claude-sonnet-5)
+
+## Per-run stats
+
+| Run | n | Mean F1 | 95% CI | Fraction F1=1 | Unresolved | Nested dup. | Cost/item | Latency p50 | Latency p95 |
+|---|---|---|---|---|---|---|---|---|---|
+| anthropic/claude-sonnet-5 (run run-baseline, baseline) | 2 | 0.7500 | [0.2600, 1.2400] | 0.5000 | 0 | 0 | n/a | n/a | n/a |
+| anthropic/claude-haiku-4.5 (run run-candidate) | 2 | 0.8000 | [0.8000, 0.8000] | 0.0000 | 0 | 0 | n/a | n/a | n/a |
+
+## Paired comparison against baseline
+
+| Candidate | n | Baseline mean F1 | Candidate mean F1 | Diff | Better / worse / tied | Sign-test p | 95% CI |
+|---|---|---|---|---|---|---|---|
+| anthropic/claude-haiku-4.5 (run run-candidate) | 2 | 0.7500 | 0.8000 | +0.0500 | 1 / 1 / 0 | 1.0000 | [-0.4400, 0.5400] |
+
+## Noise floor (repeats of the same variant)
+
+| Model | Runs | n | Mean |F1 diff| |
+|---|---|---|---|
+| anthropic/claude-sonnet-5 | run-baseline, run-baseline-2 | 2 | 0.0500 |
+
+A between-variant difference smaller than the noise floor above is not a finding.
+"
+`;
+
+exports[`eval-compare markdown golden snapshots > transcription, reference-backed, with a NaN agreement rate and a noise floor 1`] = `
+"# Eval compare — transcription — set set-1
+
+Generated: 2026-09-27T00:00:00Z
+Baseline: run run-baseline (anthropic/claude-sonnet-5)
+
+## Per-run stats (against reference)
+
+| Run | n | Mean score | 95% CI | Worst | Mean coverage | No-content agreement | Table agreement | Cost/item | Latency p50 | Latency p95 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| anthropic/claude-sonnet-5 (run run-baseline, baseline) | 2 | 0.7500 | [0.2600, 1.2400] | 0.5000 | n/a | n/a | n/a | n/a | n/a | n/a |
+| google/gemini-2.5-flash (run run-candidate) | 2 | 0.8000 | [0.8000, 0.8000] | 0.8000 | n/a | n/a | n/a | n/a | n/a | n/a |
+
+## Paired comparison against baseline
+
+| Candidate | n | Baseline mean | Candidate mean | Diff | Better / worse / tied | Sign-test p | 95% CI |
+|---|---|---|---|---|---|---|---|
+| google/gemini-2.5-flash (run run-candidate) | 2 | 0.7500 | 0.8000 | +0.0500 | 1 / 1 / 0 | 1.0000 | [-0.4400, 0.5400] |
+
+## Non-inferiority verdict
+
+- google/gemini-2.5-flash (run run-candidate): **NOT non-inferior** — mean score 0.8000 >= 0.7300 (baseline 0.7500, tolerance 0.02); largest drop 0.2000 on item a (limit 0.15), 2 slides compared; no-content agreement n/a (no reference items)
+
+## Noise floor (repeats of the same variant)
+
+| Model | Runs | n | Mean |score diff| |
+|---|---|---|---|
+| anthropic/claude-sonnet-5 | run-baseline, run-baseline-2 | 2 | 0.0500 |
+
+A between-variant difference smaller than the noise floor above is not a finding.
+"
+`;
+
+exports[`eval-compare markdown golden snapshots > transcription, reference-free 1`] = `
+"# Eval compare — transcription — set set-1
+
+**no approved reference yet: agreement with the baseline transcript only, not an accuracy figure**
+
+Generated: 2026-09-27T00:00:00Z
+Baseline: run run-baseline (anthropic/claude-sonnet-5)
+
+## Agreement with baseline transcript
+
+| Candidate | n | Mean agreement | 95% CI | No-content agreement |
+|---|---|---|---|---|
+| google/gemini-2.5-flash (run run-candidate) | 2 | 0.9250 | [0.8760, 0.9740] | 1.0000 |
+
+## Cost and latency per run
+
+| Run | n | Cost/item | Latency p50 | Latency p95 |
+|---|---|---|---|---|
+| anthropic/claude-sonnet-5 (run run-baseline, baseline) | 2 | $0.001000 | 500ms | 900ms |
+| google/gemini-2.5-flash (run run-candidate) | 2 | $0.000500 | 400ms | 800ms |
+"
+`;

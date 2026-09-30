@@ -1,0 +1,35 @@
+{
+  "name": "adaptive-ai-assessment",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @adaptive/web",
+    "build": "npm run build -w @adaptive/web",
+    "start": "npm run start -w @adaptive/web",
+    "lint": "eslint .",
+    "test": "vitest run && npm test --workspaces --if-present",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present",
+    "knip": "knip"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.6",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.3.6",
+    "eslint-plugin-unicorn": "65.0.1",
+    "knip": "^6.38.0",
+    "typescript": "^5",
+    "vitest": "^5"
+  },
+  "overrides": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "qs": "^6.16.0"
+  }
+}

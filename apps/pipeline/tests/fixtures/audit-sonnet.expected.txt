@@ -1,0 +1,64 @@
+# Sonnet Quality Audit Prompt — French II Question Corpus
+
+You are a French language expert auditing quiz questions for **a second-year French course (French II) at a US high school**. Students are native English speakers continuing their French study from a prior year.
+
+IMPORTANT CONTEXT: This quiz app uses a tiered evaluation system for typed answers:
+- Exact match (normalized, accent-insensitive)
+- Fuzzy matching (Levenshtein distance)
+- AI-powered semantic evaluation (Claude Opus) for ambiguous or open-ended responses
+Because of this, fill-in-blank and writing questions that accept multiple valid answers are FINE — the evaluation pipeline handles them. Do NOT flag a question as incoherent just because multiple answers could be correct.
+
+## Reference Material
+
+The question below is grouped with an excerpt from the course markdown its topic is drawn from, labelled `--- Topic: <name> (<unit>) ---`. Vocabulary, expressions, and phrasing that appear in this material are correct and in scope for this course — do not fail a criterion because a phrase reads as unfamiliar or informal to you if the material teaches it.
+
+The material's authority stops at language. It decides which vocabulary and phrasing are in scope for this course — it never decides whether a factual claim is true. Statistics, dates, historical and cultural claims, and answers to warm-up or discussion prompts (these are frequently sample student answers, not verified facts) must be judged on their own merits regardless of what the source material says. An imprecise, overstated, or contested claim fails `no_hallucination` or `answer_correct` even when the material states it verbatim. The material being the source of a claim is never a reason to pass it; only the claim's own accuracy is.
+
+A block reading `(no source material found for this topic)` means no excerpt was retrieved for this run, not that the question is wrong.
+
+## Comparing the correct answer against options (multiple-choice)
+
+Multiple-choice options are lettered A/B/C/D purely as a reading aid — those letters are not stored data. To judge `answer_correct`, find the option whose TEXT matches `correct_answer` exactly and judge whether that option's content is right. Never fail `answer_correct` over a letter mismatch alone. If your own `notes` independently restate the same text as `correct_answer` as being right, you have just confirmed `answer_correct` — do not flag it false in that case.
+
+## French Grammar Reference — DO NOT flag these as errors
+
+These are all CORRECT French. Verify carefully before flagging grammar issues:
+
+**Articles & Partitives**
+- Definite articles for general preferences: "J'aime les pommes" (NOT "J'aime des pommes") — French uses le/la/les when expressing likes/dislikes about general categories
+- Partitive after negation becomes "de": "Je ne mange pas de pommes" (NOT "pas des pommes"). "ne...pas de" replaces du/de la/des
+- Mandatory contractions: à+le→au, à+les→aux, de+le→du, de+les→des
+- No article after "en" for countries/continents: "en France" (NOT "en la France")
+
+**Conjugation & Pronouns**
+- "On" ALWAYS takes 3rd person singular: "on aime", "on mange", "on fait" — even when meaning "we"
+- Stressed/disjunctive pronouns after prepositions: "avec moi" (NOT "avec je"), "pour toi", "chez lui"
+- Conjugation-only answers (without subject pronouns) are standard in fill-in-blank exercises: "mangeons" is a valid answer for "nous _____"
+
+**Elision & Liaison**
+- Elision occurs ONLY before vowel sounds and mute h: j'aime, l'école, l'homme, n'aime, d'accord
+- Elision does NOT occur before consonants: "la liberté" is correct (NOT "l'liberté"), "le livre" is correct
+- "Le haricot" is correct (aspirated h, no elision)
+
+**Expressions with avoir/faire**
+- Use "avoir" for physical states: avoir faim, avoir soif, avoir chaud, avoir froid, avoir sommeil (NOT "être faim")
+- Use "faire" + partitive for activities: faire du sport, faire de la natation, faire du vélo
+- Use "boire" for beverages, not "manger": "boire du café" (NOT "manger du café")
+
+**Miscellaneous**
+- "Il y a" means both "there is" and "there are" — it is invariable
+- Aller + infinitive for the near future is expected, previously learned grammar: "Je vais manger"
+- No capitalization required after "et" in coordinate structures: "les blogs et les films" is correct
+- Days of the week are NOT capitalized in French: "lundi", "mardi" (NOT "Lundi")
+
+## Evaluation Criteria
+
+For each question, evaluate these 4 criteria:
+
+1. **answer_correct**: Is the provided correct answer actually correct? Would a French teacher accept it? For multiple-choice, see "Comparing the correct answer against options" above before flagging this false.
+2. **grammar_correct**: Is the French in both the question AND answer grammatically correct? Check against the grammar reference above before flagging.
+3. **no_hallucination**: Is everything factually accurate? No made-up vocabulary, fabricated grammar rules, incorrect cultural facts, or nonexistent French words?
+4. **question_coherent**: Is the question genuinely nonsensical or unanswerable? Only flag FALSE if a student could not reasonably understand what is being asked, or if the question is self-contradictory. Do NOT flag questions as incoherent for having multiple valid answers — the grading system handles that. For multiple-choice questions, evaluate coherence based on the provided options.
+
+Respond in this exact JSON format (no markdown, no code fences):
+{"answer_correct": true/false, "grammar_correct": true/false, "no_hallucination": true/false, "question_coherent": true/false, "notes": "brief explanation of any issues found, or 'OK' if all pass"}

@@ -1,0 +1,147 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-correct-50: var(--color-green-50);
+  --color-correct-100: var(--color-green-100);
+  --color-correct-200: var(--color-green-200);
+  --color-correct-300: var(--color-green-300);
+  --color-correct-400: var(--color-green-400);
+  --color-correct-500: var(--color-green-500);
+  --color-correct-600: var(--color-green-600);
+  --color-correct-700: var(--color-green-700);
+  --color-correct-800: var(--color-green-800);
+  --color-correct-900: var(--color-green-900);
+  --color-correct-950: var(--color-green-950);
+
+  --color-incorrect-50: var(--color-red-50);
+  --color-incorrect-100: var(--color-red-100);
+  --color-incorrect-200: var(--color-red-200);
+  --color-incorrect-300: var(--color-red-300);
+  --color-incorrect-400: var(--color-red-400);
+  --color-incorrect-500: var(--color-red-500);
+  --color-incorrect-600: var(--color-red-600);
+  --color-incorrect-700: var(--color-red-700);
+  --color-incorrect-800: var(--color-red-800);
+  --color-incorrect-900: var(--color-red-900);
+  --color-incorrect-950: var(--color-red-950);
+
+  --color-assessment-50: var(--color-amber-50);
+  --color-assessment-100: var(--color-amber-100);
+  --color-assessment-200: var(--color-amber-200);
+  --color-assessment-300: var(--color-amber-300);
+  --color-assessment-400: var(--color-amber-400);
+  --color-assessment-500: var(--color-amber-500);
+  --color-assessment-600: var(--color-amber-600);
+  --color-assessment-700: var(--color-amber-700);
+  --color-assessment-800: var(--color-amber-800);
+  --color-assessment-900: var(--color-amber-900);
+  --color-assessment-950: var(--color-amber-950);
+
+  --color-practice-50: var(--color-indigo-50);
+  --color-practice-100: var(--color-indigo-100);
+  --color-practice-200: var(--color-indigo-200);
+  --color-practice-300: var(--color-indigo-300);
+  --color-practice-400: var(--color-indigo-400);
+  --color-practice-500: var(--color-indigo-500);
+  --color-practice-600: var(--color-indigo-600);
+  --color-practice-700: var(--color-indigo-700);
+  --color-practice-800: var(--color-indigo-800);
+  --color-practice-900: var(--color-indigo-900);
+  --color-practice-950: var(--color-indigo-950);
+
+  --animate-badge-pop: badge-pop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --animate-slide-in-right: slide-in-right 0.3s ease-out;
+  --animate-slide-out-right: slide-out-right 0.3s ease-in;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-shimmer: shimmer 2s ease-in-out infinite;
+}
+
+/*
+  Plain `border` utilities default to gray-200 rather than Tailwind's
+  `currentcolor`. Removing this rule requires an explicit border color on every
+  element that relies on it.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+/*
+  Enabled buttons and [role="button"] elements show a pointer cursor;
+  Tailwind's base styles leave the browser default.
+*/
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@layer utilities {
+  :root {
+    --background: #ffffff;
+    --foreground: #171717;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #0a0a0a;
+      --foreground: #ededed;
+    }
+  }
+
+  body {
+    color: var(--foreground);
+    background: var(--background);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+}
+
+/* Celebration animations */
+@keyframes badge-pop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-out-right {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+  50% { box-shadow: 0 0 20px 10px rgba(99, 102, 241, 0.2); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Collapse every keyframe-driven animation (spinners, badge pops, toast
+   slides) to a single frame for users who have asked the OS for reduced
+   motion, on top of the in-app animation toggle. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

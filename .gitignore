@@ -1,0 +1,75 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies (npm workspaces mostly hoist to the root, but a version
+# conflict can force a nested node_modules under a workspace)
+node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# build output (per workspace)
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# environment files (.env, .env.local, .env.test.local, .env.production, etc.)
+# The canonical .env.local/.env.test.local live at the repo root only. apps/web
+# loads them itself via @next/env in next.config.ts rather than through a
+# tracked path that has to be carved out of this blanket rule.
+.env.*
+!.env.local.example
+
+# vercel
+.vercel
+supabase/.temp/
+
+# OS / editor
+.DS_Store
+*.pem
+.vscode/
+
+# debug and generation logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+generation.log
+generation.pid
+
+# Claude Code local state
+.claude/
+.mcp.json
+CLAUDE.local.md
+
+# project instructions and session tracking (local only)
+/CLAUDE.md
+/PROGRESS.md
+/SETUP.md
+/SUPABASE-SETUP.md
+
+# source content (proprietary course materials)
+/apps/pipeline/content/pdf/*
+!/apps/pipeline/content/pdf/.gitkeep
+/apps/pipeline/content/markdown/*
+!/apps/pipeline/content/markdown/.gitkeep
+
+# generated/derived data
+/apps/pipeline/content/exports/
+/supabase/migrations/
+
+# eval framework: reports and reference must never land inside the tracked pipeline package
+apps/pipeline/reports/
+apps/pipeline/references/
+
+# scripts kept local only (archived, deployment-specific seed data)
+/apps/pipeline/archive/
+/apps/pipeline/db-seed-units.ts
+
+# test/demo pages (not for production)
+/apps/web/src/app/celebrations-test/
+/apps/web/src/app/celebrations-test-v2/
+
+# local-only working files (agent reports, design docs, private scripts)
+/.private/
