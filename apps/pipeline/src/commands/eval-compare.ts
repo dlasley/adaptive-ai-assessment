@@ -650,7 +650,9 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
     }
 
     const existingFindings = await store.listFindings(experimentId);
-    const conflicting = existingFindings.filter((f) => f.run_ids.includes(baselineRun.id) && f.run_ids.includes(decideCandidateRun!.id));
+    // Only an earlier decision conflicts; an observation citing the same pair is evidence a decision
+    // builds on, not a decision to supersede.
+    const conflicting = existingFindings.filter((f) => f.kind !== 'observation' && f.run_ids.includes(baselineRun.id) && f.run_ids.includes(decideCandidateRun!.id));
     if (conflicting.length > 0 && !(options.supersedes && conflicting.some((f) => f.id === options.supersedes))) {
       logger.error(
         `Experiment ${experimentId} already has a finding citing baseline ${baselineRun.id} and candidate ${decideCandidateRun.id} `

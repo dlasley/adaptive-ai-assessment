@@ -193,6 +193,18 @@ describe('eval-compare --decide', () => {
     expect(insertFindingCalls).toHaveLength(0);
   });
 
+  it('does not treat an earlier observation citing the same pair as a conflicting decision', async () => {
+    const observation: EvalFindingRow = {
+      id: 'finding-obs', experiment_id: 'exp-1', kind: 'observation', task: 'grading', statement: 'measured first',
+      evidence_note: null, run_ids: ['run-baseline', 'run-candidate-good'], item_ids: [], external_refs: [],
+      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '',
+    };
+    const { store, insertFindingCalls } = makeFakeStore({ findings: [observation] });
+    await main({ argv: argv(['--write-db', '--decide', 'adopt', '--statement', 'Decided on top of the observation.']), store });
+    expect(insertFindingCalls).toHaveLength(1);
+    expect(insertFindingCalls[0].supersedes_finding_id).toBeUndefined();
+  });
+
   it('adopts a non-inferior candidate, writing one eval_findings row and moving the experiment to decided', async () => {
     const { store, insertFindingCalls, updateExperimentCalls } = makeFakeStore();
     await main({ argv: argv(['--write-db', '--decide', 'adopt', '--statement', 'Sonnet matches baseline recall.']), store });
