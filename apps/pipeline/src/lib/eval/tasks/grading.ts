@@ -6,7 +6,7 @@
  */
 
 import { buildEvaluationPrompt, parseEvaluationResponse, EvaluationParseError, GRADING_CALL_SETTINGS } from '@adaptive/shared/grading-prompt';
-import type { EvalItemRow, NewEvalResultRow } from '../db';
+import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { createLogger } from '../../logger';
 import { planInterleavedCalls, buildGradingRunSummary, GRADING_PASS_SCORE_THRESHOLD, type GradingItemOutcome, type GradingReference } from '../runner';
 import { withRateLimitRetry } from '../run-loop';
@@ -28,6 +28,22 @@ function gradingReferenceFromItem(item: EvalItemRow): GradingReference | undefin
     reason: reference.reason ?? null,
     keyCorrect: reference.keyCorrect ?? true,
     keyNote: reference.keyNote ?? null,
+  };
+}
+
+/** Rebuilds a grading outcome from a stored eval_results row and its eval_items row — the model's
+ * output is read from the row, everything else from the item's payload/reference. */
+function gradingOutcomeFromRow(result: EvalResultRow, item: EvalItemRow): GradingItemOutcome {
+  const p = item.payload;
+  return {
+    itemId: item.id,
+    labelClass: p.label_class as GradingLabelClass,
+    difficulty: String(p.difficulty),
+    reference: gradingReferenceFromItem(item),
+    output: (result.output as { isCorrect: boolean; score: number } | null) ?? undefined,
+    error: result.error ?? undefined,
+    latencyMs: result.latency_ms ?? undefined,
+    costUsd: result.cost_usd ?? undefined,
   };
 }
 
@@ -102,17 +118,7 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome> = {
       }
       const latencyMs = Date.now() - startedAt;
 
-      outcomes.push({
-        itemId: item.id,
-        labelClass: p.label_class as GradingLabelClass,
-        difficulty: String(p.difficulty),
-        reference: gradingReferenceFromItem(item),
-        output,
-        error,
-        latencyMs,
-        costUsd: usage.cost_usd,
-      });
-      resultRows.push({
+      const resultRow: NewEvalResultRow = {
         run_id: run.id,
         item_id: item.id,
         output: output ?? null,
@@ -127,7 +133,9 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome> = {
         served_provider: usage.served_provider ?? null,
         is_byok: usage.is_byok ?? null,
         error: error ?? null,
-      });
+      };
+      outcomes.push(gradingOutcomeFromRow(resultRow as EvalResultRow, item));
+      resultRows.push(resultRow);
     }
 
     return { outcomes, resultRows };
@@ -135,5 +143,9 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome> = {
 
   buildSummary(outcomes) {
     return buildGradingRunSummary(outcomes) as unknown as Record<string, unknown>;
+  },
+
+  outcomeFromStoredResult(result, item) {
+    return gradingOutcomeFromRow(result, item);
   },
 };

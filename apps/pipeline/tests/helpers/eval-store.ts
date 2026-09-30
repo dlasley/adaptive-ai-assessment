@@ -37,10 +37,19 @@ export function baseFakeEvalStore(): EvalStore {
     async getRun() {
       throw new Error('not used by this test');
     },
+    async listRunsBySet() {
+      throw new Error('not used by this test');
+    },
+    async listRunsByExperiment() {
+      throw new Error('not used by this test');
+    },
     async insertResults() {
       throw new Error('not used by this test');
     },
     async listResults() {
+      throw new Error('not used by this test');
+    },
+    async updateResult() {
       throw new Error('not used by this test');
     },
     async getExperiment() {
@@ -65,6 +74,9 @@ export function baseFakeEvalStore(): EvalStore {
       throw new Error('not used by this test');
     },
     async insertReviewRound() {
+      throw new Error('not used by this test');
+    },
+    async latestReviewRound() {
       throw new Error('not used by this test');
     },
   };

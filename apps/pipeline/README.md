@@ -640,6 +640,31 @@ Options:
 Plus the shared Database target and Logging flags above. A Mistral-family model is throttled to one
 request per second regardless of interleaving.
 
+### eval-rescore.ts
+
+Recomputes a completed run's per-item scores and `eval_runs.summary` from what's already stored, with
+no model call: for a run whose task scores against a reviewed reference and finished before that
+reference existed, or after a summary field changes so it's computed from data every stored row
+already carries. Targets exactly one of `--run`, `--set` (every completed run against that set), or
+`--experiment` (every completed run attributed to it, id or slug). A run whose status isn't
+`completed`, whose set has no items, or that has no `eval_results` rows is skipped with a message
+rather than failing the rest. Per-item `score` is only ever touched for transcription and mapping,
+the two tasks whose score is computed against a reference; grading's is the model's own self-score
+and audit has none. `status` and `finished_at` are never touched. Dry run by default, printing each
+run's task, variant label, old and new `primary_metric`, and how many item scores would change;
+`--write-db` performs the writes.
+
+```bash
+npx tsx apps/pipeline/src/commands/eval-rescore.ts (--run <id> | --set <id> | --experiment <id|slug>) [options]
+
+Options:
+  --run <id>          eval_runs id to rescore
+  --set <id>          eval_sets id, rescoring every completed run against this set
+  --experiment <id|slug>  eval_experiments id or slug, rescoring every completed run attributed to it
+```
+
+Plus the shared Database target and Logging flags above.
+
 ### eval-compare.ts
 
 Paired comparison of candidate runs against a baseline run on their shared, reference-approved items:

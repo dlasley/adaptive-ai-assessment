@@ -15,9 +15,9 @@ import {
   SLIDE_TRANSCRIPTION_MAX_TOKENS,
 } from '../../pdf-conversion';
 import { createLogger } from '../../logger';
-import type { EvalItemRow, NewEvalResultRow } from '../db';
+import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { planInterleavedCalls } from '../runner';
-import { computeTranscriptionDeterministicChecks, scoreTranscription, buildTranscriptionRunSummary, type TranscriptionItemOutcome } from '../transcription-scoring';
+import { computeTranscriptionDeterministicChecks, scoreTranscription, buildTranscriptionRunSummary, type TranscriptionDeterministicChecks, type TranscriptionItemOutcome } from '../transcription-scoring';
 import type { TranscriptionCategory } from '../set-builder';
 import { withRateLimitRetry } from '../run-loop';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
@@ -38,6 +38,49 @@ function transcriptionReferenceFromItem(item: EvalItemRow): string | undefined {
   if (item.reference_status !== 'approved' || !item.reference) return undefined;
   const reference = item.reference as { markdown?: string };
   return typeof reference.markdown === 'string' ? reference.markdown : undefined;
+}
+
+/** Rebuilds a transcription outcome from a stored eval_results row and its eval_items row: the
+ * output markdown and deterministic checks come off the row, the reference off the item, and the
+ * score is recomputed against whichever reference and output the two currently carry — the same
+ * scoring call a fresh run makes, so a corrected reference rescores an old run without re-running
+ * anything. */
+function transcriptionOutcomeFromRow(result: EvalResultRow, item: EvalItemRow): TranscriptionItemOutcome {
+  const slide = item.payload.slide as number;
+  const slideText = String(item.payload.text_layer ?? '');
+  const output = (result.output as { markdown?: string } | null)?.markdown;
+  const reference = transcriptionReferenceFromItem(item);
+  const score = reference !== undefined && output !== undefined ? scoreTranscription(reference, output) : undefined;
+  const dc = result.deterministic_checks as {
+    coverage?: number;
+    no_content_marker?: boolean;
+    table_rows?: number;
+    table_cols?: number;
+    chars?: number;
+  } | null;
+  const deterministicChecks: TranscriptionDeterministicChecks | undefined = dc
+    ? {
+        coverage: dc.coverage ?? 0,
+        noContentMarker: !!dc.no_content_marker,
+        tableRows: dc.table_rows ?? 0,
+        tableCols: dc.table_cols ?? 0,
+        chars: dc.chars ?? 0,
+      }
+    : undefined;
+
+  return {
+    itemId: item.id,
+    slide,
+    category: item.payload.category as TranscriptionCategory,
+    slideText,
+    reference,
+    output,
+    score,
+    deterministicChecks,
+    error: result.error ?? undefined,
+    latencyMs: result.latency_ms ?? undefined,
+    costUsd: result.cost_usd ?? undefined,
+  };
 }
 
 export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, TranscriptionItemOutcome> = {
@@ -113,28 +156,12 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
       }
       const latencyMs = Date.now() - startedAt;
 
-      const reference = transcriptionReferenceFromItem(item);
       const deterministicChecks = output !== undefined ? computeTranscriptionDeterministicChecks(slideText, output) : undefined;
-      const score = reference !== undefined && output !== undefined ? scoreTranscription(reference, output) : undefined;
 
-      outcomes.push({
-        itemId: item.id,
-        slide,
-        category: item.payload.category as TranscriptionCategory,
-        slideText,
-        reference,
-        output,
-        score,
-        deterministicChecks,
-        error,
-        latencyMs,
-        costUsd: usage.cost_usd,
-      });
-      resultRows.push({
+      const resultRow: NewEvalResultRow = {
         run_id: run.id,
         item_id: item.id,
         output: output !== undefined ? { markdown: output } : null,
-        score: score ?? null,
         deterministic_checks: deterministicChecks
           ? {
               coverage: deterministicChecks.coverage,
@@ -153,7 +180,11 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
         served_provider: usage.served_provider ?? null,
         is_byok: usage.is_byok ?? null,
         error: error ?? null,
-      });
+      };
+      const outcome = transcriptionOutcomeFromRow(resultRow as EvalResultRow, item);
+      resultRow.score = outcome.score ?? null;
+      outcomes.push(outcome);
+      resultRows.push(resultRow);
     }
 
     return { outcomes, resultRows };
@@ -161,5 +192,9 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
 
   buildSummary(outcomes) {
     return buildTranscriptionRunSummary(outcomes) as unknown as Record<string, unknown>;
+  },
+
+  outcomeFromStoredResult(result, item) {
+    return transcriptionOutcomeFromRow(result, item);
   },
 };

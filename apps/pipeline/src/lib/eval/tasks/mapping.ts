@@ -8,9 +8,9 @@ import { readFileSync } from 'fs';
 import { buildMapExistingPrompt, parseMapExistingResponse, MapExistingParseError } from '../../topics';
 import { extractDocumentHeadings, assertValidSlideMarkers, type HeadingRef, type DocumentHeadingOccurrence } from '../../learning-materials';
 import { createLogger } from '../../logger';
-import type { EvalItemRow, NewEvalResultRow } from '../db';
+import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { planInterleavedCalls } from '../runner';
-import { headingSetF1, computeMappingDeterministicChecks, buildMappingRunSummary, type MappingItemOutcome } from '../mapping-scoring';
+import { headingSetF1, computeMappingDeterministicChecks, buildMappingRunSummary, type MappingDeterministicChecks, type MappingItemOutcome } from '../mapping-scoring';
 import { withRateLimitRetry } from '../run-loop';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
 import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, hashText } from './shared';
@@ -33,6 +33,43 @@ interface MappingContext {
 function mappingReferenceFromItem(item: EvalItemRow): HeadingRef[] {
   const reference = item.reference as { headings?: HeadingRef[] } | null;
   return reference?.headings ?? [];
+}
+
+/** Rebuilds a mapping outcome from a stored eval_results row and its eval_items row: the returned
+ * headings and deterministic checks come off the row, reference off the item, and F1 is recomputed
+ * from the two heading sets — the document itself is never needed again, since the row already
+ * carries how many of the call's headings resolved. */
+function mappingOutcomeFromRow(result: EvalResultRow, item: EvalItemRow): MappingItemOutcome {
+  const topic = String(item.payload.topic);
+  const reference = mappingReferenceFromItem(item);
+  const output = (result.output as { headings?: HeadingRef[] } | null)?.headings;
+  const scoring = output ? headingSetF1(reference, output) : undefined;
+  const dc = result.deterministic_checks as {
+    resolved?: number;
+    unresolved?: number;
+    unresolved_headings?: string[];
+    nested_duplicates?: number;
+  } | null;
+  const deterministicChecks: MappingDeterministicChecks | undefined = dc
+    ? {
+        resolved: dc.resolved ?? 0,
+        unresolved: dc.unresolved ?? 0,
+        unresolvedHeadings: dc.unresolved_headings ?? [],
+        nestedDuplicates: dc.nested_duplicates ?? 0,
+      }
+    : undefined;
+
+  return {
+    itemId: item.id,
+    topic,
+    reference,
+    output,
+    scoring,
+    deterministicChecks,
+    error: result.error ?? undefined,
+    latencyMs: result.latency_ms ?? undefined,
+    costUsd: result.cost_usd ?? undefined,
+  };
 }
 
 export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome> = {
@@ -105,28 +142,14 @@ export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome>
 
     for (const item of group) {
       const topic = String(item.payload.topic);
-      const reference = mappingReferenceFromItem(item);
       const output = mappings?.[topic];
-      const scoring = output ? headingSetF1(reference, output) : undefined;
       const deterministicChecks = output ? computeMappingDeterministicChecks(topic, output, context.documentHeadings) : undefined;
       const itemCostUsd = share(usage.cost_usd);
 
-      outcomes.push({
-        itemId: item.id,
-        topic,
-        reference,
-        output,
-        scoring,
-        deterministicChecks,
-        error,
-        latencyMs,
-        costUsd: itemCostUsd,
-      });
-      resultRows.push({
+      const resultRow: NewEvalResultRow = {
         run_id: run.id,
         item_id: item.id,
         output: output ? { headings: output } : null,
-        score: scoring?.f1 ?? null,
         deterministic_checks: deterministicChecks
           ? {
               resolved: deterministicChecks.resolved,
@@ -144,7 +167,11 @@ export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome>
         served_provider: usage.served_provider ?? null,
         is_byok: usage.is_byok ?? null,
         error: error ?? null,
-      });
+      };
+      const outcome = mappingOutcomeFromRow(resultRow as EvalResultRow, item);
+      resultRow.score = outcome.scoring?.f1 ?? null;
+      outcomes.push(outcome);
+      resultRows.push(resultRow);
     }
 
     return { outcomes, resultRows };
@@ -152,5 +179,9 @@ export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome>
 
   buildSummary(outcomes) {
     return buildMappingRunSummary(outcomes) as unknown as Record<string, unknown>;
+  },
+
+  outcomeFromStoredResult(result, item) {
+    return mappingOutcomeFromRow(result, item);
   },
 };

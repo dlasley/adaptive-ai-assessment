@@ -94,6 +94,9 @@ function makeFakeStore(overrides: Partial<EvalStore> = {}): { store: EvalStore; 
     async listItems(setId) {
       return setId === set.id ? [item] : [];
     },
+    async latestReviewRound() {
+      return null;
+    },
     async listFamiliesByVendor(vendor) {
       return vendor === 'openai' ? [{ family: 'GPT mini' }, { family: 'GPT nano' }] : [];
     },
@@ -468,6 +471,9 @@ describe('eval-run CLI wiring: task audit', () => {
       async listItems(setId) {
         return setId === set.id ? [item] : [];
       },
+      async latestReviewRound() {
+        return null;
+      },
       async getModelBySlug(slug) {
         return slug === model.slug ? model : null;
       },
@@ -616,6 +622,9 @@ describe('eval-run CLI wiring: task mapping', () => {
       async listItems(setId) {
         return setId === set.id ? [greetingsItem, numbersItem] : [];
       },
+      async latestReviewRound() {
+        return null;
+      },
       async getModelBySlug(slug) {
         return slug === model.slug ? model : null;
       },
@@ -723,6 +732,9 @@ describe('eval-run CLI wiring: task transcription', () => {
       },
       async listItems(setId) {
         return setId === set.id ? [item] : [];
+      },
+      async latestReviewRound() {
+        return null;
       },
       async getModelBySlug(slug) {
         return slug === model.slug ? model : null;

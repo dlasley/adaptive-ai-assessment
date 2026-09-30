@@ -27,7 +27,7 @@ import { createScriptSupabase } from '../lib/db-queries';
 import { fetchUnitsFromDb } from '../lib/units-db';
 import { createSupabaseEvalStore, type EvalStore, type EvalRunRow, type EvalExperimentRow, type EvalModelCurrentRow, type NewEvalResultRow } from '../lib/eval/db';
 import { vendorForModelSlug } from '../lib/eval/model-vendor';
-import { primaryMetricFor } from '../lib/eval/primary-metric';
+import { stampSummary } from '../lib/eval/summary-stamp';
 import { AUDIT_GROUP_SIZE } from '../lib/pipeline-config';
 import { runVariantsLoop } from '../lib/eval/run-loop';
 import { mulberry32, shuffle } from '../lib/eval/sampling';
@@ -285,6 +285,10 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   const runByVariantKey = new Map<string, EvalRunRow>();
   const taskDef = TASK_DEFINITIONS[options.task];
   const promptHash = taskDef.promptHash();
+  // Stamped onto every finalized run's summary: the reviewed-reference state (if any) this run's
+  // scoring reflects, so a later rescore against a newer review round is distinguishable from this
+  // one. Fetched before any run row exists so a failure here cannot strand a row at 'running'.
+  const reviewRound = await store.latestReviewRound(options.set);
 
   for (const variant of variants) {
     const projected = projectVariantCostUsd(options.task, variant.model, items.length, groupSize);
@@ -402,9 +406,11 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
         }
 
         const builtSummary = taskDef.buildSummary(outcomesByVariant.get(key)!);
-        const primaryMetric = primaryMetricFor(options.task, builtSummary);
-        const summaryWithMetric = primaryMetric ? { ...builtSummary, primary_metric: primaryMetric } : builtSummary;
-        const summary = errorMessage !== undefined ? { ...summaryWithMetric, error: errorMessage } : summaryWithMetric;
+        const stampedSummary = stampSummary(options.task, builtSummary, {
+          scoredAt: new Date().toISOString(),
+          scoringReviewRoundId: reviewRound?.id ?? null,
+        });
+        const summary = errorMessage !== undefined ? { ...stampedSummary, error: errorMessage } : stampedSummary;
 
         try {
           await store.updateRun(run.id, { status, finished_at: new Date().toISOString(), summary });

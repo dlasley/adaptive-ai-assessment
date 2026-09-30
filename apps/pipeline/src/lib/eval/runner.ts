@@ -152,6 +152,54 @@ function rateBucket(outcomes: GradingItemOutcome[]): RateBucket {
   };
 }
 
+interface DesignLabelBucket {
+  n: number;
+  markedCorrectRate: number;
+}
+
+interface ProvisionalDesignLabelBucket {
+  falsePositiveRateOnWrong: number | null;
+  falseNegativeRateOnCorrect: number | null;
+  falseNegativeRateOnParaphrase: number | null;
+  typoMarkedCorrectRate: number | null;
+}
+
+export type ByDesignLabel = Partial<Record<GradingLabelClass, DesignLabelBucket>> & { provisional: ProvisionalDesignLabelBucket };
+
+/**
+ * Marked-correct rate per seeded `labelClass`, independent of reviewed reference — every item
+ * carries its design-time label whether or not a reviewer has looked at it, so this is available
+ * from the moment a run finishes. `provisional` restates four of those rates against what each
+ * class was designed to mean (wrong/correct/paraphrase items should flip the verdict; typo's
+ * "correct" rate is reported, not judged, since whether a typo counts as correct is a policy
+ * choice this summary doesn't make). A class with no scored item is left out of the per-class
+ * entries and its `provisional` rate is `null`, never `NaN`.
+ */
+function buildByDesignLabel(outcomes: GradingItemOutcome[]): ByDesignLabel {
+  const perClass: Partial<Record<GradingLabelClass, DesignLabelBucket>> = {};
+  for (const labelClass of new Set(outcomes.map((o) => o.labelClass))) {
+    const withOutput = outcomes.filter((o) => o.labelClass === labelClass && o.output);
+    if (withOutput.length === 0) continue;
+    const markedCorrect = withOutput.filter((o) => o.output!.isCorrect).length;
+    perClass[labelClass] = { n: withOutput.length, markedCorrectRate: markedCorrect / withOutput.length };
+  }
+
+  const wrongRate = perClass.wrong?.markedCorrectRate;
+  const correctRate = perClass.correct?.markedCorrectRate;
+  const paraphraseRate = perClass.valid_paraphrase?.markedCorrectRate;
+  const typoRate = perClass.typo?.markedCorrectRate;
+
+  return {
+    ...perClass,
+    provisional: {
+      falsePositiveRateOnWrong: wrongRate ?? null,
+      falseNegativeRateOnCorrect: correctRate !== undefined ? 1 - correctRate : null,
+      falseNegativeRateOnParaphrase: paraphraseRate !== undefined ? 1 - paraphraseRate : null,
+      typoMarkedCorrectRate: typoRate ?? null,
+    },
+  };
+}
+
 export interface GradingRunSummary {
   itemCount: number;
   referenceItemCount: number;
@@ -162,6 +210,7 @@ export interface GradingRunSummary {
   costPerItemUsd: number | undefined;
   byDifficulty: Record<string, RateBucket>;
   byLabel: Record<string, RateBucket>;
+  byDesignLabel: ByDesignLabel;
 }
 
 export function buildGradingRunSummary(outcomes: GradingItemOutcome[]): GradingRunSummary {
@@ -190,6 +239,7 @@ export function buildGradingRunSummary(outcomes: GradingItemOutcome[]): GradingR
     costPerItemUsd: costs.length > 0 ? costs.reduce((a, b) => a + b, 0) / itemCount : undefined,
     byDifficulty,
     byLabel,
+    byDesignLabel: buildByDesignLabel(outcomes),
   };
 }
 

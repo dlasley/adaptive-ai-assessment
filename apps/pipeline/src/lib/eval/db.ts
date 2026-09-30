@@ -165,8 +165,14 @@ export interface EvalStore {
   insertRun(row: NewEvalRunRow): Promise<EvalRunRow>;
   updateRun(id: string, patch: Partial<EvalRunRow>): Promise<void>;
   getRun(id: string): Promise<EvalRunRow | null>;
+  /** Every eval_runs row against one set, in no particular order — eval-rescore's `--set` target. */
+  listRunsBySet(setId: string): Promise<EvalRunRow[]>;
+  /** Every eval_runs row attributed to one experiment, in no particular order — eval-rescore's
+   * `--experiment` target. */
+  listRunsByExperiment(experimentId: string): Promise<EvalRunRow[]>;
   insertResults(rows: NewEvalResultRow[]): Promise<void>;
   listResults(runId: string): Promise<EvalResultRow[]>;
+  updateResult(id: string, patch: Partial<Pick<EvalResultRow, 'score'>>): Promise<void>;
   /** Resolves `idOrSlug` against `eval_experiments.id` first, then `.slug` — --experiment accepts either. */
   getExperiment(idOrSlug: string): Promise<EvalExperimentRow | null>;
   updateExperiment(id: string, patch: Partial<Pick<EvalExperimentRow, 'status' | 'decided_at' | 'notes'>>): Promise<void>;
@@ -185,6 +191,10 @@ export interface EvalStore {
    * would duplicate one already on record for the same baseline/candidate pair. */
   listFindings(experimentId: string): Promise<EvalFindingRow[]>;
   insertReviewRound(row: NewEvalReviewRoundRow): Promise<EvalReviewRoundRow>;
+  /** The most recently created `eval_review_rounds` row for `setId`, or null when the set has never
+   * been through a review round — the reviewed-reference state a rescore's summary is stamped
+   * against. */
+  latestReviewRound(setId: string): Promise<EvalReviewRoundRow | null>;
 }
 
 function fail(action: string, error: { message: string } | null): never {
@@ -232,6 +242,16 @@ export function createSupabaseEvalStore(supabase: SupabaseClient): EvalStore {
       if (error) fail(`fetch eval_runs row ${id}`, error);
       return (data as EvalRunRow) ?? null;
     },
+    async listRunsBySet(setId) {
+      const { data, error } = await supabase.from('eval_runs').select().eq('set_id', setId);
+      if (error) fail(`list eval_runs for set ${setId}`, error);
+      return (data as EvalRunRow[]) ?? [];
+    },
+    async listRunsByExperiment(experimentId) {
+      const { data, error } = await supabase.from('eval_runs').select().eq('experiment_id', experimentId);
+      if (error) fail(`list eval_runs for experiment ${experimentId}`, error);
+      return (data as EvalRunRow[]) ?? [];
+    },
     async insertResults(rows) {
       if (rows.length === 0) return;
       const { error } = await supabase.from('eval_results').insert(rows);
@@ -241,6 +261,10 @@ export function createSupabaseEvalStore(supabase: SupabaseClient): EvalStore {
       const { data, error } = await supabase.from('eval_results').select().eq('run_id', runId);
       if (error) fail(`list eval_results for run ${runId}`, error);
       return (data as EvalResultRow[]) ?? [];
+    },
+    async updateResult(id, patch) {
+      const { error } = await supabase.from('eval_results').update(patch).eq('id', id);
+      if (error) fail(`update eval_results row ${id}`, error);
     },
     async getExperiment(idOrSlug) {
       // eval_experiments.id is a UUID column — an id.eq. clause with a non-UUID string errors in
@@ -286,6 +310,17 @@ export function createSupabaseEvalStore(supabase: SupabaseClient): EvalStore {
       const { data, error } = await supabase.from('eval_review_rounds').insert(row).select().single();
       if (error || !data) fail('insert eval_review_rounds row', error);
       return data as EvalReviewRoundRow;
+    },
+    async latestReviewRound(setId) {
+      const { data, error } = await supabase
+        .from('eval_review_rounds')
+        .select()
+        .eq('set_id', setId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) fail(`fetch latest eval_review_rounds row for set ${setId}`, error);
+      return (data as EvalReviewRoundRow) ?? null;
     },
   };
 }

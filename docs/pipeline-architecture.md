@@ -568,7 +568,7 @@ GROUP BY 1, 2;
 ## Evaluation framework
 
 A separate set of tables and commands (`eval-set-create`, `eval-seed-grading`, `eval-run`,
-`eval-compare`) for testing whether a different model, provider, or setting holds up on a given
+`eval-compare`, `eval-rescore`) for testing whether a different model, provider, or setting holds up on a given
 task before it's adopted, without touching production questions. See
 [`docs/cli-guide-content-ingestion-and-question-pipeline.md`](cli-guide-content-ingestion-and-question-pipeline.md#10-workflow-evaluating-models)
 for the workflow and [`apps/pipeline/README.md`](../apps/pipeline/README.md) for full flag
@@ -600,6 +600,10 @@ grading task, one item exists per (question, label class) pair, where the label 
 grading reference is the reviewer's own `isCorrect`/`borderline`/`reason` verdict on the item's
 `submitted_answer`, not a score. `eval-review-export`/`eval-review-import` round-trip a set's items
 through a blind CSV for a reviewer working in a spreadsheet rather than the Supabase table editor.
+Grading's summary also carries `byDesignLabel`, a marked-correct rate per seeded label class
+computed from the model's own verdict alone, independent of reviewed reference: available from the
+moment a run finishes, unlike `byLabel`, which needs an approved reference and so reads `n: 0` until
+one exists.
 
 For the mapping task, one item exists per topic of a unit (`eval_items.payload` is just
 `{ unit_id, topic }`); unlike audit and grading, reference is written at `eval-set-create` time, not by a
@@ -645,6 +649,16 @@ the compared runs and moves the candidate's `eval_experiments.status` to `decide
 requires a non-inferior verdict against a reference, `reject`/`defer` don't, and a second decision on the
 same baseline/candidate pair under the same experiment needs `--supersedes <finding_id>` naming the one
 it revises, since `eval_findings` is append-only.
+
+`eval-rescore` recomputes a completed run's per-item scores and `summary` from what's already stored,
+with no model call: `outcomeFromStoredResult` (one function per task in `lib/eval/tasks/*.ts`)
+rebuilds the outcome `eval-run`'s own `runCall` would have produced, from the stored `eval_results`
+row and `eval_items` row alone, so a rescore and a fresh run share one code path rather than two that
+can drift apart. This is what actually fills in a run whose `metric_status` reads "scored before
+references existed" below: `eval-compare`'s own reference-arrival rescoring is scoped to its paired
+comparison and never writes back to the run's own `summary`. Per-item `score` is only touched for
+transcription and mapping, the two tasks scored against a reference; grading's score is the model's
+own self-score and audit has none. Targets `--run`, `--set`, or `--experiment`; dry run by default.
 
 ### The durable layer: experiments, model registry, findings
 

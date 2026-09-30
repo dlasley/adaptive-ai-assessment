@@ -140,6 +140,49 @@ describe('buildGradingRunSummary', () => {
   });
 });
 
+describe('buildGradingRunSummary byDesignLabel', () => {
+  // Covers every GradingLabelClass, independent of reference (none of these carry one) — the
+  // block this feature exists for, since a fresh run's items are seeded before a reviewer ever
+  // looks at them.
+  const outcomes: GradingItemOutcome[] = [
+    { itemId: '1', labelClass: 'correct', difficulty: 'beginner', output: { isCorrect: true, score: 100 } },
+    { itemId: '2', labelClass: 'correct', difficulty: 'beginner', output: { isCorrect: false, score: 40 } },
+    { itemId: '3', labelClass: 'wrong', difficulty: 'advanced', output: { isCorrect: false, score: 10 } },
+    { itemId: '4', labelClass: 'wrong', difficulty: 'advanced', output: { isCorrect: true, score: 80 } },
+    { itemId: '5', labelClass: 'typo', difficulty: 'beginner', output: { isCorrect: true, score: 95 } },
+    { itemId: '6', labelClass: 'typo', difficulty: 'beginner', output: { isCorrect: true, score: 90 } },
+    { itemId: '7', labelClass: 'missing_accent', difficulty: 'beginner', output: { isCorrect: false, score: 50 } },
+    { itemId: '8', labelClass: 'valid_paraphrase', difficulty: 'intermediate', output: { isCorrect: true, score: 88 } },
+    { itemId: '9', labelClass: 'valid_paraphrase', difficulty: 'intermediate', output: { isCorrect: false, score: 30 } },
+    { itemId: '10', labelClass: 'partially_correct', difficulty: 'intermediate', output: { isCorrect: true, score: 70 } },
+    { itemId: '11', labelClass: 'partially_correct', difficulty: 'intermediate', error: 'parse' }, // no output: excluded from its class's rate
+  ];
+
+  it('computes one entry per seeded class from output alone, ignoring reference entirely', () => {
+    const { byDesignLabel } = buildGradingRunSummary(outcomes);
+    expect(byDesignLabel.correct).toEqual({ n: 2, markedCorrectRate: 0.5 });
+    expect(byDesignLabel.wrong).toEqual({ n: 2, markedCorrectRate: 0.5 });
+    expect(byDesignLabel.typo).toEqual({ n: 2, markedCorrectRate: 1 });
+    expect(byDesignLabel.missing_accent).toEqual({ n: 1, markedCorrectRate: 0 });
+    expect(byDesignLabel.valid_paraphrase).toEqual({ n: 2, markedCorrectRate: 0.5 });
+    expect(byDesignLabel.partially_correct).toEqual({ n: 1, markedCorrectRate: 1 }); // item 11 excluded (no output)
+  });
+
+  it('computes provisional rates against each class\'s designed meaning', () => {
+    const { byDesignLabel } = buildGradingRunSummary(outcomes);
+    expect(byDesignLabel.provisional.falsePositiveRateOnWrong).toBeCloseTo(0.5, 10); // wrong's markedCorrectRate
+    expect(byDesignLabel.provisional.falseNegativeRateOnCorrect).toBeCloseTo(0.5, 10); // 1 - correct's markedCorrectRate
+    expect(byDesignLabel.provisional.falseNegativeRateOnParaphrase).toBeCloseTo(0.5, 10); // 1 - valid_paraphrase's markedCorrectRate
+    expect(byDesignLabel.provisional.typoMarkedCorrectRate).toBe(1); // reported, not judged
+  });
+
+  it('reports null, never NaN, for a provisional rate whose class has no output at all', () => {
+    const noWrong = buildGradingRunSummary(outcomes.filter((o) => o.labelClass !== 'wrong'));
+    expect(noWrong.byDesignLabel.wrong).toBeUndefined();
+    expect(noWrong.byDesignLabel.provisional.falsePositiveRateOnWrong).toBeNull();
+  });
+});
+
 describe('buildAuditRunSummary', () => {
   const passVerdict = {
     answer_correct: true, grammar_correct: true, no_hallucination: true,

@@ -12,6 +12,7 @@ import { COMMANDS_DIR } from '../src/lib/paths';
 
 const EXPECTED_EVAL_COMMANDS = [
   'eval-compare',
+  'eval-rescore',
   'eval-review-export',
   'eval-review-import',
   'eval-run',

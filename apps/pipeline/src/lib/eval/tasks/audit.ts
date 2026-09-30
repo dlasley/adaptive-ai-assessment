@@ -7,7 +7,7 @@
 
 import type { Unit } from '@adaptive/shared/types';
 import { callMistralAuditGroup, auditGroupWithRetry, renderedMistralAuditSystemPrompt, type QuestionRow as AuditQuestionRow, type MistralAuditResult } from '../../mistral-audit';
-import type { EvalItemRow, NewEvalResultRow } from '../db';
+import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { planAuditGroupCalls, buildAuditRunSummary, AUDIT_GATE_CRITERIA, type AuditItemOutcome, type AuditGateCriterion } from '../runner';
 import { createLogger } from '../../logger';
 import { MODEL_CALL_RETRY, wholeTokens, hashText } from './shared';
@@ -44,6 +44,27 @@ function auditReferenceFromItem(item: EvalItemRow): Partial<Record<AuditGateCrit
 
 function auditVerdictFromResult(result: MistralAuditResult): Partial<Record<AuditGateCriterion, boolean>> {
   return Object.fromEntries(AUDIT_GATE_CRITERIA.map((c) => [c, result[c] as boolean]));
+}
+
+/** Rebuilds an audit outcome from a stored eval_results row and its eval_items row: the verdict is
+ * read back off the row's gate-criteria keys (the row's stored `notes`/`severity`/
+ * `suggested_difficulty` are ignored, since the summariser never reads them), reference and the
+ * production auditor's own verdict come from the item. */
+function auditOutcomeFromRow(result: EvalResultRow, item: EvalItemRow): AuditItemOutcome {
+  const storedOutput = result.output as Partial<Record<AuditGateCriterion, boolean>> | null;
+  const output = storedOutput
+    ? Object.fromEntries(AUDIT_GATE_CRITERIA.filter((c) => typeof storedOutput[c] === 'boolean').map((c) => [c, storedOutput[c]]))
+    : undefined;
+  const payload = item.payload as { production_audit?: { gate_criteria?: Partial<Record<AuditGateCriterion, boolean>> } | null };
+  return {
+    itemId: item.id,
+    reference: auditReferenceFromItem(item),
+    productionAudit: payload.production_audit?.gate_criteria ?? undefined,
+    output,
+    error: result.error ?? undefined,
+    latencyMs: result.latency_ms ?? undefined,
+    costUsd: result.cost_usd ?? undefined,
+  };
 }
 
 export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome> = {
@@ -113,18 +134,7 @@ export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome> = {
       const error: 'parse' | 'api' | undefined = groupError ?? (isApiPassthrough ? 'api' : isParseError ? 'parse' : undefined);
       const errorMessage = groupErrorMessage ?? (isParseError ? resultForItem?.notes : undefined);
 
-      // payload.production_audit is the question's whole audit_metadata snapshot; the verdict is its gate_criteria.
-      const payload = item.payload as { production_audit?: { gate_criteria?: Partial<Record<AuditGateCriterion, boolean>> } | null };
-      outcomes.push({
-        itemId: item.id,
-        reference: auditReferenceFromItem(item),
-        productionAudit: payload.production_audit?.gate_criteria ?? undefined,
-        output,
-        error,
-        latencyMs,
-        costUsd: resultForItem?.usage?.cost_usd ?? undefined,
-      });
-      resultRows.push({
+      const resultRow: NewEvalResultRow = {
         run_id: run.id,
         item_id: item.id,
         // The stored output keeps the auditor's reasoning beside the verdict so a
@@ -144,7 +154,9 @@ export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome> = {
         served_provider: resultForItem?.served_provider ?? null,
         is_byok: resultForItem?.usage?.is_byok ?? null,
         error: error ?? null,
-      });
+      };
+      outcomes.push(auditOutcomeFromRow(resultRow as EvalResultRow, item));
+      resultRows.push(resultRow);
     }
 
     return { outcomes, resultRows };
@@ -152,5 +164,9 @@ export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome> = {
 
   buildSummary(outcomes) {
     return buildAuditRunSummary(outcomes) as unknown as Record<string, unknown>;
+  },
+
+  outcomeFromStoredResult(result, item) {
+    return auditOutcomeFromRow(result, item);
   },
 };

@@ -9,7 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { callLlm, LlmCallOptions } from '@adaptive/shared/llm';
 import type { fetchUnitsFromDb } from '../../units-db';
-import type { EvalItemRow, EvalRunRow, EvalSetRow, NewEvalResultRow } from '../db';
+import type { EvalItemRow, EvalResultRow, EvalRunRow, EvalSetRow, NewEvalResultRow } from '../db';
 import type { InterleavedCall } from '../runner';
 import type { EvalTask } from '../types';
 
@@ -78,4 +78,8 @@ export interface EvalTaskDefinition<TContext, TOutcome> {
    * grading/transcription) and returns the outcomes plus the `eval_results` rows it produced. */
   runCall(params: TaskRunCallParams<TContext>): Promise<{ outcomes: TOutcome[]; resultRows: NewEvalResultRow[] }>;
   buildSummary(outcomes: TOutcome[]): Record<string, unknown>;
+  /** Rebuilds the outcome this task summarises from a stored eval_results row and its eval_items row.
+   * runCall derives its own outcome through this same function, so a run-time summary and a rescore
+   * of the same rows are one code path. */
+  outcomeFromStoredResult(result: EvalResultRow, item: EvalItemRow): TOutcome;
 }
