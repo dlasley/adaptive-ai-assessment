@@ -62,6 +62,44 @@ export function scoreTranscription(reference: string, output: string): number {
   return 1 - normalizedEditDistance(normalizeTranscriptForScoring(reference), normalizeTranscriptForScoring(output));
 }
 
+/**
+ * The set of words in a transcript with markdown syntax removed: table pipes, emphasis, heading
+ * marks, list dashes and colons become whitespace, then the text is lower-cased and split. Accents
+ * survive, so an accent error is still a different word. Used for the formatting-blind
+ * recall/precision pair, which asks whether the content was captured regardless of whether the
+ * model chose a table, a list or a bold run to present it.
+ */
+export function wordSetForScoring(markdown: string): Set<string> {
+  const words = markdown
+    .replace(/[|*#_`>\-:]+/g, ' ')
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
+  return new Set(words);
+}
+
+export interface TranscriptionWordScores {
+  /** Share of the reference's distinct words present in the output (completeness). */
+  wordRecall: number;
+  /** Share of the output's distinct words present in the reference (no additions). */
+  wordPrecision: number;
+}
+
+/**
+ * Formatting-blind companion to `scoreTranscription`. The no-content marker has no words, so a
+ * pair that agrees on emptiness scores 1/1 and a pair where only one side is empty scores 0/0: a
+ * wrong decision about whether a slide has content is a total miss in both directions.
+ */
+export function scoreTranscriptionWords(reference: string, output: string): TranscriptionWordScores {
+  const referenceWords = wordSetForScoring(reference.trim() === NO_CONTENT_MARKER ? '' : reference);
+  const outputWords = wordSetForScoring(output.trim() === NO_CONTENT_MARKER ? '' : output);
+  if (referenceWords.size === 0 && outputWords.size === 0) return { wordRecall: 1, wordPrecision: 1 };
+  if (referenceWords.size === 0 || outputWords.size === 0) return { wordRecall: 0, wordPrecision: 0 };
+  let shared = 0;
+  for (const w of referenceWords) if (outputWords.has(w)) shared++;
+  return { wordRecall: shared / referenceWords.size, wordPrecision: shared / outputWords.size };
+}
+
 export interface MarkdownTableShape {
   rows: number;
   cols: number;
@@ -149,6 +187,12 @@ export interface TranscriptionItemOutcome {
 interface CategoryBucket {
   n: number;
   meanScore: number | undefined;
+  meanWordRecall: number | undefined;
+  meanWordPrecision: number | undefined;
+}
+
+function mean(values: number[]): number | undefined {
+  return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : undefined;
 }
 
 export interface TranscriptionRunSummary {
@@ -157,6 +201,10 @@ export interface TranscriptionRunSummary {
   meanScore: number | undefined;
   scoreCi95: MeanCi95['ci95'] | undefined;
   worstScore: number | undefined;
+  /** Formatting-blind completeness and no-additions means over the items with a reference and an
+   * output; `meanScore` is the edit-distance similarity, which also counts formatting. */
+  meanWordRecall: number | undefined;
+  meanWordPrecision: number | undefined;
   meanCoverage: number | undefined;
   /** Fraction of items (with output) whose output was exactly the no-content marker — this run's
    * own rate, not an agreement figure (that's `eval-compare`'s job, paired against reference or baseline). */
@@ -180,10 +228,20 @@ export function buildTranscriptionRunSummary(outcomes: TranscriptionItemOutcome[
   const latencies = outcomes.map((o) => o.latencyMs).filter((v): v is number => v !== undefined);
   const costs = outcomes.map((o) => o.costUsd).filter((v): v is number => v !== undefined);
 
+  const wordScored = outcomes
+    .filter((o) => o.reference !== undefined && o.output !== undefined)
+    .map((o) => ({ category: o.category, ...scoreTranscriptionWords(o.reference!, o.output!) }));
+
   const byCategory = Object.fromEntries(TRANSCRIPTION_CATEGORIES.map((category) => {
     const inCategory = scored.filter((o) => o.category === category);
     const categoryMean = meanAndCi95(inCategory.map((o) => o.score!));
-    return [category, { n: inCategory.length, meanScore: categoryMean?.mean }];
+    const wordsInCategory = wordScored.filter((w) => w.category === category);
+    return [category, {
+      n: inCategory.length,
+      meanScore: categoryMean?.mean,
+      meanWordRecall: mean(wordsInCategory.map((w) => w.wordRecall)),
+      meanWordPrecision: mean(wordsInCategory.map((w) => w.wordPrecision)),
+    }];
   })) as Record<TranscriptionCategory, CategoryBucket>;
 
   return {
@@ -192,6 +250,8 @@ export function buildTranscriptionRunSummary(outcomes: TranscriptionItemOutcome[
     meanScore: meanCi?.mean,
     scoreCi95: meanCi?.ci95,
     worstScore: scoreValues.length > 0 ? Math.min(...scoreValues) : undefined,
+    meanWordRecall: mean(wordScored.map((w) => w.wordRecall)),
+    meanWordPrecision: mean(wordScored.map((w) => w.wordPrecision)),
     meanCoverage: coverageValues.length > 0 ? coverageValues.reduce((a, b) => a + b, 0) / coverageValues.length : undefined,
     noContentMarkerRate: withOutput.length > 0
       ? withOutput.filter((o) => o.deterministicChecks?.noContentMarker).length / withOutput.length

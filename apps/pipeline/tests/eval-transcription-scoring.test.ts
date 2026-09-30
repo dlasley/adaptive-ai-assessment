@@ -7,6 +7,8 @@ import {
   countMarkdownTable,
   computeTranscriptionDeterministicChecks,
   buildTranscriptionRunSummary,
+  scoreTranscriptionWords,
+  wordSetForScoring,
   NO_CONTENT_MARKER,
   type TranscriptionItemOutcome,
 } from '../src/lib/eval/transcription-scoring';
@@ -153,6 +155,43 @@ describe('computeTranscriptionDeterministicChecks', () => {
   });
 });
 
+describe('wordSetForScoring', () => {
+  it('strips markdown table, emphasis, heading and list syntax and lower-cases', () => {
+    expect([...wordSetForScoring('## Les Fêtes\n| **Noël** | Christmas |\n- un défilé: parade')].sort())
+      .toEqual(['christmas', 'défilé', 'fêtes', 'les', 'noël', 'parade', 'un']);
+  });
+
+  it('keeps accents, so an accent error is a different word', () => {
+    expect(wordSetForScoring('défilé').has('defile')).toBe(false);
+  });
+});
+
+describe('scoreTranscriptionWords', () => {
+  it('scores the same words in a table and in a list as a full match', () => {
+    const table = '| Lettre | Son |\n|---|---|\n| A | ah |\n| B | bé |';
+    const list = '- **A** - ah\n- **B** - bé\n\nLettre Son';
+    expect(scoreTranscriptionWords(table, list)).toEqual({ wordRecall: 1, wordPrecision: 1 });
+  });
+
+  it('lowers recall, not precision, when the output omits words', () => {
+    const scores = scoreTranscriptionWords('un deux trois quatre', 'un deux');
+    expect(scores.wordRecall).toBeCloseTo(0.5, 10);
+    expect(scores.wordPrecision).toBe(1);
+  });
+
+  it('lowers precision, not recall, when the output adds words', () => {
+    const scores = scoreTranscriptionWords('un deux', 'un deux one two');
+    expect(scores.wordRecall).toBe(1);
+    expect(scores.wordPrecision).toBeCloseTo(0.5, 10);
+  });
+
+  it('treats agreement on the no-content marker as a full match and disagreement as a total miss', () => {
+    expect(scoreTranscriptionWords(NO_CONTENT_MARKER, NO_CONTENT_MARKER)).toEqual({ wordRecall: 1, wordPrecision: 1 });
+    expect(scoreTranscriptionWords(NO_CONTENT_MARKER, 'Les chats')).toEqual({ wordRecall: 0, wordPrecision: 0 });
+    expect(scoreTranscriptionWords('Les chats', NO_CONTENT_MARKER)).toEqual({ wordRecall: 0, wordPrecision: 0 });
+  });
+});
+
 describe('buildTranscriptionRunSummary', () => {
   function outcome(overrides: Partial<TranscriptionItemOutcome> = {}): TranscriptionItemOutcome {
     return {
@@ -180,6 +219,20 @@ describe('buildTranscriptionRunSummary', () => {
   it('reports the worst score', () => {
     const outcomes = [outcome({ score: 0.9 }), outcome({ score: 0.4 }), outcome({ score: 1 })];
     expect(buildTranscriptionRunSummary(outcomes).worstScore).toBe(0.4);
+  });
+
+  it('reports formatting-blind word recall and precision overall and per category', () => {
+    const outcomes = [
+      outcome({ category: 'text', reference: 'un deux trois quatre', output: 'un deux' }),
+      outcome({ category: 'mixed', reference: 'un deux', output: 'un deux one two' }),
+      outcome({ category: 'mixed', reference: 'un deux', output: undefined, score: undefined }),
+    ];
+    const summary = buildTranscriptionRunSummary(outcomes);
+    expect(summary.meanWordRecall).toBeCloseTo(0.75, 10);
+    expect(summary.meanWordPrecision).toBeCloseTo(0.75, 10);
+    expect(summary.byCategory.text.meanWordRecall).toBeCloseTo(0.5, 10);
+    expect(summary.byCategory.mixed.meanWordPrecision).toBeCloseTo(0.5, 10);
+    expect(summary.byCategory['image-dominated'].meanWordRecall).toBeUndefined();
   });
 
   it('reports the no-content marker rate among items with output', () => {
