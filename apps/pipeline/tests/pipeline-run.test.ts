@@ -47,6 +47,7 @@ describe('pipeline-run.ts CLI', () => {
     convertOnly: false,
     batchId: undefined,
     markdownFile: undefined,
+    exclusionPass: undefined,
   };
 
   const goldenRows: { name: string; args: string[]; expected: ReturnType<typeof cli.parse> }[] = [
@@ -74,11 +75,17 @@ describe('pipeline-run.ts CLI', () => {
       expected: { ...DEFAULTS, unit: 'unit-4', batchId: 'b1', markdownFile: 'x.md' },
     },
     {
+      name: 'unit-4 --exclusion-pass',
+      args: ['unit-4', '--exclusion-pass', 'anthropic/claude-sonnet-5'],
+      expected: { ...DEFAULTS, unit: 'unit-4', exclusionPass: 'anthropic/claude-sonnet-5' },
+    },
+    {
       name: 'every flag at once',
       args: [
         'unit-4', '--review-topics', '--skip-convert', '--force-convert', '--skip-topics',
         '--write-db', '--audit', '--auditor', 'sonnet', '--skip-resources', '--dry-run',
         '--convert-only', '--batch-id', 'b1', '--markdown-file', 'x.md',
+        '--exclusion-pass', 'anthropic/claude-sonnet-5',
       ],
       expected: {
         ...DEFAULTS,
@@ -95,6 +102,7 @@ describe('pipeline-run.ts CLI', () => {
         convertOnly: true,
         batchId: 'b1',
         markdownFile: 'x.md',
+        exclusionPass: 'anthropic/claude-sonnet-5',
       },
     },
   ];

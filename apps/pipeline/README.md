@@ -251,6 +251,7 @@ Options:
   --convert-only            Stop after PDF conversion (skip topics, generation, audit)
   --batch-id <id>           Custom batch ID
   --markdown-file <path>    Use specified markdown file (bypasses PDF conversion)
+  --exclusion-pass <model>  Model slug for a teaching-content classifier gating each slide before its transcription call (off by default)
   --dry-run                 Show what would be done without executing
 ```
 
@@ -602,6 +603,15 @@ cache before calling a model. A baseline run whose model matches production's ow
 already-transcribed slide for free, but never writes to it, so an eval run never mutates production's
 cache.
 
+Transcription also accepts `--exclusion-pass <model>`, a separate teaching-content classifier that
+gates each slide before the transcription call: a slide it judges not to teach the course language
+gets the no-content marker directly, with no transcription call made for that slide. The classifier
+call honours `--provider` by default; `--exclusion-provider <tag>` overrides that when the
+classifier's own model needs a different one. The run's `settings.exclusionPass` and each result's
+`deterministic_checks.exclusion_decision`/`exclusion_reason` record the gate's model, provider, and
+verdict; cost projection adds one classifier call per slide at the classifier model's registry
+price, and each result row's `cost_usd` sums both calls when the slide was kept.
+
 Before anything runs, `--models` is resolved against `eval_models_current` (the latest registered
 snapshot per slug) and `--experiment`, if given, against `eval_experiments`; either a model with no
 registry row or an unresolvable experiment refuses to start the whole invocation: the same style as
@@ -635,6 +645,8 @@ Options:
   --allow-unpriced      Run a variant even when its model has no listed price, so its cost cannot be projected or capped (default: false)
   --group-size <n>      Audit task: questions sharing one audit call (default: 1, matching production; a larger value groups multiple questions into one call)
   --shuffle-groups <n>  Audit task: seed permuting item order before grouping, so a repeat can be deterministically regrouped
+  --exclusion-pass <model>     Transcription task: model slug for a teaching-content classifier gating each slide before its transcription call (off by default)
+  --exclusion-provider <tag>   Provider tag to pin the --exclusion-pass call to, when it must differ from --provider
 ```
 
 Plus the shared Database target and Logging flags above. A Mistral-family model is throttled to one
@@ -707,9 +719,13 @@ For audit runs, both the reference-backed and reference-free reports also list e
 runs' verdicts disagree, with each run's per-criterion verdict and its auditor's stored `notes`, so
 a human can adjudicate which one is right, capped at 60 items with a count of the rest.
 
-Transcription's non-inferiority verdict has a second condition beyond the mean-score tolerance: on
-any slide scored in both runs, a candidate whose score drops too far below the baseline's own score on
-that same slide is not non-inferior, regardless of the mean. Any run whose results named a `served_provider` other than its
+Transcription's non-inferiority verdict runs on words captured (the formatting-blind word recall
+against the checked transcript, so a table where the reference used a list is not an error) and
+has per-slide conditions beyond the mean tolerance: on any slide scored in both runs, a candidate
+that falls too far below the baseline's own word recall on that slide (content lost) or the
+baseline's word precision on that slide (content added that is not on the slide) is not
+non-inferior, regardless of the mean. Without reference transcripts the same checks run on the
+edit-distance score. Any run whose results named a `served_provider` other than its
 own `provider_pin` is flagged with a warning: comparing normalized forms (lowercased, punctuation
 stripped, and only the part of the pin before a `/` host-routing suffix), so `--provider anthropic`
 isn't flagged against OpenRouter's `Anthropic`, or a pin like `mistral/zdr` against a plain

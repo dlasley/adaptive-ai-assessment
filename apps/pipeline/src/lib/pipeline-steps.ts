@@ -40,6 +40,9 @@ export interface StepOptions {
   convertOnly?: boolean;
   batchId?: string;
   markdownFile?: string;
+  /** Model slug for a separate teaching-content classifier gating PDF conversion (see
+   * slide-content-classifier.ts) — undefined runs the unchanged transcription-only path. */
+  exclusionPass?: string;
   auditor: 'mistral' | 'sonnet';
   // Forwarded to every child script this orchestrator spawns, so `--verbose`/`--quiet` passed to
   // the top-level command apply to the whole pipeline, not just the orchestrator's own output.
@@ -206,7 +209,10 @@ export async function stepConvertPdf(
     for (const pdfPath of needsConversion) {
       const pdfName = path.basename(pdfPath);
       try {
-        const { markdown, report } = await convertPdfToMarkdown(pdfPath, pdfName, sessionId);
+        const { markdown, report } = await convertPdfToMarkdown(
+          pdfPath, pdfName, sessionId,
+          options.exclusionPass ? { model: options.exclusionPass } : undefined
+        );
         console.log(`     Converted to ${markdown.length.toLocaleString()} characters of markdown`);
 
         const reportPath = path.join(MARKDOWN_DIR, `${path.basename(pdfPath, '.pdf')}.conversion-report.json`);

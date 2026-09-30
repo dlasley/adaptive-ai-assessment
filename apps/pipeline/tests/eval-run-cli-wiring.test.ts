@@ -2,7 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { main } from '../src/commands/eval-run';
+import { main, projectExclusionPassCostUsd } from '../src/commands/eval-run';
+import { projectVariantCostUsd, registryPriceOf } from '../src/lib/eval/tolerances';
 import type {
   EvalStore,
   EvalRunRow,
@@ -792,5 +793,193 @@ describe('eval-run CLI wiring: task transcription', () => {
     expect(result.served_model).toBe('google/gemini-2.5-flash');
     expect(result.served_provider).toBe('Google AI Studio');
     expect(result.error).toBeNull();
+  });
+
+  describe('--exclusion-pass', () => {
+    const TRANSCRIPTION_MODEL = 'google/gemini-2.5-flash';
+    const CLASSIFIER_MODEL = 'anthropic/claude-haiku-4.5';
+
+    function makeExclusionPassFakeStore(): { store: EvalStore; runs: EvalRunRow[]; results: EvalResultRow[] } {
+      const runs: EvalRunRow[] = [];
+      const results: EvalResultRow[] = [];
+      let nextRunId = 0;
+
+      const set = makeEvalSetRow({ task: 'transcription', selection: { pdfPath: 'unit-1.pdf' } });
+      const keepItem = makeEvalItemRow({
+        id: 'item-keep',
+        item_key: 'slide-1',
+        payload: { slide: 1, text_layer: 'keep-me vocabulary', category: 'text' },
+      });
+      const dropItem = makeEvalItemRow({
+        id: 'item-drop',
+        item_key: 'slide-2',
+        payload: { slide: 2, text_layer: 'drop-me classroom rules', category: 'text' },
+      });
+      const models: Record<string, EvalModelCurrentRow> = {
+        [TRANSCRIPTION_MODEL]: {
+          id: 'model-transcription',
+          family_id: 'family-1',
+          slug: TRANSCRIPTION_MODEL,
+          effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4',
+          hosts: [],
+        },
+        [CLASSIFIER_MODEL]: {
+          id: 'model-classifier',
+          family_id: 'family-2',
+          slug: CLASSIFIER_MODEL,
+          effective_date: '2026-09-25', price_prompt_usd_per_m: '1', price_completion_usd_per_m: '5',
+          hosts: [],
+        },
+      };
+
+      const store: EvalStore = {
+        ...baseFakeEvalStore(),
+        async getSet(id) {
+          return id === set.id ? set : null;
+        },
+        async listItems(setId) {
+          return setId === set.id ? [keepItem, dropItem] : [];
+        },
+        async latestReviewRound() {
+          return null;
+        },
+        async getModelBySlug(slug) {
+          return models[slug] ?? null;
+        },
+        async insertRun(row) {
+          const run = makeEvalRunRow({ id: `run-${++nextRunId}`, ...row, status: row.status ?? 'running' });
+          runs.push(run);
+          return run;
+        },
+        async updateRun(id, patch) {
+          const run = runs.find((r) => r.id === id);
+          if (!run) throw new Error(`no run ${id}`);
+          Object.assign(run, patch);
+        },
+        async insertResults(rows) {
+          for (const row of rows) {
+            results.push(makeEvalResultRow({ id: `result-${results.length + 1}`, ...row }));
+          }
+        },
+      };
+
+      return { store, runs, results };
+    }
+
+    /** Routes on `jsonMode` (only the classifier call sets it) and on which slide's text-layer
+     * hint is present in the message content, so one stub serves both items' classify calls and
+     * the one transcription call the "keep" item goes on to make. */
+    function makeStubCallLlmFn() {
+      return vi.fn(async (opts: LlmCallOptions) => {
+        const content = opts.messages[0].content;
+        const textPart = (Array.isArray(content) ? content : []).find((c) => c.type === 'text') as
+          | { type: 'text'; text: string }
+          | undefined;
+        const text = textPart?.text ?? '';
+
+        if (opts.jsonMode) {
+          const verdict = text.includes('drop-me')
+            ? { teaches_language: false, reason: 'Classroom rules only.' }
+            : { teaches_language: true, reason: 'Vocabulary list.' };
+          return {
+            text: JSON.stringify(verdict),
+            model: opts.model,
+            raw: {},
+            usage: { promptTokens: 200, completionTokens: 10, costUsd: 0.0001 },
+          } satisfies LlmResult;
+        }
+
+        return {
+          text: 'Transcribed vocabulary list',
+          model: opts.model,
+          raw: {},
+          usage: { promptTokens: 500, completionTokens: 30, costUsd: 0.0003 },
+        } satisfies LlmResult;
+      });
+    }
+
+    it('drops the classified-out slide with the marker and no transcription call; keeps and transcribes the other', async () => {
+      const { store, runs, results } = makeExclusionPassFakeStore();
+      const callLlmFn = makeStubCallLlmFn();
+
+      await main({
+        argv: [
+          '--set', 'set-1', '--task', 'transcription', '--models', TRANSCRIPTION_MODEL,
+          '--exclusion-pass', CLASSIFIER_MODEL, '--write-db',
+        ],
+        store,
+        callLlmFn,
+      });
+
+      // One classify call per item (2), plus one transcription call for the kept item only.
+      expect(callLlmFn).toHaveBeenCalledTimes(3);
+      expect(runs).toHaveLength(1);
+      expect(runs[0].status).toBe('completed');
+      expect(runs[0].settings.exclusionPass).toEqual({
+        model: CLASSIFIER_MODEL,
+        provider: null,
+        promptHash: expect.any(String),
+      });
+
+      const kept = results.find((r) => r.item_id === 'item-keep')!;
+      expect(kept.output).toEqual({ markdown: 'Transcribed vocabulary list' });
+      expect(kept.deterministic_checks).toMatchObject({ exclusion_decision: 'keep', exclusion_reason: 'Vocabulary list.' });
+      // Cost is the sum of the classify call (0.0001) and the transcription call (0.0003).
+      expect(kept.cost_usd).toBeCloseTo(0.0004);
+      expect(kept.error).toBeNull();
+
+      const dropped = results.find((r) => r.item_id === 'item-drop')!;
+      expect(dropped.output).toEqual({ markdown: '<!-- no teaching content -->' });
+      expect(dropped.deterministic_checks).toMatchObject({
+        no_content_marker: true,
+        exclusion_decision: 'drop',
+        exclusion_reason: 'Classroom rules only.',
+      });
+      // Cost is the classify call alone — no transcription call was made.
+      expect(dropped.cost_usd).toBeCloseTo(0.0001);
+      expect(dropped.error).toBeNull();
+    });
+
+    it("refuses when --exclusion-pass is given on a task other than transcription", async () => {
+      const { store } = makeExclusionPassFakeStore();
+      const callLlmFn = vi.fn();
+
+      await expect(
+        main({
+          argv: ['--set', 'set-1', '--task', 'grading', '--models', TRANSCRIPTION_MODEL, '--exclusion-pass', CLASSIFIER_MODEL],
+          store,
+          callLlmFn,
+        }),
+      ).rejects.toThrow(ProcessExitError);
+
+      expect(callLlmFn).not.toHaveBeenCalled();
+    });
+
+    it('includes the classifier calls in the projected cost on the run row', async () => {
+      const { store, runs } = makeExclusionPassFakeStore();
+      const callLlmFn = makeStubCallLlmFn();
+
+      await main({
+        argv: [
+          '--set', 'set-1', '--task', 'transcription', '--models', TRANSCRIPTION_MODEL,
+          '--exclusion-pass', CLASSIFIER_MODEL, '--write-db',
+        ],
+        store,
+        callLlmFn,
+      });
+
+      const transcriptionOnly = projectVariantCostUsd(
+        'transcription',
+        registryPriceOf({ price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4' }),
+        2,
+      )!;
+      const classifierOnly = projectExclusionPassCostUsd(
+        registryPriceOf({ price_prompt_usd_per_m: '1', price_completion_usd_per_m: '5' }),
+        2,
+      )!;
+
+      expect(runs[0].projected_cost_usd).toBeCloseTo(transcriptionOnly + classifierOnly);
+      expect(runs[0].projected_cost_usd).toBeGreaterThan(transcriptionOnly);
+    });
   });
 });

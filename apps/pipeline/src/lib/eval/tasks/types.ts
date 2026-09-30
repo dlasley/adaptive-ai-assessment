@@ -47,6 +47,15 @@ export interface TaskPrepareDeps {
   fetchUnitsFromDbFn: typeof fetchUnitsFromDb;
 }
 
+/** The transcription task's exclusion-pass classifier, resolved once per `eval-run` invocation
+ * (`--exclusion-pass`/`--exclusion-provider`) and passed uniformly to every task's `runCall` —
+ * every task other than transcription ignores it. */
+export interface ExclusionPassSettings {
+  model: string;
+  provider: LlmCallOptions['provider'] | undefined;
+  promptHash: string;
+}
+
 export interface TaskRunCallParams<TContext> {
   call: InterleavedCall<EvalItemRow, Variant>;
   context: TContext;
@@ -57,6 +66,7 @@ export interface TaskRunCallParams<TContext> {
   /** Delays the call by up to one second when the variant's model is a Mistral model, so every
    * task obeys the same one-request-per-second throttle regardless of interleaving. */
   throttleIfMistral: (model: string) => Promise<void>;
+  exclusionPass?: ExclusionPassSettings;
 }
 
 export interface EvalTaskDefinition<TContext, TOutcome> {

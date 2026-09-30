@@ -7,13 +7,16 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import type { LlmUsage } from '@adaptive/shared/llm';
 import {
   renderSlideImage,
   buildTranscriptionMessageContent,
   cleanConversionArtifacts,
+  NO_CONTENT_MARKER,
   TRANSCRIPTION_PROMPT_HASH,
   SLIDE_TRANSCRIPTION_MAX_TOKENS,
 } from '../../pdf-conversion';
+import { classifySlideContent, SlideClassificationParseError } from '../../slide-content-classifier';
 import { createLogger } from '../../logger';
 import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { planInterleavedCalls } from '../runner';
@@ -83,6 +86,36 @@ function transcriptionOutcomeFromRow(result: EvalResultRow, item: EvalItemRow): 
   };
 }
 
+/** Sums two ResultUsage objects field by field — a slide gated by an exclusion pass makes two
+ * calls (the classifier, then the transcription call when kept) and the result row reports their
+ * combined cost and tokens as one figure. `undefined + undefined` stays `undefined` rather than
+ * becoming `0`, matching `usageFromLlmResult`'s convention for a field OpenRouter didn't report. */
+function addResultUsage(a: ResultUsage, b: ResultUsage): ResultUsage {
+  const sum = (x: number | undefined, y: number | undefined): number | undefined =>
+    x === undefined && y === undefined ? undefined : (x ?? 0) + (y ?? 0);
+  return {
+    cost_usd: sum(a.cost_usd, b.cost_usd),
+    prompt_tokens: sum(a.prompt_tokens, b.prompt_tokens),
+    completion_tokens: sum(a.completion_tokens, b.completion_tokens),
+    reasoning_tokens: sum(a.reasoning_tokens, b.reasoning_tokens),
+    served_model: b.served_model ?? a.served_model,
+    served_provider: b.served_provider ?? a.served_provider,
+    is_byok: b.is_byok ?? a.is_byok,
+  };
+}
+
+/** The classifier's own serving host isn't tracked on the result row (only the transcription
+ * call's is, via `usageFromLlmResult`), so this carries cost and token counts only. */
+function resultUsageFromLlmUsage(usage: LlmUsage | undefined): ResultUsage {
+  return {
+    cost_usd: usage?.costUsd,
+    prompt_tokens: usage?.promptTokens,
+    completion_tokens: usage?.completionTokens,
+    reasoning_tokens: usage?.reasoningTokens,
+    is_byok: usage?.isByok,
+  };
+}
+
 export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, TranscriptionItemOutcome> = {
   task: 'transcription',
 
@@ -114,7 +147,7 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
     fs.rmSync(tmpDir, { recursive: true, force: true });
   },
 
-  async runCall({ call, context, run, callSettings, reasoning, callLlmFn, throttleIfMistral }) {
+  async runCall({ call, context, run, callSettings, reasoning, callLlmFn, throttleIfMistral, exclusionPass }) {
     const key = variantKey(call.variant);
     const outcomes: TranscriptionItemOutcome[] = [];
     const resultRows: NewEvalResultRow[] = [];
@@ -125,52 +158,87 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
       const slide = item.payload.slide as number;
       const slideText = String(item.payload.text_layer ?? '');
       const imageBytes = context.imageBySlide.get(slide)!;
-      const content = buildTranscriptionMessageContent(slideText, imageBytes);
 
       let output: string | undefined;
       let error: 'parse' | 'api' | 'empty' | undefined;
       let usage: ResultUsage = {};
+      let exclusionDecision: 'keep' | 'drop' | undefined;
+      let exclusionReason: string | undefined;
 
-      // Every slide is sent to the model, never served from the production slide cache: a
-      // cached transcript would record zero cost and disk latency, and make repeats of the
-      // baseline identical by construction, which is not the noise floor being measured.
-      try {
-        const result = await withRateLimitRetry(() => callLlmFn({
-          model: call.variant.model,
-          temperature: callSettings.temperature,
-          maxTokens: SLIDE_TRANSCRIPTION_MAX_TOKENS,
-          jsonMode: callSettings.jsonMode,
-          reasoning: reasoning ?? { enabled: false },
-          provider: callSettings.provider,
-          sessionId: run.id,
-          messages: [{ role: 'user', content }],
-        }), {
-          ...MODEL_CALL_RETRY,
-          onRateLimited: (attempt, backoffMs) => logger.warn(`Rate limited (429) on slide ${slide} for ${key}. Retry ${attempt + 1}/${MODEL_CALL_RETRY.maxRetries} in ${backoffMs / 1000}s...`),
-        });
-        usage = usageFromLlmResult(result);
-        output = cleanConversionArtifacts(result.text);
-      } catch (err) {
-        error = isEmptyContentError(err) ? 'empty' : 'api';
-        logger.error(`Slide ${slide} failed for variant ${key} (${error}): ${err instanceof Error ? err.message : String(err)}`);
+      if (exclusionPass) {
+        await throttleIfMistral(exclusionPass.model);
+        try {
+          const classification = await withRateLimitRetry(() => classifySlideContent({
+            imageBytes,
+            slideText,
+            model: exclusionPass.model,
+            provider: exclusionPass.provider,
+            sessionId: run.id,
+            callLlmFn,
+          }), {
+            ...MODEL_CALL_RETRY,
+            onRateLimited: (attempt, backoffMs) => logger.warn(`Rate limited (429) classifying slide ${slide} for ${key}. Retry ${attempt + 1}/${MODEL_CALL_RETRY.maxRetries} in ${backoffMs / 1000}s...`),
+          });
+          exclusionDecision = classification.teachesLanguage ? 'keep' : 'drop';
+          exclusionReason = classification.reason;
+          usage = addResultUsage(usage, resultUsageFromLlmUsage(classification.usage));
+        } catch (err) {
+          error = err instanceof SlideClassificationParseError ? 'parse' : isEmptyContentError(err) ? 'empty' : 'api';
+          logger.error(`Slide ${slide} classification failed for variant ${key} (${error}): ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+
+      // A slide the exclusion pass drops never reaches the transcription call at all. Every slide
+      // that does reach it (every slide, when no exclusion pass is active) is sent to the model,
+      // never served from the production slide cache: a cached transcript would record zero cost
+      // and disk latency, and make repeats of the baseline identical by construction, which is not
+      // the noise floor being measured.
+      if (error === undefined && exclusionDecision === 'drop') {
+        output = NO_CONTENT_MARKER;
+      } else if (error === undefined) {
+        const content = buildTranscriptionMessageContent(slideText, imageBytes);
+        try {
+          const result = await withRateLimitRetry(() => callLlmFn({
+            model: call.variant.model,
+            temperature: callSettings.temperature,
+            maxTokens: SLIDE_TRANSCRIPTION_MAX_TOKENS,
+            jsonMode: callSettings.jsonMode,
+            reasoning: reasoning ?? { enabled: false },
+            provider: callSettings.provider,
+            sessionId: run.id,
+            messages: [{ role: 'user', content }],
+          }), {
+            ...MODEL_CALL_RETRY,
+            onRateLimited: (attempt, backoffMs) => logger.warn(`Rate limited (429) on slide ${slide} for ${key}. Retry ${attempt + 1}/${MODEL_CALL_RETRY.maxRetries} in ${backoffMs / 1000}s...`),
+          });
+          usage = addResultUsage(usage, usageFromLlmResult(result));
+          output = cleanConversionArtifacts(result.text);
+        } catch (err) {
+          error = isEmptyContentError(err) ? 'empty' : 'api';
+          logger.error(`Slide ${slide} failed for variant ${key} (${error}): ${err instanceof Error ? err.message : String(err)}`);
+        }
       }
       const latencyMs = Date.now() - startedAt;
 
       const deterministicChecks = output !== undefined ? computeTranscriptionDeterministicChecks(slideText, output) : undefined;
+      const baseChecks = deterministicChecks
+        ? {
+            coverage: deterministicChecks.coverage,
+            no_content_marker: deterministicChecks.noContentMarker,
+            table_rows: deterministicChecks.tableRows,
+            table_cols: deterministicChecks.tableCols,
+            chars: deterministicChecks.chars,
+          }
+        : null;
+      const exclusionChecks = exclusionPass
+        ? { exclusion_decision: exclusionDecision ?? null, exclusion_reason: exclusionReason ?? null }
+        : null;
 
       const resultRow: NewEvalResultRow = {
         run_id: run.id,
         item_id: item.id,
         output: output !== undefined ? { markdown: output } : null,
-        deterministic_checks: deterministicChecks
-          ? {
-              coverage: deterministicChecks.coverage,
-              no_content_marker: deterministicChecks.noContentMarker,
-              table_rows: deterministicChecks.tableRows,
-              table_cols: deterministicChecks.tableCols,
-              chars: deterministicChecks.chars,
-            }
-          : null,
+        deterministic_checks: baseChecks || exclusionChecks ? { ...(baseChecks ?? {}), ...(exclusionChecks ?? {}) } : null,
         latency_ms: latencyMs,
         cost_usd: usage.cost_usd ?? null,
         prompt_tokens: wholeTokens(usage.prompt_tokens),

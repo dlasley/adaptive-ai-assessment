@@ -635,10 +635,16 @@ works, so a mapping run is one call per variant per repeat rather than one call 
 transcription stays one call per slide, but renders each slide's image only once per invocation and
 reuses it across every variant and repeat, and reads (never writes) the production slide cache so a
 baseline run whose model matches production's own reuses an already-transcribed slide for free.
+Transcription also accepts `--exclusion-pass <model>` to gate each slide through a separate
+teaching-content classifier before the transcription call, skipping that call and recording the
+no-content marker when the classifier judges the slide doesn't teach the course language, with the
+decision, reason, and cost recorded on the run's `settings.exclusionPass` and each result's
+`deterministic_checks`.
 `eval-compare` pairs a candidate run against a baseline run on their shared, reference-approved items and
-produces a non-inferiority verdict per task tolerance (audit/grading; transcription's verdict also
-checks each slide scored in both runs against the baseline's own score on that slide, not just the
-mean), or a paired continuous-metric
+produces a non-inferiority verdict per task tolerance (audit/grading; transcription's verdict runs
+on words captured rather than character similarity and also checks each slide scored in both runs
+against the baseline's own word recall and word precision on that slide, not just the mean), or a
+paired continuous-metric
 comparison alone (mean difference plus an exact sign test, no verdict) for mapping, written back into
 `eval_runs.summary.compare`. Unlike mapping, transcription's reference is reviewed after the
 fact, so a set with no approved reference yet falls back to a reference-free report: agreement between each

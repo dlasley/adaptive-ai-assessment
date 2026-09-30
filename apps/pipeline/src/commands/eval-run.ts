@@ -31,9 +31,10 @@ import { stampSummary } from '../lib/eval/summary-stamp';
 import { AUDIT_GROUP_SIZE } from '../lib/pipeline-config';
 import { runVariantsLoop } from '../lib/eval/run-loop';
 import { mulberry32, shuffle } from '../lib/eval/sampling';
-import { BUDGET_CAPS_USD, isWithinBudget, projectVariantCostUsd, registryPriceOf } from '../lib/eval/tolerances';
+import { BUDGET_CAPS_USD, isWithinBudget, projectCostUsd, projectVariantCostUsd, registryPriceOf, type ModelPrice } from '../lib/eval/tolerances';
 import { TASK_DEFINITIONS } from '../lib/eval/tasks/registry';
-import { variantKey, type Variant, type EffectiveCallSettings } from '../lib/eval/tasks/types';
+import { variantKey, type Variant, type EffectiveCallSettings, type ExclusionPassSettings } from '../lib/eval/tasks/types';
+import { CLASSIFY_PROMPT_HASH } from '../lib/slide-content-classifier';
 import { callLlm, type LlmCallOptions } from '@adaptive/shared/llm';
 import { GRADING_CALL_SETTINGS } from '@adaptive/shared/grading-prompt';
 import { defineCli } from '../lib/options/define-cli';
@@ -48,6 +49,19 @@ const BLOCK_SIZE = 25;
 const MISTRAL_MIN_INTERVAL_MS = 1000;
 
 const REASONING_CHOICES = ['off', 'none', 'minimal', 'low', 'medium', 'high'] as const;
+
+/** Rough per-call token estimate for the `--exclusion-pass` classifier: the classify prompt, one
+ * slide's text-layer hint, and the rendered slide image; completion is small — a JSON verdict plus
+ * a one-sentence reason. Not yet checked against a real run's recorded usage. */
+const EXCLUSION_PASS_PROMPT_TOKENS_PER_CALL = 2_500;
+const EXCLUSION_PASS_COMPLETION_TOKENS_PER_CALL = 60;
+
+/** Projects the `--exclusion-pass` classifier's own added cost for one variant's run: one
+ * classifier call per item, at the classifier model's registry price. Returns undefined (same
+ * convention as `projectCostUsd`) when that price isn't known. */
+export function projectExclusionPassCostUsd(classifierPrice: ModelPrice | undefined, itemCount: number): number | undefined {
+  return projectCostUsd(classifierPrice, itemCount, EXCLUSION_PASS_PROMPT_TOKENS_PER_CALL, EXCLUSION_PASS_COMPLETION_TOKENS_PER_CALL);
+}
 
 export const cli = defineCli(
   {
@@ -66,6 +80,8 @@ export const cli = defineCli(
     'allow-unpriced': { type: 'boolean', default: false, help: 'Run a variant even when its model has no listed price, so its cost cannot be projected or capped' },
     'group-size': { type: 'number', default: AUDIT_GROUP_SIZE, min: 1, help: `Audit task: questions sharing one audit call (default ${AUDIT_GROUP_SIZE}, matching production; a larger value groups multiple questions into one call)` },
     'shuffle-groups': { type: 'number', help: 'Audit task: seed permuting item order before grouping, so a repeat can be deterministically regrouped' },
+    'exclusion-pass': { type: 'string', help: 'Transcription task only: model slug for a separate teaching-content classifier that gates each slide before the transcription call, skipping it when the slide is judged not to teach the course language (off by default)' },
+    'exclusion-provider': { type: 'string', help: 'Provider tag to pin the --exclusion-pass classifier call to, when it must differ from --provider' },
   },
   {
     name: 'eval-run',
@@ -195,6 +211,15 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
 
   const models = options.models.split(',').map((s) => s.trim()).filter(Boolean);
 
+  if (options.exclusionPass && options.task !== 'transcription') {
+    logger.error(`--exclusion-pass only applies to the transcription task (got '${options.task}').`);
+    process.exit(1);
+  }
+  if (options.exclusionProvider && !options.exclusionPass) {
+    logger.error('--exclusion-provider requires --exclusion-pass.');
+    process.exit(1);
+  }
+
   // Resolved before anything else starts — an unregistered model or a missing experiment is a
   // reason to refuse the whole run, the same style as the budget-cap refusal below, not something
   // to skip past per variant.
@@ -207,9 +232,16 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
     }
   }
 
+  // The exclusion-pass classifier is resolved against the registry alongside the transcription
+  // models themselves — a missing row for it refuses the whole run the same way a missing
+  // transcription model does, rather than running uncosted.
+  const modelsToResolve = options.exclusionPass && !models.includes(options.exclusionPass)
+    ? [...models, options.exclusionPass]
+    : models;
+
   const modelBySlug = new Map<string, EvalModelCurrentRow>();
   const missingModels: string[] = [];
-  for (const slug of models) {
+  for (const slug of modelsToResolve) {
     const resolved = await store.getModelBySlug(slug);
     if (resolved) modelBySlug.set(slug, resolved);
     else missingModels.push(slug);
@@ -247,6 +279,16 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   const variants = buildVariants(models, options.repeat);
   const reasoning = parseReasoningFlag(options.reasoning);
   const callSettings = buildEffectiveCallSettings(options.task, { temperature: options.temperature, provider: options.provider });
+  // The classifier call defaults to the same provider pin as the transcription variant it gates;
+  // --exclusion-provider overrides that only when the classifier's own model needs a different one
+  // (e.g. a transcription model pinned to Anthropic gated by a classifier model only on Google AI Studio).
+  const exclusionPass: ExclusionPassSettings | undefined = options.exclusionPass
+    ? {
+        model: options.exclusionPass,
+        provider: options.exclusionProvider ? { order: [options.exclusionProvider], allowFallbacks: false } : callSettings.provider,
+        promptHash: CLASSIFY_PROMPT_HASH,
+      }
+    : undefined;
   const maxCost = options.maxCost ?? BUDGET_CAPS_USD.candidateRun;
   const groupSize = options.groupSize;
   const shuffleSeed = options.shuffleGroups;
@@ -291,7 +333,13 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   const reviewRound = await store.latestReviewRound(options.set);
 
   for (const variant of variants) {
-    const projected = projectVariantCostUsd(options.task, registryPriceOf(modelBySlug.get(variant.model)), items.length, groupSize);
+    const transcriptionProjected = projectVariantCostUsd(options.task, registryPriceOf(modelBySlug.get(variant.model)), items.length, groupSize);
+    const exclusionProjected = exclusionPass
+      ? projectExclusionPassCostUsd(registryPriceOf(modelBySlug.get(exclusionPass.model)), items.length)
+      : 0;
+    const projected = transcriptionProjected !== undefined && exclusionProjected !== undefined
+      ? transcriptionProjected + exclusionProjected
+      : undefined;
     const withinBudget = isWithinBudget(projected, maxCost, options.allowUnpriced);
     const projectedLabel = projected !== undefined ? `$${projected.toFixed(4)}` : 'unknown (unpriced model)';
     let statusNote = '';
@@ -314,6 +362,9 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
       provider: callSettings.provider ?? null,
       groupSize,
       shuffleSeed: shuffleSeed ?? null,
+      exclusionPass: exclusionPass
+        ? { model: exclusionPass.model, provider: exclusionPass.provider?.order?.[0] ?? null, promptHash: exclusionPass.promptHash }
+        : null,
     };
     const run = await store.insertRun({
       set_id: options.set,
@@ -385,7 +436,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
         const run = runByVariantKey.get(key)!;
 
         const { outcomes, resultRows } = await taskDef.runCall({
-          call, context: taskContext, run, callSettings, reasoning, callLlmFn, throttleIfMistral,
+          call, context: taskContext, run, callSettings, reasoning, callLlmFn, throttleIfMistral, exclusionPass,
         });
         outcomesByVariant.get(key)!.push(...outcomes);
         resultRowsByVariant.get(key)!.push(...resultRows);

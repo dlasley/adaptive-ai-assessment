@@ -14,6 +14,7 @@ import path from 'path';
 import { MODELS } from './pipeline-config';
 import { callLlm, LlmError, type LlmCallOptions, type LlmContentPart, type LlmResult, type LlmUsage } from '@adaptive/shared/llm';
 import { renderCoursePrompt } from '@adaptive/shared/course';
+import { classifySlideContent } from './slide-content-classifier';
 import { createLogger } from './logger';
 import { PROMPTS_DIR, PDF_SLIDE_CACHE_DIR } from './paths';
 import { emptyUsageTotals, formatUsageSummary, recordCall, type UsageTotals } from './usage-tracking';
@@ -274,12 +275,41 @@ export function writeSlideCache(key: string, markdown: string): void {
   fs.renameSync(tmpPath, finalPath);
 }
 
+/** An exclusion pass gating each slide before its transcription call (see `slide-content-classifier.ts`).
+ * Off by default — `undefined` runs the unchanged transcription-only path. */
+export interface ExclusionPassConfig {
+  model: string;
+  provider?: LlmCallOptions['provider'];
+}
+
+/** Sums two LlmUsage objects field by field, for a slide that made both a classifier and a
+ * transcription call. `undefined + undefined` stays `undefined` rather than becoming `0`,
+ * matching `recordCall`'s convention for a field OpenRouter didn't report. */
+function mergeLlmUsage(a: LlmUsage | undefined, b: LlmUsage | undefined): LlmUsage {
+  const sum = (x: number | undefined, y: number | undefined): number | undefined =>
+    x === undefined && y === undefined ? undefined : (x ?? 0) + (y ?? 0);
+  return {
+    promptTokens: sum(a?.promptTokens, b?.promptTokens),
+    completionTokens: sum(a?.completionTokens, b?.completionTokens),
+    reasoningTokens: sum(a?.reasoningTokens, b?.reasoningTokens),
+    costUsd: sum(a?.costUsd, b?.costUsd),
+    openrouterCostUsd: sum(a?.openrouterCostUsd, b?.openrouterCostUsd),
+    upstreamCostUsd: sum(a?.upstreamCostUsd, b?.upstreamCostUsd),
+    isByok: b?.isByok ?? a?.isByok,
+  };
+}
+
 interface SlideTranscription {
   slideNum: number;
   markdown: string;
   slideText: string;
-  /** Undefined for a slide served from the on-disk cache (see slideCacheKey) — no call was made. */
+  /** Undefined for a slide served from the on-disk cache with no exclusion pass in effect (see
+   * slideCacheKey) — no call was made. */
   usage?: LlmUsage;
+  /** The exclusion-pass classifier's stated reason this slide was dropped — set only when an
+   * exclusion pass dropped it; undefined otherwise, including when the transcription model
+   * produced the no-content marker on its own with no exclusion pass in effect. */
+  exclusionReason?: string;
 }
 
 /** Calls callLlm, backing off and retrying on HTTP 429 per RATE_LIMIT_BACKOFF_MS before giving up.
@@ -320,15 +350,28 @@ async function transcribeSlide(
   pdfPath: string,
   slideNum: number,
   sessionId: string,
-  tmpDir: string
+  tmpDir: string,
+  exclusionPass?: ExclusionPassConfig
 ): Promise<SlideTranscription> {
   const slideText = extractSlideText(pdfPath, slideNum);
   const imageBytes = renderSlideImage(pdfPath, slideNum, tmpDir);
+
+  let classifierUsage: LlmUsage | undefined;
+  if (exclusionPass) {
+    const classification = await classifySlideContent({
+      imageBytes, slideText, model: exclusionPass.model, provider: exclusionPass.provider, sessionId,
+    });
+    classifierUsage = classification.usage;
+    if (!classification.teachesLanguage) {
+      return { slideNum, markdown: NO_CONTENT_MARKER, slideText, usage: classifierUsage, exclusionReason: classification.reason };
+    }
+  }
+
   const key = slideCacheKey(imageBytes, slideText, TRANSCRIPTION_PROMPT, MODELS.pdfConversion);
 
   const cached = readSlideCache(key);
   if (cached !== null) {
-    return { slideNum, markdown: cached, slideText };
+    return { slideNum, markdown: cached, slideText, usage: classifierUsage };
   }
 
   const content = buildTranscriptionMessageContent(slideText, imageBytes);
@@ -343,7 +386,7 @@ async function transcribeSlide(
 
   const markdown = cleanConversionArtifacts(result.text);
   writeSlideCache(key, markdown);
-  return { slideNum, markdown, slideText, usage: result.usage };
+  return { slideNum, markdown, slideText, usage: classifierUsage ? mergeLlmUsage(classifierUsage, result.usage) : result.usage };
 }
 
 /** Retries a failing slide once before giving up — a slide conversion failure fails the whole run
@@ -353,16 +396,17 @@ async function transcribeSlideWithRetry(
   pdfName: string,
   slideNum: number,
   sessionId: string,
-  tmpDir: string
+  tmpDir: string,
+  exclusionPass?: ExclusionPassConfig
 ): Promise<SlideTranscription> {
   try {
-    return await transcribeSlide(pdfPath, slideNum, sessionId, tmpDir);
+    return await transcribeSlide(pdfPath, slideNum, sessionId, tmpDir, exclusionPass);
   } catch (err) {
     logger.warn(`Slide ${slideNum} of ${pdfName} failed, retrying once`, {
       error: err instanceof Error ? err.message : String(err),
     });
     try {
-      return await transcribeSlide(pdfPath, slideNum, sessionId, tmpDir);
+      return await transcribeSlide(pdfPath, slideNum, sessionId, tmpDir, exclusionPass);
     } catch (retryErr) {
       const message = retryErr instanceof Error ? retryErr.message : String(retryErr);
       throw new Error(`Failed to convert slide ${slideNum} of ${pdfName} after retry: ${message}`);
@@ -422,6 +466,9 @@ interface SkippedSlide {
   slide: number;
   /** First SKIPPED_TEXT_PREVIEW_LENGTH characters of the slide's text layer, for a quick eyeball check. */
   textPreview: string;
+  /** The exclusion-pass classifier's stated reason for dropping this slide — absent when no
+   * exclusion pass was in effect (the transcription model produced the marker on its own). */
+  reason?: string;
 }
 
 interface SlideUsage {
@@ -488,11 +535,17 @@ export function buildSlideUsage(slides: Array<Pick<SlideTranscription, 'slideNum
  * with the same slide image, text layer, prompt, and model reuses the cached transcription instead
  * of calling the model again, whether or not the caller is force-reconverting the combined
  * markdown file for this PDF.
+ *
+ * `exclusionPass`, when given, gates each slide through a separate teaching-content classifier
+ * (see `slide-content-classifier.ts`) before the transcription call: a slide it judges not to
+ * teach the course language gets the no-content marker directly, with no transcription call made.
+ * Off by default, leaving the transcription-only path unchanged.
  */
 export async function convertPdfToMarkdown(
   pdfPath: string,
   pdfName: string,
-  sessionId: string
+  sessionId: string,
+  exclusionPass?: ExclusionPassConfig
 ): Promise<PdfConversionResult> {
   const slideCount = getSlideCount(pdfPath);
   console.log(`  📝 Transcribing ${pdfName} (${slideCount} slide${slideCount === 1 ? '' : 's'}) with vision model...`);
@@ -503,7 +556,7 @@ export async function convertPdfToMarkdown(
     let completed = 0;
 
     const slides = await mapWithConcurrency(slideNumbers, SLIDE_CONCURRENCY, async (slideNum) => {
-      const slide = await transcribeSlideWithRetry(pdfPath, pdfName, slideNum, sessionId, tmpDir);
+      const slide = await transcribeSlideWithRetry(pdfPath, pdfName, slideNum, sessionId, tmpDir, exclusionPass);
       completed += 1;
       console.log(`     Slide ${completed}/${slideCount} done (slide ${slideNum})`);
       return slide;
@@ -514,7 +567,7 @@ export async function convertPdfToMarkdown(
     const imageDominatedSlides: number[] = [];
     const markdownSlides: string[] = [];
 
-    for (const { slideNum, markdown, slideText } of slides) {
+    for (const { slideNum, markdown, slideText, exclusionReason } of slides) {
       markdownSlides.push(`<!-- slide ${slideNum} -->\n\n${markdown}`);
 
       if (isImageDominated(slideText)) {
@@ -523,7 +576,11 @@ export async function convertPdfToMarkdown(
 
       const category = categorizeSlide(slideNum, slideText, markdown);
       if (category.kind === 'skipped') {
-        skippedSlides.push({ slide: category.slide, textPreview: category.textPreview });
+        skippedSlides.push({
+          slide: category.slide,
+          textPreview: category.textPreview,
+          ...(exclusionReason !== undefined ? { reason: exclusionReason } : {}),
+        });
       } else if (category.kind === 'flagged') {
         flaggedSlides.push({ slide: category.slide, coverage: category.coverage });
       }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { variantKey, buildVariants, buildVariantLabel, parseReasoningFlag, buildEffectiveCallSettings, orderItemsForRun, cli, type Variant } from '../src/commands/eval-run';
+import { variantKey, buildVariants, buildVariantLabel, parseReasoningFlag, buildEffectiveCallSettings, orderItemsForRun, projectExclusionPassCostUsd, cli, type Variant } from '../src/commands/eval-run';
 import { GRADING_CALL_SETTINGS } from '@adaptive/shared/grading-prompt';
 import { AUDIT_GROUP_SIZE } from '../src/lib/pipeline-config';
 
@@ -18,6 +18,19 @@ function expectExit(fn: () => void, code: number) {
     expect((err as ProcessExitError).code).toBe(code);
   }
 }
+
+describe('projectExclusionPassCostUsd', () => {
+  it('returns undefined when the classifier model has no listed price', () => {
+    expect(projectExclusionPassCostUsd(undefined, 10)).toBeUndefined();
+  });
+
+  it('scales linearly with item count at the classifier price', () => {
+    const price = { prompt: 1, completion: 5 };
+    const one = projectExclusionPassCostUsd(price, 1)!;
+    const ten = projectExclusionPassCostUsd(price, 10)!;
+    expect(ten).toBeCloseTo(one * 10);
+  });
+});
 
 describe('buildVariants', () => {
   it('produces one variant per model when repeat is 1', () => {
