@@ -31,7 +31,7 @@ import { stampSummary } from '../lib/eval/summary-stamp';
 import { AUDIT_GROUP_SIZE } from '../lib/pipeline-config';
 import { runVariantsLoop } from '../lib/eval/run-loop';
 import { mulberry32, shuffle } from '../lib/eval/sampling';
-import { BUDGET_CAPS_USD, isWithinBudget, projectVariantCostUsd } from '../lib/eval/tolerances';
+import { BUDGET_CAPS_USD, isWithinBudget, projectVariantCostUsd, registryPriceOf } from '../lib/eval/tolerances';
 import { TASK_DEFINITIONS } from '../lib/eval/tasks/registry';
 import { variantKey, type Variant, type EffectiveCallSettings } from '../lib/eval/tasks/types';
 import { callLlm, type LlmCallOptions } from '@adaptive/shared/llm';
@@ -291,7 +291,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   const reviewRound = await store.latestReviewRound(options.set);
 
   for (const variant of variants) {
-    const projected = projectVariantCostUsd(options.task, variant.model, items.length, groupSize);
+    const projected = projectVariantCostUsd(options.task, registryPriceOf(modelBySlug.get(variant.model)), items.length, groupSize);
     const withinBudget = isWithinBudget(projected, maxCost, options.allowUnpriced);
     const projectedLabel = projected !== undefined ? `$${projected.toFixed(4)}` : 'unknown (unpriced model)';
     let statusNote = '';

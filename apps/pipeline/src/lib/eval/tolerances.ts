@@ -90,42 +90,18 @@ export interface ModelPrice {
 }
 
 /**
- * List prices for the candidate models, fetched from OpenRouter on 2026-09-25.
- * Re-check against OpenRouter's model listing before relying on this for a real budget decision —
- * prices change, and a model absent here has no projected cost (see `projectCostUsd`).
- */
-export const MODEL_PRICES_USD_PER_MILLION: Record<string, ModelPrice> = {
-  'anthropic/claude-opus-5.5': { prompt: 4, completion: 20 },
-  'anthropic/claude-sonnet-5': { prompt: 2, completion: 10 },
-  'anthropic/claude-haiku-4.5': { prompt: 1, completion: 5 },
-  'mistralai/mistral-large-2512': { prompt: 0.5, completion: 1.5 },
-  'mistralai/mistral-medium-3-5': { prompt: 1.5, completion: 7.5 },
-  'mistralai/mistral-small-2603': { prompt: 0.15, completion: 0.6 },
-  'mistralai/ministral-8b-2512': { prompt: 0.15, completion: 0.15 },
-  'google/gemini-2.5-flash': { prompt: 0.3, completion: 2.5 },
-  'google/gemini-2.5-flash-lite': { prompt: 0.1, completion: 0.4 },
-  'google/gemini-3.1-flash-lite': { prompt: 0.25, completion: 1.5 },
-  'openai/gpt-4.1-mini': { prompt: 0.4, completion: 1.6 },
-  'openai/gpt-4.1-nano': { prompt: 0.1, completion: 0.4 },
-  'openai/gpt-6-luna': { prompt: 0.1, completion: 0.5 },
-  'qwen/qwen3-235b-a22b-2507': { prompt: 0.2, completion: 0.6 },
-  'deepseek/deepseek-v3.2': { prompt: 0.26, completion: 0.42 },
-  'qwen/qwen3-vl-235b-a22b-instruct': { prompt: 0.21, completion: 1.9 },
-};
-
-/**
- * Projects a run's total cost from item count and a mean prompt/completion size, at the pinned
- * model's list price. Returns undefined when the model isn't in `MODEL_PRICES_USD_PER_MILLION` —
- * a caller must decide how to handle an unpriced model (refuse, or proceed uncosted) rather than
- * this function silently returning zero.
+ * Projects a run's total cost from item count and a mean prompt/completion size at `price`, the
+ * model registry's list price for the pinned model (`registryPriceOf` on its eval_models_current
+ * row). Returns undefined when no price is known so a caller must decide how to handle an unpriced
+ * model (refuse, or proceed uncosted with --allow-unpriced) rather than this function silently
+ * returning zero.
  */
 export function projectCostUsd(
-  model: string,
+  price: ModelPrice | undefined,
   itemCount: number,
   meanPromptTokens: number,
   meanCompletionTokens: number,
 ): number | undefined {
-  const price = MODEL_PRICES_USD_PER_MILLION[model];
   if (!price) return undefined;
   const perItemUsd = (meanPromptTokens * price.prompt + meanCompletionTokens * price.completion) / 1_000_000;
   return perItemUsd * itemCount;
@@ -194,21 +170,27 @@ export function auditCallTokenShape(groupSize: number): { promptTokensPerCall: n
  * it — so it projects one call at `TASK_MEAN_TOKENS.mapping`'s shape regardless of `itemCount`,
  * rather than the "chunk into itemsPerCall-sized calls" model every other task uses.
  */
-export function projectVariantCostUsd(task: EvalTask, model: string, itemCount: number, groupSize?: number): number | undefined {
+export function projectVariantCostUsd(task: EvalTask, price: ModelPrice | undefined, itemCount: number, groupSize?: number): number | undefined {
   const shape = TASK_MEAN_TOKENS[task];
   if (task === 'mapping') {
-    return projectCostUsd(model, 1, shape.promptTokensPerCall, shape.completionTokensPerCall);
+    return projectCostUsd(price, 1, shape.promptTokensPerCall, shape.completionTokensPerCall);
   }
   const useCustomShape = task === 'audit' && groupSize !== undefined;
   const effectiveItemsPerCall = useCustomShape ? groupSize : shape.itemsPerCall;
   const { promptTokensPerCall, completionTokensPerCall } = useCustomShape ? auditCallTokenShape(groupSize) : shape;
   const calls = Math.ceil(itemCount / effectiveItemsPerCall);
-  return projectCostUsd(model, calls, promptTokensPerCall, completionTokensPerCall);
+  return projectCostUsd(price, calls, promptTokensPerCall, completionTokensPerCall);
+}
+
+/** The `ModelPrice` a registry row carries, or undefined when either price is missing on it. */
+export function registryPriceOf(row: { price_prompt_usd_per_m: number | string | null; price_completion_usd_per_m: number | string | null } | undefined): ModelPrice | undefined {
+  if (!row || row.price_prompt_usd_per_m == null || row.price_completion_usd_per_m == null) return undefined;
+  return { prompt: Number(row.price_prompt_usd_per_m), completion: Number(row.price_completion_usd_per_m) };
 }
 
 /**
  * Whether a projected cost clears a budget cap. An unpriced model (`projectCostUsd` returned
- * undefined, meaning it isn't in `MODEL_PRICES_USD_PER_MILLION`) is refused by default — the whole
+ * undefined, meaning its registry snapshot carries no price) is refused by default — the whole
  * point of the cap is a guarantee about spend, and an unknown price can't back that guarantee.
  * `allowUnpriced` opts into running it anyway (the caller's `--allow-unpriced` flag); the caller is
  * responsible for logging that the run is proceeding without a cost guarantee.

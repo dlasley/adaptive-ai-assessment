@@ -118,6 +118,10 @@ export interface EvalModelCurrentRow {
   family_id: string;
   slug: string;
   effective_date: string;
+  /** List prices per million tokens on this dated snapshot; PostgREST returns NUMERIC as a string.
+   * Null when the snapshot was registered without a price (e.g. a direct-API model). */
+  price_prompt_usd_per_m: string | number | null;
+  price_completion_usd_per_m: string | number | null;
   hosts: Array<{ provider_pin: string; quantization?: string; notes?: string }>;
 }
 

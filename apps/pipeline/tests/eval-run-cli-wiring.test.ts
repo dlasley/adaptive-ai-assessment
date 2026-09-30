@@ -82,7 +82,7 @@ function makeFakeStore(overrides: Partial<EvalStore> = {}): { store: EvalStore; 
     id: 'model-1',
     family_id: 'family-1',
     slug: 'openai/gpt-4.1-nano',
-    effective_date: '2026-09-25',
+    effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4',
     hosts: [],
   };
 
@@ -459,7 +459,7 @@ describe('eval-run CLI wiring: task audit', () => {
       id: 'model-1',
       family_id: 'family-1',
       slug: 'mistralai/mistral-large-2512',
-      effective_date: '2026-09-25',
+      effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4',
       hosts: [],
     };
 
@@ -610,7 +610,7 @@ describe('eval-run CLI wiring: task mapping', () => {
       id: 'model-1',
       family_id: 'family-1',
       slug: 'anthropic/claude-haiku-4.5',
-      effective_date: '2026-09-25',
+      effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4',
       hosts: [],
     };
 
@@ -721,7 +721,7 @@ describe('eval-run CLI wiring: task transcription', () => {
       id: 'model-1',
       family_id: 'family-1',
       slug: 'google/gemini-2.5-flash',
-      effective_date: '2026-09-25',
+      effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4',
       hosts: [],
     };
 
