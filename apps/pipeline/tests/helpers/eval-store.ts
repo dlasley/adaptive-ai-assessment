@@ -7,7 +7,7 @@
  * per field through a partial argument.
  */
 
-import type { EvalStore, EvalSetRow, EvalItemRow, EvalRunRow, EvalResultRow } from '../../src/lib/eval/db';
+import type { EvalStore, EvalSetRow, EvalItemRow, EvalRunRow, EvalResultRow, EvalFindingRow } from '../../src/lib/eval/db';
 
 const DEFAULT_TIMESTAMP = '2026-09-29T00:00:00Z';
 
@@ -71,6 +71,9 @@ export function baseFakeEvalStore(): EvalStore {
       throw new Error('not used by this test');
     },
     async listFindings() {
+      throw new Error('not used by this test');
+    },
+    async getFinding() {
       throw new Error('not used by this test');
     },
     async insertReviewRound() {
@@ -137,6 +140,25 @@ export function makeEvalRunRow(overrides: Partial<EvalRunRow> = {}): EvalRunRow 
     model_version_id: null,
     created_at: DEFAULT_TIMESTAMP,
     updated_at: DEFAULT_TIMESTAMP,
+    ...overrides,
+  };
+}
+
+export function makeEvalFindingRow(overrides: Partial<EvalFindingRow> = {}): EvalFindingRow {
+  return {
+    id: 'finding-1',
+    experiment_id: null,
+    kind: 'observation',
+    task: null,
+    statement: 'statement',
+    evidence_note: null,
+    run_ids: [],
+    item_ids: [],
+    external_refs: [],
+    decided_by: null,
+    decided_at: DEFAULT_TIMESTAMP,
+    supersedes_finding_id: null,
+    created_at: DEFAULT_TIMESTAMP,
     ...overrides,
   };
 }

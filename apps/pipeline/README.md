@@ -745,6 +745,35 @@ Options:
 
 Plus the shared Database target and Logging flags above.
 
+### eval-finding.ts
+
+Records a plain observation as an `eval_findings` row: something worth writing down about the
+evidence that is not itself an adopt/reject/defer decision on an experiment. `eval-compare --decide`
+is the only other CLI route into this table, and it always moves the cited experiment's status, which
+is wrong for an observation that stands on its own. `--experiment` and `--task` are both optional,
+since an observation can predate a numbered experiment or not relate to one at all. `--runs` and
+`--items` are the evidence this observation cites: each run id must resolve, and each item id must
+belong to the set of at least one of the cited runs. `--supersedes <finding_id>` names an earlier
+finding this one revises. `--kind` accepts only `observation`; `adopt`, `reject`, and `defer` stay
+with `eval-compare --decide`. Dry run by default, printing the row it would insert; `--write-db`
+inserts it with `decided_by: user`. Never touches `eval_experiments`.
+
+```bash
+npx tsx apps/pipeline/src/commands/eval-finding.ts --statement "<one paragraph>" [options]
+
+Options:
+  --experiment <id|slug>  eval_experiments id or slug this observation relates to
+  --task <task>           Task this observation relates to
+  --kind <observation>    Finding kind (default and only accepted value: observation)
+  --statement <text>      One-paragraph human-readable statement of the observation (required)
+  --evidence <text>       Narrative detail the statement alone cannot carry
+  --runs <ids>            Comma-separated eval_runs ids cited as evidence
+  --items <ids>           Comma-separated eval_items ids cited as evidence, each belonging to one of the cited runs
+  --supersedes <id>       eval_findings id this observation supersedes
+```
+
+Plus the shared Database target and Logging flags above.
+
 ### eval-review-export.ts
 
 Exports a frozen eval set's items for a human reviewer to fill in reference. Audit and grading get a

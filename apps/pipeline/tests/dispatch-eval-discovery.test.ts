@@ -12,6 +12,7 @@ import { COMMANDS_DIR } from '../src/lib/paths';
 
 const EXPECTED_EVAL_COMMANDS = [
   'eval-compare',
+  'eval-finding',
   'eval-rescore',
   'eval-review-export',
   'eval-review-import',
@@ -21,12 +22,12 @@ const EXPECTED_EVAL_COMMANDS = [
 ].sort();
 
 describe('eval command discovery (real commands directory)', () => {
-  it('lists all six eval-* command files by name, without importing them', () => {
+  it('lists all eval-* command files by name, without importing them', () => {
     const names = listCommandFiles(COMMANDS_DIR).filter((n) => n.startsWith('eval-'));
     expect(names.sort()).toEqual(EXPECTED_EVAL_COMMANDS);
   });
 
-  it('discovers all six eval-* commands with area "eval" and a readable spec/description', async () => {
+  it('discovers all eval-* commands with area "eval" and a readable spec/description', async () => {
     const commands = await discoverCommands(COMMANDS_DIR);
     const evalCommands = commands.filter((c) => c.name.startsWith('eval-'));
 

@@ -568,7 +568,7 @@ GROUP BY 1, 2;
 ## Evaluation framework
 
 A separate set of tables and commands (`eval-set-create`, `eval-seed-grading`, `eval-run`,
-`eval-compare`, `eval-rescore`) for testing whether a different model, provider, or setting holds up on a given
+`eval-compare`, `eval-rescore`, `eval-finding`) for testing whether a different model, provider, or setting holds up on a given
 task before it's adopted, without touching production questions. See
 [`docs/cli-guide-content-ingestion-and-question-pipeline.md`](cli-guide-content-ingestion-and-question-pipeline.md#10-workflow-evaluating-models)
 for the workflow and [`apps/pipeline/README.md`](../apps/pipeline/README.md) for full flag
@@ -660,6 +660,14 @@ comparison and never writes back to the run's own `summary`. Per-item `score` is
 transcription and mapping, the two tasks scored against a reference; grading's score is the model's
 own self-score and audit has none. Targets `--run`, `--set`, or `--experiment`; dry run by default.
 
+`eval-finding` is the second, narrower route into `eval_findings`: a plain observation, not an
+adopt/reject/defer decision, so it never moves an experiment's status the way `eval-compare
+--decide` does. `--experiment` and `--task` are both optional, since an observation can predate a
+numbered experiment or not relate to one at all; `--runs` and `--items` are the evidence it cites,
+each validated (a run must resolve, an item must belong to the set of one of the cited runs) before
+insert. Dry run by default, printing the row it would insert; `--write-db` inserts it with
+`decided_by: user`.
+
 ### The durable layer: experiments, model registry, findings
 
 More tables sit above the four task tables, recording the parts of an evaluation program
@@ -689,7 +697,8 @@ that outlive any single run, all service-role only with no anon policies:
   and item ids that support it. A finding is `adopt`, `reject`, `defer`, or a plain `observation`; a
   later reversal writes a new row with `supersedes_finding_id` pointing at the one it revises, rather
   than editing the original. `eval-compare --decide <adopt|reject|defer> --statement "..."` writes one
-  of these and moves the experiment's status.
+  of these and moves the experiment's status; `eval-finding --statement "..."` writes a plain
+  `observation` and never touches the experiment's status.
 - **`eval_review_rounds`**: one row per reference-labeling campaign on a set (who reviewed it, under
   what rubric version, with what calibration result against a pilot sample), kept separate from
   `eval_items.reviewed_by`/`reviewed_at`, which are per item. A re-review under a revised rubric adds

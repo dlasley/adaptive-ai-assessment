@@ -190,6 +190,10 @@ export interface EvalStore {
   /** Every eval_findings row recorded against one experiment — used to detect a decision that
    * would duplicate one already on record for the same baseline/candidate pair. */
   listFindings(experimentId: string): Promise<EvalFindingRow[]>;
+  /** One eval_findings row by id — used to validate a `--supersedes` id before insert, since
+   * `listFindings` is scoped to one experiment and a superseded finding may predate one or belong
+   * to none. */
+  getFinding(id: string): Promise<EvalFindingRow | null>;
   insertReviewRound(row: NewEvalReviewRoundRow): Promise<EvalReviewRoundRow>;
   /** The most recently created `eval_review_rounds` row for `setId`, or null when the set has never
    * been through a review round — the reviewed-reference state a rescore's summary is stamped
@@ -305,6 +309,11 @@ export function createSupabaseEvalStore(supabase: SupabaseClient): EvalStore {
       const { data, error } = await supabase.from('eval_findings').select().eq('experiment_id', experimentId);
       if (error) fail(`list eval_findings for experiment ${experimentId}`, error);
       return (data as EvalFindingRow[]) ?? [];
+    },
+    async getFinding(id) {
+      const { data, error } = await supabase.from('eval_findings').select().eq('id', id).maybeSingle();
+      if (error) fail(`fetch eval_findings row ${id}`, error);
+      return (data as EvalFindingRow) ?? null;
     },
     async insertReviewRound(row) {
       const { data, error } = await supabase.from('eval_review_rounds').insert(row).select().single();
