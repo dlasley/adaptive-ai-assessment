@@ -308,7 +308,7 @@ describe('eval-run CLI wiring', () => {
       servedModel: 'openai/gpt-4.1-nano',
       servedProvider: 'OpenAI',
       usage: { promptTokens: 100, completionTokens: 20, costUsd: 0.0001, isByok: false },
-      raw: {},
+      raw: { id: 'gen-grading-1', choices: [{ finish_reason: 'stop', native_finish_reason: 'end_turn' }] },
     };
     const callLlmFn = vi.fn(async (_options: LlmCallOptions) => stubResult);
 
@@ -333,6 +333,10 @@ describe('eval-run CLI wiring', () => {
     expect(results).toHaveLength(1);
     expect(results[0].served_provider).toBe('OpenAI');
     expect(results[0].served_model).toBe('openai/gpt-4.1-nano');
+    expect(results[0].response_meta).toEqual({
+      id: 'gen-grading-1',
+      choices: [{ finish_reason: 'stop', native_finish_reason: 'end_turn' }],
+    });
 
     // Deliverable 3: every new run's summary carries a top-level primary_metric.
     expect(runs[0].summary?.primary_metric).toBeDefined();
@@ -344,6 +348,26 @@ describe('eval-run CLI wiring', () => {
     expect(runs[0].scoring_review_round_id).toBeNull();
     expect(runs[0].summary).not.toHaveProperty('scoredAt');
     expect(runs[0].summary).not.toHaveProperty('scoringReviewRoundId');
+  });
+
+  it('never stores message content in response_meta', async () => {
+    const { store, results } = makeFakeStore();
+    const sentinel = 'SENTINEL-DO-NOT-STORE-grading';
+    const stubResult: LlmResult = {
+      text: JSON.stringify({ isCorrect: true, score: 95, hasCorrectAccents: true, feedback: 'Correct.', corrections: {} }),
+      model: 'openai/gpt-4.1-nano',
+      usage: { promptTokens: 100, completionTokens: 20, costUsd: 0.0001 },
+      raw: { id: 'gen-sentinel', choices: [{ message: { content: sentinel }, finish_reason: 'stop' }] },
+    };
+    const callLlmFn = vi.fn(async (_options: LlmCallOptions) => stubResult);
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--write-db'],
+      store,
+      callLlmFn,
+    });
+
+    expect(JSON.stringify(results[0].response_meta)).not.toContain(sentinel);
   });
 
   it('resolves --experiment by its row id, not only its slug', async () => {
@@ -724,7 +748,7 @@ describe('eval-run CLI wiring: task audit', () => {
     vi.restoreAllMocks();
   });
 
-  function makeAuditFakeStore(): { store: EvalStore; runs: EvalRunRow[]; results: EvalResultRow[] } {
+  function makeAuditFakeStore(extraItemKeys: string[] = []): { store: EvalStore; runs: EvalRunRow[]; results: EvalResultRow[] } {
     const runs: EvalRunRow[] = [];
     const results: EvalResultRow[] = [];
     let nextRunId = 0;
@@ -753,6 +777,11 @@ describe('eval-run CLI wiring: task audit', () => {
       },
       reference_status: 'approved',
     });
+    const extraItems = extraItemKeys.map((itemKey) => makeEvalItemRow({
+      id: `item-${itemKey}`,
+      item_key: itemKey,
+      payload: { ...item.payload },
+    }));
     const model: EvalModelCurrentRow = {
       id: 'model-1',
       family_id: 'family-1',
@@ -768,7 +797,7 @@ describe('eval-run CLI wiring: task audit', () => {
         return id === set.id ? set : null;
       },
       async listItems(setId) {
-        return setId === set.id ? [item] : [];
+        return setId === set.id ? [item, ...extraItems] : [];
       },
       async latestReviewRound() {
         return null;
@@ -822,6 +851,7 @@ describe('eval-run CLI wiring: task audit', () => {
     served_model: 'mistralai/mistral-large-2512',
     served_provider: 'Mistral',
     echoed_id: 'q-1',
+    response_meta: { id: 'gen-audit-1', choices: [{ finish_reason: 'stop' }] },
   };
 
   it('writes a gate-criteria verdict, deterministic checks, and usage for a single-question audit call', async () => {
@@ -860,6 +890,30 @@ describe('eval-run CLI wiring: task audit', () => {
     expect(result.served_model).toBe('mistralai/mistral-large-2512');
     expect(result.served_provider).toBe('Mistral');
     expect(result.error).toBeNull();
+    expect(result.response_meta).toEqual({ id: 'gen-audit-1', choices: [{ finish_reason: 'stop' }] });
+  });
+
+  it('writes the same response_meta on every row of a grouped audit call, not divided', async () => {
+    const { store, results } = makeAuditFakeStore(['q-2']);
+    vi.mocked(callMistralAuditGroup).mockResolvedValue([
+      auditResult,
+      { ...auditResult, id: 'q-2', echoed_id: 'q-2' },
+    ]);
+    const fetchUnitsFromDbFn = vi.fn(async () => []);
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'audit', '--models', 'mistralai/mistral-large-2512', '--group-size', '2', '--write-db'],
+      store,
+      callLlmFn: vi.fn(),
+      fetchUnitsFromDbFn,
+    });
+
+    // Both questions came from the one group call, so callMistralAuditGroup ran once.
+    expect(callMistralAuditGroup).toHaveBeenCalledTimes(1);
+    expect(results).toHaveLength(2);
+    for (const result of results) {
+      expect(result.response_meta).toEqual({ id: 'gen-audit-1', choices: [{ finish_reason: 'stop' }] });
+    }
   });
 });
 
@@ -961,7 +1015,7 @@ describe('eval-run CLI wiring: task mapping', () => {
       servedModel: 'anthropic/claude-haiku-4.5',
       servedProvider: 'Anthropic',
       usage: { promptTokens: 200, completionTokens: 40, costUsd: 0.001, isByok: false },
-      raw: {},
+      raw: { id: 'gen-mapping-1', choices: [{ finish_reason: 'stop' }] },
     };
     const callLlmFn = vi.fn(async (_options: LlmCallOptions) => stubResult);
 
@@ -989,6 +1043,8 @@ describe('eval-run CLI wiring: task mapping', () => {
       expect(result.served_model).toBe('anthropic/claude-haiku-4.5');
       expect(result.served_provider).toBe('Anthropic');
       expect(result.error).toBeNull();
+      // response_meta is the whole call's data, not divisible: the same on every topic's row.
+      expect(result.response_meta).toEqual({ id: 'gen-mapping-1', choices: [{ finish_reason: 'stop' }] });
     }
   });
 });
@@ -1068,7 +1124,7 @@ describe('eval-run CLI wiring: task transcription', () => {
       servedModel: 'google/gemini-2.5-flash',
       servedProvider: 'Google AI Studio',
       usage: { promptTokens: 500, completionTokens: 30, costUsd: 0.0003, isByok: false },
-      raw: {},
+      raw: { id: 'gen-transcription-1', choices: [{ finish_reason: 'stop' }] },
     };
     const callLlmFn = vi.fn(async (_options: LlmCallOptions) => stubResult);
 
@@ -1093,6 +1149,8 @@ describe('eval-run CLI wiring: task transcription', () => {
     expect(result.served_model).toBe('google/gemini-2.5-flash');
     expect(result.served_provider).toBe('Google AI Studio');
     expect(result.error).toBeNull();
+    // No exclusion pass ran, so response_meta is the transcription call's own data, top level only.
+    expect(result.response_meta).toEqual({ id: 'gen-transcription-1', choices: [{ finish_reason: 'stop' }] });
   });
 
   it('forwards --render-dpi to renderSlideImage and records it on the run settings', async () => {
@@ -1190,6 +1248,9 @@ describe('eval-run CLI wiring: task transcription', () => {
     /** Routes on `jsonMode` (only the classifier call sets it) and on which slide's text-layer
      * hint is present in the message content, so one stub serves both items' classify calls and
      * the one transcription call the "keep" item goes on to make. */
+    const CLASSIFIER_SENTINEL = 'SENTINEL-DO-NOT-STORE-classifier';
+    const TRANSCRIPTION_SENTINEL = 'SENTINEL-DO-NOT-STORE-transcription';
+
     function makeStubCallLlmFn() {
       return vi.fn(async (opts: LlmCallOptions) => {
         const content = opts.messages[0].content;
@@ -1205,7 +1266,9 @@ describe('eval-run CLI wiring: task transcription', () => {
           return {
             text: JSON.stringify(verdict),
             model: opts.model,
-            raw: {},
+            servedModel: opts.model,
+            servedProvider: 'Anthropic',
+            raw: { id: 'gen-classify-1', choices: [{ finish_reason: 'stop', message: { content: CLASSIFIER_SENTINEL } }] },
             usage: { promptTokens: 200, completionTokens: 10, costUsd: 0.0001 },
           } satisfies LlmResult;
         }
@@ -1213,7 +1276,7 @@ describe('eval-run CLI wiring: task transcription', () => {
         return {
           text: 'Transcribed vocabulary list',
           model: opts.model,
-          raw: {},
+          raw: { id: 'gen-transcribe-1', choices: [{ finish_reason: 'stop', message: { content: TRANSCRIPTION_SENTINEL } }] },
           usage: { promptTokens: 500, completionTokens: 30, costUsd: 0.0003 },
         } satisfies LlmResult;
       });
@@ -1248,6 +1311,20 @@ describe('eval-run CLI wiring: task transcription', () => {
       // Cost is the sum of the classify call (0.0001) and the transcription call (0.0003).
       expect(kept.cost_usd).toBeCloseTo(0.0004);
       expect(kept.error).toBeNull();
+      // Both calls ran: the transcription call's fields at the top level, the classifier's own
+      // fields (plus its served model/provider, which no column on this row carries) nested.
+      expect(kept.response_meta).toEqual({
+        id: 'gen-transcribe-1',
+        choices: [{ finish_reason: 'stop' }],
+        classifier: {
+          id: 'gen-classify-1',
+          choices: [{ finish_reason: 'stop' }],
+          served_model: CLASSIFIER_MODEL,
+          served_provider: 'Anthropic',
+        },
+      });
+      expect(JSON.stringify(kept.response_meta)).not.toContain(CLASSIFIER_SENTINEL);
+      expect(JSON.stringify(kept.response_meta)).not.toContain(TRANSCRIPTION_SENTINEL);
 
       const dropped = results.find((r) => r.item_id === 'item-drop')!;
       expect(dropped.output).toEqual({ markdown: '<!-- no teaching content -->' });
@@ -1259,6 +1336,17 @@ describe('eval-run CLI wiring: task transcription', () => {
       // Cost is the classify call alone — no transcription call was made.
       expect(dropped.cost_usd).toBeCloseTo(0.0001);
       expect(dropped.error).toBeNull();
+      // The classifier dropped the slide, so no transcription call was made: response_meta
+      // carries only the classifier key, no top-level fields.
+      expect(dropped.response_meta).toEqual({
+        classifier: {
+          id: 'gen-classify-1',
+          choices: [{ finish_reason: 'stop' }],
+          served_model: CLASSIFIER_MODEL,
+          served_provider: 'Anthropic',
+        },
+      });
+      expect(JSON.stringify(dropped.response_meta)).not.toContain(CLASSIFIER_SENTINEL);
     });
 
     it("refuses when --exclusion-pass is given on a task other than transcription", async () => {

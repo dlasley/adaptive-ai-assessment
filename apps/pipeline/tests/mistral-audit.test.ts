@@ -129,6 +129,7 @@ function makeMistralResult(overrides: Partial<MistralAuditResult> = {}): Mistral
     usage: null,
     served_model: null,
     served_provider: null,
+    response_meta: null,
     ...overrides,
   };
 }

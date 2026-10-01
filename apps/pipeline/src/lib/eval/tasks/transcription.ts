@@ -7,7 +7,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { LlmUsage } from '@adaptive/shared/llm';
+import { responseMetaFromLlmResult, type LlmUsage } from '@adaptive/shared/llm';
 import {
   renderSlideImage,
   buildTranscriptionMessageContent,
@@ -116,6 +116,26 @@ function resultUsageFromLlmUsage(usage: LlmUsage | undefined): ResultUsage {
   };
 }
 
+/** Builds a transcription row's `response_meta`. When no exclusion pass ran, this is just the
+ * transcription call's own meta. When one did, the classifier's meta (plus its served model and
+ * provider, which no column on this row otherwise carries) nests under a `classifier` key,
+ * alongside the transcription call's meta if it ran too, or alone if the classifier dropped the
+ * slide before any transcription call was made. */
+function buildResponseMeta(
+  transcriptionMeta: Record<string, unknown> | undefined,
+  classifierMeta: Record<string, unknown> | undefined,
+  classifierServedModel: string | undefined,
+  classifierServedProvider: string | undefined,
+): Record<string, unknown> | null {
+  if (classifierMeta === undefined && classifierServedModel === undefined && classifierServedProvider === undefined) {
+    return transcriptionMeta ?? null;
+  }
+  const classifier: Record<string, unknown> = { ...(classifierMeta ?? {}) };
+  if (classifierServedModel !== undefined) classifier.served_model = classifierServedModel;
+  if (classifierServedProvider !== undefined) classifier.served_provider = classifierServedProvider;
+  return { ...(transcriptionMeta ?? {}), classifier };
+}
+
 export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, TranscriptionItemOutcome, TranscriptionRunSummary> = {
   task: 'transcription',
 
@@ -164,6 +184,10 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
       let usage: ResultUsage = {};
       let exclusionDecision: 'keep' | 'drop' | undefined;
       let exclusionReason: string | undefined;
+      let classifierResponseMeta: Record<string, unknown> | undefined;
+      let classifierServedModel: string | undefined;
+      let classifierServedProvider: string | undefined;
+      let transcriptionResponseMeta: Record<string, unknown> | undefined;
 
       if (exclusionPass) {
         await throttleIfMistral(exclusionPass.model);
@@ -182,6 +206,9 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
           exclusionDecision = classification.teachesLanguage ? 'keep' : 'drop';
           exclusionReason = classification.reason;
           usage = addResultUsage(usage, resultUsageFromLlmUsage(classification.usage));
+          classifierResponseMeta = classification.responseMeta;
+          classifierServedModel = classification.servedModel;
+          classifierServedProvider = classification.servedProvider;
         } catch (err) {
           error = err instanceof SlideClassificationParseError ? 'parse' : isEmptyContentError(err) ? 'empty' : 'api';
           logger.error(`Slide ${slide} classification failed for variant ${key} (${error}): ${err instanceof Error ? err.message : String(err)}`);
@@ -216,6 +243,7 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
             onRateLimited: (attempt, backoffMs) => logger.warn(`Rate limited (429) on slide ${slide} for ${key}. Retry ${attempt + 1}/${MODEL_CALL_RETRY.maxRetries} in ${backoffMs / 1000}s...`),
           });
           usage = addResultUsage(usage, usageFromLlmResult(result));
+          transcriptionResponseMeta = responseMetaFromLlmResult(result);
           output = cleanConversionArtifacts(result.text);
         } catch (err) {
           error = isEmptyContentError(err) ? 'empty' : 'api';
@@ -252,6 +280,7 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
         served_provider: usage.served_provider ?? null,
         is_byok: usage.is_byok ?? null,
         error: error ?? null,
+        response_meta: buildResponseMeta(transcriptionResponseMeta, classifierResponseMeta, classifierServedModel, classifierServedProvider),
       };
       const outcome = transcriptionOutcomeFromRow(resultRow as EvalResultRow, item);
       resultRow.score = outcome.score ?? null;

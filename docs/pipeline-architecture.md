@@ -592,7 +592,16 @@ Four tables, service-role only, no anon policies:
   not keys inside `summary`, so a query for "runs needing a rescore" is a plain `WHERE`.
 - **`eval_results`**: one row per (run, item) pair: the variant's output, its deterministic checks,
   score, latency, cost, token usage, and an `error` (`parse` / `api` / `empty`) when the call
-  produced nothing usable.
+  produced nothing usable. `response_meta` carries the OpenRouter response facts that have no
+  column of their own (response id, created, each choice's finish reason, cached token counts, the
+  upstream-cost breakdown), picked out by name and never including message content. A grouped
+  audit call (several questions in one call) writes the same `response_meta` on every row in the
+  group, since it describes the whole call, not a per-question share. A transcription row gains a
+  `classifier` key holding the same fields for its exclusion-pass classifier call (plus that call's
+  served model and provider, which the row's own `served_model`/`served_provider` columns describe
+  only for the transcription call) when `--exclusion-pass` ran: top-level fields only if no
+  exclusion pass ran, top-level plus `classifier` if both calls ran, or `classifier` alone if the
+  classifier dropped the slide before any transcription call was made.
 
 For the audit task, `eval_items.payload` snapshots a question's fields plus the production
 auditor's own verdict (`production_audit`), for a production-verdict comparison when approved

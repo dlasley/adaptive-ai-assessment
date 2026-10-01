@@ -5,6 +5,7 @@
  */
 
 import { readFileSync } from 'fs';
+import { responseMetaFromLlmResult } from '@adaptive/shared/llm';
 import { buildMapExistingPrompt, parseMapExistingResponse, MapExistingParseError } from '../../topics';
 import { extractDocumentHeadings, assertValidSlideMarkers, type HeadingRef, type DocumentHeadingOccurrence } from '../../learning-materials';
 import { createLogger } from '../../logger';
@@ -109,6 +110,7 @@ export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome,
     let mappings: Record<string, HeadingRef[]> | undefined;
     let error: 'parse' | 'api' | 'empty' | undefined;
     let usage: ResultUsage = {};
+    let responseMeta: Record<string, unknown> | undefined;
 
     // Production always disables reasoning for this call (mapExistingHeadings's
     // disableReasoning: true); --reasoning overrides that default, same as every task.
@@ -131,6 +133,7 @@ export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome,
         onRateLimited: (attempt, backoffMs) => logger.warn(`Rate limited (429) for variant ${key}. Retry ${attempt + 1}/${MODEL_CALL_RETRY.maxRetries} in ${backoffMs / 1000}s...`),
       });
       usage = usageFromLlmResult(result);
+      responseMeta = responseMetaFromLlmResult(result);
       mappings = parseMapExistingResponse(result.text, topicNames);
     } catch (err) {
       if (err instanceof MapExistingParseError) error = 'parse';
@@ -171,6 +174,7 @@ export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome,
         served_provider: usage.served_provider ?? null,
         is_byok: usage.is_byok ?? null,
         error: error ?? null,
+        response_meta: responseMeta ?? null,
       };
       const outcome = mappingOutcomeFromRow(resultRow as EvalResultRow, item);
       resultRow.score = outcome.scoring?.f1 ?? null;

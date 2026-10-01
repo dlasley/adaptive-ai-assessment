@@ -33,6 +33,7 @@ function makeResult(overrides: Partial<EvalResultRow> = {}): EvalResultRow {
     served_provider: null,
     is_byok: null,
     error: null,
+    response_meta: null,
     created_at: '2026-09-27T00:00:00Z',
     ...overrides,
   };

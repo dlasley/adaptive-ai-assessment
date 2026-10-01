@@ -157,6 +157,7 @@ export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome, Audit
         served_provider: resultForItem?.served_provider ?? null,
         is_byok: resultForItem?.usage?.is_byok ?? null,
         error: error ?? null,
+        response_meta: resultForItem?.response_meta ?? null,
       };
       outcomes.push(auditOutcomeFromRow(resultRow as EvalResultRow, item));
       resultRows.push(resultRow);

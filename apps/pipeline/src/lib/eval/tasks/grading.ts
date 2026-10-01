@@ -6,6 +6,7 @@
  */
 
 import { buildEvaluationPrompt, parseEvaluationResponse, EvaluationParseError, GRADING_CALL_SETTINGS } from '@adaptive/shared/grading-prompt';
+import { responseMetaFromLlmResult } from '@adaptive/shared/llm';
 import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { createLogger } from '../../logger';
 import { planInterleavedCalls, buildGradingRunSummary, GRADING_PASS_SCORE_THRESHOLD, type GradingItemOutcome, type GradingReference, type GradingRunSummary } from '../runner';
@@ -92,6 +93,7 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome, Grad
       let output: { isCorrect: boolean; score: number } | undefined;
       let error: 'parse' | 'api' | 'empty' | undefined;
       let usage: ResultUsage = {};
+      let responseMeta: Record<string, unknown> | undefined;
 
       // Grading never disables reasoning by default (unlike mapping/transcription), so only the
       // temperature can need adjusting for a model samplingConstraints flags.
@@ -112,6 +114,7 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome, Grad
           onRateLimited: (attempt, backoffMs) => logger.warn(`Rate limited (429) on item ${item.item_key} for ${key}. Retry ${attempt + 1}/${MODEL_CALL_RETRY.maxRetries} in ${backoffMs / 1000}s...`),
         });
         usage = usageFromLlmResult(result);
+        responseMeta = responseMetaFromLlmResult(result);
         const parsed = parseEvaluationResponse(result.text);
         output = { isCorrect: parsed.isCorrect, score: parsed.score };
       } catch (err) {
@@ -137,6 +140,7 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome, Grad
         served_provider: usage.served_provider ?? null,
         is_byok: usage.is_byok ?? null,
         error: error ?? null,
+        response_meta: responseMeta ?? null,
       };
       outcomes.push(gradingOutcomeFromRow(resultRow as EvalResultRow, item));
       resultRows.push(resultRow);

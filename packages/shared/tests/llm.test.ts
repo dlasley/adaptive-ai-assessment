@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { callLlm, LlmError } from '../src/llm';
+import { callLlm, LlmError, responseMetaFromLlmResult } from '../src/llm';
 import { MODELS } from '../src/models';
 
 /** Minimal Response-shaped mock. Only the members callLlm actually reads. */
@@ -803,6 +803,63 @@ describe('callLlm usage capture', () => {
 
     const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
     expect(body).not.toHaveProperty('usage');
+  });
+});
+
+describe('responseMetaFromLlmResult', () => {
+  it('picks id, created, per-choice finish reasons, cached tokens, and upstream cost by name', () => {
+    const raw = {
+      id: 'gen-abc123',
+      created: 1735000000,
+      model: 'anthropic/claude-sonnet-5',
+      provider: 'Anthropic',
+      choices: [{ message: { content: 'hello' }, finish_reason: 'stop', native_finish_reason: 'end_turn' }],
+      usage: {
+        prompt_tokens: 100,
+        completion_tokens: 50,
+        completion_tokens_details: { reasoning_tokens: 10 },
+        prompt_tokens_details: { cached_tokens: 40 },
+        cost: 0.0042,
+        cost_details: { upstream_inference_cost: 0.003 },
+        is_byok: true,
+      },
+    };
+
+    expect(responseMetaFromLlmResult({ raw })).toEqual({
+      id: 'gen-abc123',
+      created: 1735000000,
+      choices: [{ finish_reason: 'stop', native_finish_reason: 'end_turn' }],
+      usage: {
+        prompt_tokens_details: { cached_tokens: 40 },
+        cost_details: { upstream_inference_cost: 0.003 },
+      },
+    });
+  });
+
+  it('never carries message content, however it is nested in the raw response', () => {
+    const sentinel = 'SENTINEL-DO-NOT-STORE-abc123';
+    const raw = {
+      id: 'gen-1',
+      created: 1735000000,
+      choices: [{ message: { content: sentinel }, finish_reason: 'stop', native_finish_reason: 'end_turn' }],
+      usage: { prompt_tokens: 10, completion_tokens: 5, cost_details: { upstream_inference_cost: 0.001 } },
+    };
+
+    const meta = responseMetaFromLlmResult({ raw });
+    expect(JSON.stringify(meta)).not.toContain(sentinel);
+  });
+
+  it('returns undefined when raw carries none of the named fields', () => {
+    expect(responseMetaFromLlmResult({ raw: {} })).toBeUndefined();
+  });
+
+  it('returns undefined when raw is absent', () => {
+    expect(responseMetaFromLlmResult({ raw: undefined })).toBeUndefined();
+  });
+
+  it('omits usage and choices when neither carries a field it reads', () => {
+    const raw = { id: 'gen-1', choices: [{ message: { content: 'hi' }, finish_reason: 'stop' }], usage: { prompt_tokens: 10 } };
+    expect(responseMetaFromLlmResult({ raw })).toEqual({ id: 'gen-1', choices: [{ finish_reason: 'stop' }] });
   });
 });
 

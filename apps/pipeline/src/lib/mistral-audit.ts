@@ -11,7 +11,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { BatchRequestSpec, BatchResultItem, PollOutcome, RequestCounts } from './llm-batch';
-import { callLlm, LlmError, LlmNetworkError, LlmUsage, parseUsage, type LlmCallOptions, type OpenRouterResponseBody } from '@adaptive/shared/llm';
+import { callLlm, LlmError, LlmNetworkError, LlmUsage, parseUsage, responseMetaFromLlmResult, type LlmCallOptions, type OpenRouterResponseBody } from '@adaptive/shared/llm';
 import { renderCoursePrompt } from '@adaptive/shared/course';
 import { isDifficulty } from '@adaptive/shared/enums';
 import { AUDIT_GROUP_SIZE } from './pipeline-config';
@@ -92,6 +92,12 @@ export interface MistralAuditResult {
   /** The id the model echoed in the raw result this was built from, kept for telemetry on how
    * faithfully ids are copied back. Null when no raw result was parsed for the question. */
   echoed_id?: string | null;
+  /** This group's audit call's response facts with no column of their own (see
+   * `responseMetaFromLlmResult`), applied identically to every question in the group by
+   * `applyGroupUsage`. Unlike `usage`, this is the whole call's data and is not divisible, so it
+   * must not be summed across the group's questions. Null until applied, and stays null if the
+   * call carried none of those facts or never produced a response. */
+  response_meta: Record<string, unknown> | null;
 }
 
 interface QuestionUsageShare {
@@ -188,7 +194,7 @@ export async function callMistralAuditGroup(
     sessionId: settings.sessionId,
   });
 
-  return applyGroupUsage(parseAuditResponse(result.text, questions), result.usage, result.servedModel, result.servedProvider);
+  return applyGroupUsage(parseAuditResponse(result.text, questions), result.usage, result.servedModel, result.servedProvider, responseMetaFromLlmResult(result));
 }
 
 /** The "assume passing, note the reason" fallback shared by a parse failure and an API/transport error. */
@@ -219,6 +225,7 @@ export function buildPassthroughResults(questions: QuestionRow[], note: string):
     served_model: null,
     served_provider: null,
     echoed_id: null,
+    response_meta: null,
   }));
 }
 
@@ -335,6 +342,7 @@ function buildResultFromRaw(q: QuestionRow, r: Record<string, unknown>): Mistral
     served_model: null,
     served_provider: null,
     echoed_id: echoedId,
+    response_meta: null,
   };
 }
 
@@ -422,8 +430,9 @@ export function applyGroupUsage(
   usage: LlmUsage | undefined,
   servedModel: string | undefined,
   servedProvider?: string | undefined,
+  responseMeta?: Record<string, unknown> | undefined,
 ): MistralAuditResult[] {
-  if (!usage && !servedModel && !servedProvider) return results;
+  if (!usage && !servedModel && !servedProvider && !responseMeta) return results;
   const n = results.length || 1;
   const share: QuestionUsageShare | null = usage
     ? {
@@ -434,7 +443,13 @@ export function applyGroupUsage(
         is_byok: usage.isByok ?? null,
       }
     : null;
-  return results.map((r) => ({ ...r, usage: share, served_model: servedModel ?? null, served_provider: servedProvider ?? null }));
+  return results.map((r) => ({
+    ...r,
+    usage: share,
+    served_model: servedModel ?? null,
+    served_provider: servedProvider ?? null,
+    response_meta: responseMeta ?? null,
+  }));
 }
 
 /** Recovers a run's total usage from its results' per-question shares (`applyGroupUsage` divided
@@ -486,7 +501,7 @@ export function resultsForGroupItem(item: BatchResultItem, groupQuestions: Quest
   }
   const parsed = parseAuditResponse(content, groupQuestions);
   const body = item.response?.body as OpenRouterResponseBody | undefined;
-  return applyGroupUsage(parsed, body ? parseUsage(body) : undefined, body?.model, body?.provider);
+  return applyGroupUsage(parsed, body ? parseUsage(body) : undefined, body?.model, body?.provider, body ? responseMetaFromLlmResult({ raw: body }) : undefined);
 }
 
 // ── llm_batch_jobs bookkeeping ──────────────────────────────────────────────

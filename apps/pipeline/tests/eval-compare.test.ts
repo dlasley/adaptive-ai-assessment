@@ -53,6 +53,7 @@ function makeResult(overrides: Partial<EvalResultRow> = {}): EvalResultRow {
     served_provider: null,
     is_byok: null,
     error: null,
+    response_meta: null,
     created_at: '2026-09-26T00:00:00Z',
     ...overrides,
   };
@@ -235,7 +236,7 @@ describe('buildAuditOutcomesForRun', () => {
       ['item-2', { ...passVerdict, grammar_correct: false }],
     ]);
     const results = [
-      { id: 'r-1', run_id: 'run-1', item_id: 'item-1', output: passVerdict, judge_verdict: null, deterministic_checks: null, score: null, latency_ms: null, cost_usd: null, prompt_tokens: null, completion_tokens: null, reasoning_tokens: null, served_model: null, served_provider: null, is_byok: null, error: null, created_at: 'now' } as EvalResultRow,
+      { id: 'r-1', run_id: 'run-1', item_id: 'item-1', output: passVerdict, judge_verdict: null, deterministic_checks: null, score: null, latency_ms: null, cost_usd: null, prompt_tokens: null, completion_tokens: null, reasoning_tokens: null, served_model: null, served_provider: null, is_byok: null, error: null, response_meta: null, created_at: 'now' } as EvalResultRow,
     ];
     const outcomes = buildAuditOutcomesForRun(itemReference, results);
     expect(outcomes).toHaveLength(2);

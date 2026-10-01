@@ -208,6 +208,7 @@ export function makeEvalResultRow(overrides: Partial<EvalResultRow> = {}): EvalR
     served_provider: null,
     is_byok: null,
     error: null,
+    response_meta: null,
     created_at: DEFAULT_TIMESTAMP,
     ...overrides,
   };

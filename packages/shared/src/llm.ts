@@ -197,6 +197,10 @@ interface OpenRouterErrorBody {
 /** Shape of one OpenRouter chat-completion response body — a sync call's response, and also what
  * each completed item in a batch result carries as its own `response.body` (see `llm-batch.ts`). */
 export interface OpenRouterResponseBody {
+  /** OpenRouter's own id for this response (generation id), stable across the sync and batch endpoints. */
+  id?: string;
+  /** Unix timestamp (seconds) OpenRouter reports for when the response was generated. */
+  created?: number;
   model?: string;
   /** The host OpenRouter actually routed this call to (e.g. 'Anthropic', 'Together'). */
   provider?: string;
@@ -206,12 +210,16 @@ export interface OpenRouterResponseBody {
       content?: string | null;
     };
     finish_reason?: string | null;
+    /** The stop reason the upstream provider itself reported, before OpenRouter normalizes it to finish_reason. */
+    native_finish_reason?: string | null;
     error?: { message?: string };
   }>;
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
     completion_tokens_details?: { reasoning_tokens?: number };
+    /** Present only for a provider that supports prompt caching. */
+    prompt_tokens_details?: { cached_tokens?: number };
     cost?: number;
     cost_details?: { upstream_inference_cost?: number };
     is_byok?: boolean;
@@ -238,6 +246,41 @@ export function parseUsage(json: OpenRouterResponseBody): LlmUsage | undefined {
     upstreamCostUsd: usage.cost_details?.upstream_inference_cost,
     isByok: usage.is_byok,
   };
+}
+
+/**
+ * Picks the OpenRouter response facts worth keeping that have no dedicated column: the response
+ * `id`, `created`, each choice's `finish_reason`/`native_finish_reason`, and the parts of `usage`
+ * `parseUsage` doesn't already map (cached prompt tokens, the upstream-cost breakdown). Every
+ * field is read by its own name, never a spread of `choices[].message` or the whole `usage`
+ * object, so a message's content, and any new key OpenRouter adds, can never end up in the
+ * result. Returns undefined when the response carried none of these fields (or had no `raw`).
+ */
+export function responseMetaFromLlmResult(result: Pick<LlmResult, 'raw'>): Record<string, unknown> | undefined {
+  const raw = result.raw as OpenRouterResponseBody | undefined;
+  if (!raw) return undefined;
+
+  const meta: Record<string, unknown> = {};
+  if (raw.id !== undefined) meta.id = raw.id;
+  if (raw.created !== undefined) meta.created = raw.created;
+
+  const choices = (raw.choices ?? []).reduce<Array<Record<string, unknown>>>((acc, choice) => {
+    const entry: Record<string, unknown> = {};
+    if (choice.finish_reason !== undefined) entry.finish_reason = choice.finish_reason;
+    if (choice.native_finish_reason !== undefined) entry.native_finish_reason = choice.native_finish_reason;
+    if (Object.keys(entry).length > 0) acc.push(entry);
+    return acc;
+  }, []);
+  if (choices.length > 0) meta.choices = choices;
+
+  const usageMeta: Record<string, unknown> = {};
+  const cachedTokens = raw.usage?.prompt_tokens_details?.cached_tokens;
+  if (cachedTokens !== undefined) usageMeta.prompt_tokens_details = { cached_tokens: cachedTokens };
+  const upstreamCost = raw.usage?.cost_details?.upstream_inference_cost;
+  if (upstreamCost !== undefined) usageMeta.cost_details = { upstream_inference_cost: upstreamCost };
+  if (Object.keys(usageMeta).length > 0) meta.usage = usageMeta;
+
+  return Object.keys(meta).length > 0 ? meta : undefined;
 }
 
 /**

@@ -8,7 +8,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { callLlm, type LlmCallOptions, type LlmContentPart, type LlmUsage } from '@adaptive/shared/llm';
+import { callLlm, responseMetaFromLlmResult, type LlmCallOptions, type LlmContentPart, type LlmUsage } from '@adaptive/shared/llm';
 import { renderCoursePrompt } from '@adaptive/shared/course';
 import { PROMPTS_DIR } from './paths';
 import { hashText } from './eval/tasks/shared';
@@ -28,6 +28,11 @@ export interface SlideClassification {
   reason: string;
   /** Undefined only if OpenRouter returned no usage object for the call. */
   usage?: LlmUsage;
+  /** The model and host OpenRouter reports actually served this classification call. */
+  servedModel?: string;
+  servedProvider?: string;
+  /** This call's response facts with no column of their own; see `responseMetaFromLlmResult`. */
+  responseMeta?: Record<string, unknown>;
 }
 
 function validateClassificationShape(
@@ -95,5 +100,12 @@ export async function classifySlideContent(params: ClassifySlideContentParams): 
     messages: [{ role: 'user', content }],
   });
   const { teachesLanguage, reason } = parseSlideClassification(result.text);
-  return { teachesLanguage, reason, usage: result.usage };
+  return {
+    teachesLanguage,
+    reason,
+    usage: result.usage,
+    servedModel: result.servedModel,
+    servedProvider: result.servedProvider,
+    responseMeta: responseMetaFromLlmResult(result),
+  };
 }

@@ -99,6 +99,19 @@ export interface EvalResultRow {
   served_provider: string | null;
   is_byok: boolean | null;
   error: 'parse' | 'api' | 'empty' | null;
+  /** OpenRouter response facts with no column of their own: response id, created, each choice's
+   * finish_reason/native_finish_reason, and the usage sub-fields parseUsage doesn't map (cached
+   * tokens, upstream cost breakdown). Never contains message content. One shape per task: the
+   * primary call's fields at the top level; a transcription row whose slide went through
+   * --exclusion-pass adds a `classifier` key holding the same fields for the classifier call plus
+   * its served_model/served_provider (the row's own served_model/served_provider columns describe
+   * the transcription call only), so a transcription row is one of top-level-only (no exclusion
+   * pass), top-level-plus-classifier (both calls ran), or classifier-only (the classifier dropped
+   * the slide, so no transcription call was made). For a grouped audit call this is the whole
+   * call's response, written identically on every row in the group. Unlike the per-row token
+   * columns, which are that group's split, this is not divisible and must not be summed across
+   * rows. Null when the call that would have produced it errored. */
+  response_meta: Record<string, unknown> | null;
   created_at: string;
 }
 
