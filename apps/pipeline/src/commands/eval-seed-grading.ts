@@ -17,7 +17,7 @@ import { join } from 'path';
 import { loadEnv } from '../lib/env';
 import { createScriptSupabase } from '../lib/db-queries';
 import { createSupabaseEvalStore, type EvalItemRow, type EvalStore } from '../lib/eval/db';
-import { GRADING_LABEL_CLASSES, type GradingLabelClass } from '../lib/eval/set-builder';
+import { GRADING_LABEL_CLASSES, seededLabelClass, type GradingLabelClass } from '../lib/eval/set-builder';
 import {
   computeDeterministicAnswer,
   MODEL_SEEDED_LABEL_CLASSES,
@@ -86,7 +86,7 @@ function groupByQuestion(items: EvalItemRow[]): QuestionGroup[] {
       };
       groups.set(questionId, group);
     }
-    group.items.set(p.label_class as GradingLabelClass, item);
+    group.items.set(seededLabelClass(item) as GradingLabelClass, item);
   }
   return [...groups.values()];
 }

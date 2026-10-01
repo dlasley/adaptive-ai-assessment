@@ -10,7 +10,7 @@ import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { createLogger } from '../../logger';
 import { planInterleavedCalls, buildGradingRunSummary, GRADING_PASS_SCORE_THRESHOLD, type GradingItemOutcome, type GradingReference, type GradingRunSummary } from '../runner';
 import { withRateLimitRetry } from '../run-loop';
-import type { GradingLabelClass } from '../set-builder';
+import { seededLabelClass, type GradingLabelClass } from '../set-builder';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
 import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, hashText, resolveEffectiveSamplingSettings } from './shared';
 import { variantKey, type EvalTaskDefinition } from './types';
@@ -37,7 +37,7 @@ function gradingOutcomeFromRow(result: EvalResultRow, item: EvalItemRow): Gradin
   const p = item.payload;
   return {
     itemId: item.id,
-    labelClass: p.label_class as GradingLabelClass,
+    labelClass: seededLabelClass(item) as GradingLabelClass,
     difficulty: String(p.difficulty),
     reference: gradingReferenceFromItem(item),
     output: (result.output as { isCorrect: boolean; score: number } | null) ?? undefined,

@@ -8,6 +8,7 @@
 import { createHash } from 'crypto';
 import { stratifiedSample, mulberry32, shuffle } from './sampling';
 import { loadUnitMaterials, toHeadingSlideForm, type MaterialsUnit, type HeadingRef } from '../learning-materials';
+import type { EvalItemRow } from './db';
 
 /** sha256 (16 hex) — same convention as questions-audit.ts's prompt hashing, applied here to the
  * frozen inputs an eval_sets row depends on (unit markdown content, units row). A later mismatch
@@ -68,12 +69,23 @@ export interface BuildAuditItemsOptions {
 export interface BuiltEvalItem {
   itemKey: string;
   payload: Record<string, unknown>;
+  /** The design-time label this item was built to carry (`eval_items.seeded_class`): set for
+   * grading items, where it mirrors `payload.label_class`. Undefined for a task that doesn't seed
+   * one yet (audit, mapping, transcription). */
+  seededClass?: string;
   /** Set only for a task whose reference is deterministic and known at creation time (mapping) —
    * audit and grading items start with no reference and are reviewed later. */
   reference?: Record<string, unknown>;
   referenceStatus?: 'pending' | 'approved' | 'rejected';
   reviewedBy?: string;
   reviewedAt?: string;
+}
+
+/** Reads a grading item's seeded label class, preferring the `seeded_class` column and falling
+ * back to `payload.label_class` for a row written before the column existed. The one place every
+ * reader of the design-time label goes through. */
+export function seededLabelClass(item: Pick<EvalItemRow, 'seeded_class' | 'payload'>): string | undefined {
+  return item.seeded_class ?? (item.payload.label_class as string | undefined);
 }
 
 export interface BuildItemsResult {
@@ -236,6 +248,7 @@ export function buildGradingItems(questions: GradingSourceQuestion[], opts: Buil
           label_class: labelClass,
           submitted_answer: '',
         },
+        seededClass: labelClass,
       });
     }
   }

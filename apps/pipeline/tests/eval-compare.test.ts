@@ -24,6 +24,7 @@ function makeItem(id: string, payload: Record<string, unknown>, reference: Recor
     set_id: 'set-1',
     item_key: id,
     payload,
+    seeded_class: null,
     reference,
     reference_status: reference ? 'approved' : 'pending',
     reviewed_by: reference ? 'jsmith' : null,

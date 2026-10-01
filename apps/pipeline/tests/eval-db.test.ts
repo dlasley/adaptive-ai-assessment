@@ -137,6 +137,20 @@ describe('createSupabaseEvalStore', () => {
     expect(listed.map((i) => i.item_key).sort()).toEqual(['q-1:correct', 'q-1:wrong']);
   });
 
+  it('writes seeded_class through insertItems', async () => {
+    const { supabase } = makeFakeEvalSupabase();
+    const store = createSupabaseEvalStore(supabase);
+    const set = await store.insertSet({ task: 'grading', source: 'batch-1' });
+
+    const [inserted] = await store.insertItems([
+      { set_id: set.id, item_key: 'q-1:correct', payload: { label_class: 'correct' }, seeded_class: 'correct' },
+    ]);
+    expect(inserted.seeded_class).toBe('correct');
+
+    const [listed] = await store.listItems(set.id);
+    expect(listed.seeded_class).toBe('correct');
+  });
+
   it('returns an empty array from insertItems for an empty input, without touching the table', async () => {
     const { supabase, tables } = makeFakeEvalSupabase();
     const store = createSupabaseEvalStore(supabase);

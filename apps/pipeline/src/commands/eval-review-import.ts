@@ -29,7 +29,7 @@ import {
   type AuditReferenceRow, type GradingReferenceRow, type ValidationError,
 } from '../lib/eval/review-import';
 import { validateTranscriptionReferenceFiles, type TranscriptionReferenceRow } from '../lib/eval/transcription-review';
-import { POLICY_LABEL_CLASSES, type GradingLabelClass } from '../lib/eval/set-builder';
+import { POLICY_LABEL_CLASSES, seededLabelClass, type GradingLabelClass } from '../lib/eval/set-builder';
 import { defineCli } from '../lib/options/define-cli';
 import { dbTargetFlags, loggingFlags } from '../lib/options/groups';
 import { createLogger, levelFromFlags, setLogLevel } from '../lib/logger';
@@ -167,7 +167,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
 
   if (options.policyLabels) {
     for (const item of items) {
-      if (!(POLICY_LABEL_CLASSES as readonly string[]).includes(item.payload.label_class as GradingLabelClass)) continue;
+      if (!(POLICY_LABEL_CLASSES as readonly string[]).includes(seededLabelClass(item) as GradingLabelClass)) continue;
       if (item.reference_status === 'approved' && !options.overwrite) {
         skippedApproved.push(item.id);
         continue;

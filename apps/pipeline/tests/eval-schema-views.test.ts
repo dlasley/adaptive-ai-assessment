@@ -35,4 +35,20 @@ describe('supabase/schema.sql declares the evaluation framework cross-cutting vi
     expect(viewBody).toContain('eval_normalize_provider(res.served_provider, false)');
     expect(viewBody).toContain('eval_normalize_provider(r.provider_pin, true)');
   });
+
+  it('eval_items declares seeded_class', () => {
+    const tableStart = schema.indexOf('CREATE TABLE eval_items');
+    expect(tableStart).toBeGreaterThan(-1);
+    const tableEnd = schema.indexOf('CREATE INDEX idx_eval_items_set');
+    expect(tableEnd).toBeGreaterThan(tableStart);
+    expect(schema.slice(tableStart, tableEnd)).toMatch(/seeded_class\s+TEXT/);
+  });
+
+  it('eval_item_consensus exposes seeded_class', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_item_consensus');
+    expect(viewStart).toBeGreaterThan(-1);
+    const viewEnd = schema.indexOf(';', viewStart);
+    expect(viewEnd).toBeGreaterThan(viewStart);
+    expect(schema.slice(viewStart, viewEnd)).toContain('ei.seeded_class');
+  });
 });

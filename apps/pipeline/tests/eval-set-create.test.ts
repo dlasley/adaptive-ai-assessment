@@ -214,7 +214,7 @@ describe('eval-set-create main() --task transcription --write-db', () => {
       },
       async insertItems(rows) {
         insertItemsCalls.push(rows);
-        return rows.map((r, i) => ({ id: `item-${i + 1}`, reference: null, reference_status: 'pending', reviewed_by: null, reviewed_at: null, notes: null, created_at: '', updated_at: '', ...r }));
+        return rows.map((r, i) => ({ id: `item-${i + 1}`, seeded_class: null, reference: null, reference_status: 'pending', reviewed_by: null, reviewed_at: null, notes: null, created_at: '', updated_at: '', ...r }));
       },
     };
 

@@ -13,6 +13,7 @@ function makeItem(overrides: Partial<EvalItemRow> = {}): EvalItemRow {
     set_id: 'set-1',
     item_key: 'Unit 1:1',
     payload: { pdf_name: 'Unit 1', slide: 1, category: 'text', text_layer: '', production_flagged: false },
+    seeded_class: null,
     reference: null,
     reference_status: 'pending',
     reviewed_by: null,

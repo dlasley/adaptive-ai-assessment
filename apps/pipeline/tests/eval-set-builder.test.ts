@@ -197,6 +197,12 @@ describe('buildGradingItems', () => {
     }
   });
 
+  it('sets seededClass to the same label class written into payload.label_class, on every item', () => {
+    const items = buildGradingItems([makeGradingQuestion()], { perQuestion: GRADING_LABEL_CLASSES.length });
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) expect(item.seededClass).toBe(item.payload.label_class);
+  });
+
   it('takes only the first perQuestion label classes when fewer are requested', () => {
     const items = buildGradingItems([makeGradingQuestion()], { perQuestion: 2 });
     expect(items.map((i) => i.payload.label_class)).toEqual([GRADING_LABEL_CLASSES[0], GRADING_LABEL_CLASSES[1]]);

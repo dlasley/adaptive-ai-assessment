@@ -296,7 +296,7 @@ async function runGradingSetCreate(options: Options, supabase: ReturnType<typeof
     inputs_hash: inputsHash,
     label: options.label,
   });
-  await store.insertItems(items.map((i) => ({ set_id: setRow.id, item_key: i.itemKey, payload: i.payload })));
+  await store.insertItems(items.map((i) => ({ set_id: setRow.id, item_key: i.itemKey, payload: i.payload, seeded_class: i.seededClass ?? null })));
 
   console.log(`\nCreated eval set ${setRow.id} (${items.length} items). Every item is reference_status 'pending' — run eval-seed-grading, then approve in the Supabase table editor.`);
 }

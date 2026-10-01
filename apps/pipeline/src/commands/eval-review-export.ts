@@ -24,7 +24,7 @@ import { join } from 'path';
 import { loadEnv } from '../lib/env';
 import { createScriptSupabase } from '../lib/db-queries';
 import { createSupabaseEvalStore, type EvalStore } from '../lib/eval/db';
-import { POLICY_LABEL_CLASSES, type GradingLabelClass } from '../lib/eval/set-builder';
+import { POLICY_LABEL_CLASSES, seededLabelClass, type GradingLabelClass } from '../lib/eval/set-builder';
 import { AUDIT_COLUMNS, GRADING_COLUMNS, buildAuditReferenceRows, buildGradingReferenceRows, type ReferenceRow } from '../lib/eval/review-export';
 import { writeReferenceWorkbook, type ReferenceColumn } from '../lib/eval/workbook';
 import { writeCsv } from '../lib/eval/csv';
@@ -168,7 +168,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
     // The app's fuzzy-match tier already accepts these by policy (see
     // `eval-review-import --policy-labels`), so a reviewer has nothing to judge on them.
     const before = items.length;
-    items = items.filter((i) => !(POLICY_LABEL_CLASSES as readonly string[]).includes(i.payload.label_class as GradingLabelClass));
+    items = items.filter((i) => !(POLICY_LABEL_CLASSES as readonly string[]).includes(seededLabelClass(i) as GradingLabelClass));
     if (before !== items.length) {
       console.log(`Excluding ${before - items.length} policy-labelled item(s) (typo/missing_accent) — pass --all-classes to include them.`);
     }

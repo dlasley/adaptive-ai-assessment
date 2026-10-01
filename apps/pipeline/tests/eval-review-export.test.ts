@@ -16,6 +16,7 @@ function makeItem(id: string, payload: Record<string, unknown>): EvalItemRow {
     set_id: 'set-1',
     item_key: id,
     payload,
+    seeded_class: null,
     reference: null,
     reference_status: 'pending',
     reviewed_by: null,

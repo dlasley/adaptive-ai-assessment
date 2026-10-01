@@ -506,6 +506,7 @@ CREATE TABLE eval_items (
   set_id        UUID NOT NULL REFERENCES eval_sets(id) ON DELETE CASCADE,
   item_key      TEXT NOT NULL,                     -- stable within a set, e.g. a question id or slide ref
   payload       JSONB NOT NULL,                    -- frozen input snapshot the item was sampled with
+  seeded_class  TEXT,                               -- design-time label the item was constructed to carry; never a reviewer verdict
   reference     JSONB,                              -- reviewer-assigned labels, null until reviewed
   reference_status TEXT NOT NULL DEFAULT 'pending' CHECK (reference_status IN ('pending', 'approved', 'rejected')),
   reviewed_by   TEXT,
@@ -594,6 +595,7 @@ COMMENT ON COLUMN eval_sets.inputs_hash IS 'Hash of the frozen inputs the items 
 COMMENT ON TABLE eval_items IS 'One item in an eval_sets sample: a frozen input snapshot (payload) plus an optional reviewer-assigned reference label. reference_status tracks review state independently of whether reference is populated.';
 COMMENT ON COLUMN eval_items.item_key IS 'Stable identifier within its set (e.g. a question id or slide reference) — unique per set, not globally.';
 COMMENT ON COLUMN eval_items.payload IS 'The frozen input snapshot this item was sampled with: question fields, slide reference, answer, etc., depending on task.';
+COMMENT ON COLUMN eval_items.seeded_class IS 'A design-time label: the class this item was constructed to carry when its set was built (grading: correct, typo, missing_accent, partially_correct, wrong, valid_paraphrase, and so on from GradingLabelClass; audit, once seeded: planted defects). Never a reviewer verdict; reference and reference_status remain the reviewed truth. Nullable, no CHECK constraint: the vocabulary is per task and will grow.';
 COMMENT ON COLUMN eval_items.reference IS 'Reviewer-assigned labels for this item. Null until a reviewer labels it, regardless of reference_status.';
 
 COMMENT ON TABLE eval_runs IS 'One variant, one execution: the model and settings under test, run against one eval_sets sample. summary holds the aggregate metrics computed once every item in the set has an eval_results row.';
@@ -1016,7 +1018,8 @@ SELECT
   (ei.reference_status = 'approved')                AS has_approved_reference,
   t.run_count,
   t.verdict_count,
-  round(m.majority_count::numeric / t.run_count, 4) AS majority_share
+  round(m.majority_count::numeric / t.run_count, 4) AS majority_share,
+  ei.seeded_class
 FROM item_totals t
 JOIN item_majority m ON m.item_id = t.item_id
 JOIN eval_items ei ON ei.id = t.item_id
@@ -1230,6 +1233,7 @@ COMMENT ON VIEW eval_family_history IS 'eval_run_model_stats reordered by family
 COMMENT ON VIEW eval_item_consensus IS 'One row per item with at least two completed, non-error runs: how much a task''s variants agree on it, for ranking the human-review queue by disagreement. The verdict compared per result is task-specific: grading is output->>''isCorrect''; audit is the six gate-criteria booleans together; mapping is the sorted, de-duplicated set of heading strings returned; transcription is the no-content-marker decision paired with the score rounded to one decimal place (a coarse band, not the raw continuous score). Repeat runs of the same variant count once each, so a repeat that flips its own verdict is itself disagreement, not noise to average away. majority_share is the largest single-verdict group''s share of run_count; low values are the items most worth a reviewer''s attention. Differs from the grading_item_consensus dataset in .private/eval/scripts/dashboard-snapshot.sql in reporting majority_share (1 minus disagreement) rather than disagreement directly, and in covering every task instead of only grading.';
 COMMENT ON COLUMN eval_item_consensus.unit_id IS 'From the owning eval_sets row, not eval_items itself, so a reviewer can find the item''s source unit without a second lookup.';
 COMMENT ON COLUMN eval_item_consensus.majority_share IS 'The largest single-verdict group''s run count divided by run_count. 1.0 means every run agreed; lower means more disagreement. For a two-verdict task (grading) this equals 1 minus the dashboard snapshot''s disagreement score.';
+COMMENT ON COLUMN eval_item_consensus.seeded_class IS 'Copied from eval_items.seeded_class, so the review worklist can be filtered by design class without a join. Null for an item built before the column existed or for a task that does not seed one.';
 
 COMMENT ON VIEW eval_run_behaviour IS 'One row per completed run, computed from eval_results rather than the run''s own summary, so it stays correct for a run whose summary predates a rescore. Ranks a run on what it measurably did with no reference label required, which is the state audit and grading are in until their items are reviewed. task_behaviour is task-specific: audit is each of the six gate criteria''s own flag rate (the share of results where that criterion read false); grading is share_marked_correct; mapping is mean_headings_per_topic and unresolved_count (both over every result, from deterministic_checks); transcription is no_content_marker_rate and mean_coverage. Null for generation/validation, which have no runner. metric_status explains a null primary metric the same way it does on eval_run_scorecard, but this view does not read primary_metric itself.';
 COMMENT ON COLUMN eval_run_behaviour.parse_failure_rate IS 'Results with error = ''parse'' divided by result_count, counting every result rather than only ones with output, the same denominator eval-run''s own summary uses.';

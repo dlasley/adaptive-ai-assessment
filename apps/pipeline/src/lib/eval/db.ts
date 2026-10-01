@@ -30,6 +30,10 @@ export interface EvalItemRow {
   set_id: string;
   item_key: string;
   payload: Record<string, unknown>;
+  /** A design-time label assigned when the item was constructed (e.g. a grading label class),
+   * never a reviewer verdict. Null for an item built before this column existed; readers fall back
+   * to `payload.label_class` through `seededLabelClass()` in `set-builder.ts`. */
+  seeded_class: string | null;
   reference: Record<string, unknown> | null;
   reference_status: 'pending' | 'approved' | 'rejected';
   reviewed_by: string | null;
@@ -40,7 +44,7 @@ export interface EvalItemRow {
 }
 
 export type NewEvalItemRow = Pick<EvalItemRow, 'set_id' | 'item_key' | 'payload'> &
-  Partial<Pick<EvalItemRow, 'reference' | 'reference_status' | 'reviewed_by' | 'reviewed_at' | 'notes'>>;
+  Partial<Pick<EvalItemRow, 'seeded_class' | 'reference' | 'reference_status' | 'reviewed_by' | 'reviewed_at' | 'notes'>>;
 
 export interface EvalRunRow {
   id: string;

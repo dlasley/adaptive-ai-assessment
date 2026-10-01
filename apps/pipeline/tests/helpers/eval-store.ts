@@ -113,6 +113,7 @@ export function makeEvalItemRow(overrides: Partial<EvalItemRow> = {}): EvalItemR
     set_id: 'set-1',
     item_key: 'item-1',
     payload: {},
+    seeded_class: null,
     reference: null,
     reference_status: 'pending',
     reviewed_by: null,
