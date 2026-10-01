@@ -38,6 +38,12 @@ function significantWords(phrase: string): string[] {
   return (phrase.toLowerCase().match(/[a-z]+/g) ?? []).map((w) => w.replace(/s$/, ''));
 }
 
+/** Splits a markdown bullet list into its individual items (each starting a new top-level `- `),
+ * trimmed of surrounding whitespace. */
+function bulletItems(markdown: string): string[] {
+  return markdown.split(/\n(?=- )/).map((s) => s.trim()).filter(Boolean);
+}
+
 describe('eval-judge-transcription.md conventions track content-transcribe-pdf-slide.md', () => {
   it('restates every exclusion category the transcription prompt mandates', () => {
     const conventionWords = new Set(significantWords(conventions));
@@ -48,10 +54,12 @@ describe('eval-judge-transcription.md conventions track content-transcribe-pdf-s
     }
   });
 
-  it('keeps the exclusions stated as omissions, not as required content', () => {
-    expect(conventions).toContain('The omission of');
-    expect(conventions).toContain('is not');
-    expect(conventions).toContain('missing content');
+  it('keeps the exclusion bullet stated as an omission, not as required content', () => {
+    const exclusionBullet = bulletItems(conventions).find((b) => /\bomission\b|leaves these out/i.test(b));
+    expect(exclusionBullet, 'expected a bullet describing the exclusions as an omission').toBeDefined();
+    // Collapse the markdown's own line wrapping so "not" and "missing content" landing on
+    // different source lines still reads as one phrase.
+    expect(exclusionBullet!.replace(/\s+/g, ' ')).toMatch(/not missing content/i);
   });
 
   it('restates the Exercices/Réponses heading split literally', () => {

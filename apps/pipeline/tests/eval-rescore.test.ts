@@ -118,7 +118,7 @@ describe('eval-rescore round trip', () => {
       reference: { isCorrect: true, borderline: false, reason: null, keyCorrect: true, keyNote: null },
       reference_status: 'approved',
     });
-    const model: EvalModelCurrentRow = { id: 'model-1', family_id: 'family-1', slug: 'openai/gpt-4.1-nano', effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [] };
+    const model: EvalModelCurrentRow = { id: 'model-1', family_id: 'family-1', slug: 'openai/gpt-4.1-nano', effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [], reasoning: null };
     const { store, runs } = makeFakeStore({ set, items: [item], model });
 
     const stubResult: LlmResult = {
@@ -154,7 +154,7 @@ describe('eval-rescore round trip', () => {
       payload: { slide: 1, text_layer: 'Bonjour tout le monde', category: 'text' },
       // reference_status defaults to 'pending' (makeEvalItemRow) — not yet reviewed at run time.
     });
-    const model: EvalModelCurrentRow = { id: 'model-1', family_id: 'family-1', slug: 'google/gemini-2.5-flash', effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [] };
+    const model: EvalModelCurrentRow = { id: 'model-1', family_id: 'family-1', slug: 'google/gemini-2.5-flash', effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [], reasoning: null };
     const { store, runs, results } = makeFakeStore({ set, items: [item], model });
 
     const stubResult: LlmResult = {

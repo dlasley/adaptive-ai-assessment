@@ -34,6 +34,7 @@ const MODEL: EvalModelCurrentRow = {
   price_prompt_usd_per_m: '0.25',
   price_completion_usd_per_m: '1.5',
   hosts: [],
+  reasoning: null,
 };
 
 function jsonResult(verdict: JudgeVerdict, costUsd = 0.001): LlmResult {

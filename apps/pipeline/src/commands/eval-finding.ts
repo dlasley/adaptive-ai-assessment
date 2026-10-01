@@ -11,9 +11,10 @@
  * of the cited runs. `--supersedes <finding_id>` names an earlier finding this one revises, since
  * `eval_findings` is append-only and a changed mind is a new row, never an edit.
  *
- * `decided_by` names who this finding is attributed to: the explicit `--decided-by` flag, else the
+ * `decided_by` names the operator who ran this command: the explicit `--decided-by` flag, else the
  * `EVAL_DECIDED_BY` environment variable. `--write-db` refuses without either, so a written row is
- * never silently attributed to a placeholder.
+ * never silently attributed to a placeholder. It is not necessarily who made the underlying
+ * observation; `--statement`/`--evidence` is where that origin is recorded.
  *
  * Dry run by default, printing the row it would insert.
  */
@@ -49,7 +50,7 @@ export const cli = defineCli(
     runs: { type: 'string', help: 'Comma-separated eval_runs ids cited as evidence' },
     items: { type: 'string', help: 'Comma-separated eval_items ids cited as evidence, each belonging to one of the cited runs' },
     supersedes: { type: 'string', help: 'eval_findings id this observation supersedes' },
-    'decided-by': { type: 'string', help: 'Who this finding is attributed to; falls back to EVAL_DECIDED_BY, required with --write-db' },
+    'decided-by': { type: 'string', help: 'The operator running this command, recorded on the row; falls back to EVAL_DECIDED_BY, required with --write-db' },
   },
   {
     name: 'eval-finding',

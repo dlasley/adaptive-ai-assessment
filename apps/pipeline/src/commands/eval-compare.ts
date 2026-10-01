@@ -7,12 +7,20 @@
  * `eval_runs.summary.compare` with its part of the result. This is evidence, not a decision:
  * `--write-db` alone never touches `eval_findings` or an experiment's status — see `--decide` below.
  *
- * The tolerance a verdict is judged against is the task's own default (`tolerances.ts`) unless
- * every run in `--runs`/`--baseline` cites the same experiment and that experiment's
- * `decision_rule` carries a numeric override (`tolerance`, `precisionTolerance`, `maxSlideDrop`);
- * runs citing different experiments are refused outright, since there would be no single rule to
- * resolve. The report states which rule applied. An unrecognized `decision_rule` key is ignored
- * and logged as a warning rather than silently applied or refused.
+ * The tolerance a verdict is judged against comes from the candidate's own experiment: with
+ * `--candidate`, that run's `experiment_id`; otherwise, the one experiment every candidate in
+ * `--runs` shares (the baseline's experiment is never consulted, since a baseline run is routinely
+ * reused across many later experiments). Candidates citing more than one experiment with no
+ * `--candidate` to disambiguate are refused outright, since there would be no single rule to
+ * resolve. Falls back to the task's own default (`tolerances.ts`) when the resolved experiment has
+ * no numeric override, or there is no experiment at all. The report states which rule applied and
+ * names the experiment it came from. An unrecognized `decision_rule` key is ignored and logged as a
+ * warning rather than silently applied or refused.
+ *
+ * The report also states, per candidate against the baseline, whether they share `prompt_hash` and
+ * whether their `provider_pin` values agree (normalized the same way `providerPinMismatches`
+ * compares a pin against what actually served it), since both are confounds beyond the model
+ * itself; a differing one prints a warning line so a reader sees it before trusting the verdict.
  *
  * When the eval set has no approved reference, there is no accuracy verdict to compute — the command
  * falls back to a reference-free report instead of exiting: item-level agreement between runs, per-
@@ -39,9 +47,11 @@
  * unless `--supersedes <finding_id>` names the earlier one — `eval_findings` is append-only, so a
  * changed mind is a new row pointing at the old one, never an edit.
  *
- * `--decide` additionally requires attribution: `decided_by` comes from the explicit `--decided-by`
- * flag, else the `EVAL_DECIDED_BY` environment variable. `--decide` refuses without either, so a
- * recorded decision is never silently attributed to a placeholder.
+ * `--decide` additionally requires attribution: `decided_by` names the operator who ran this
+ * command, from the explicit `--decided-by` flag, else the `EVAL_DECIDED_BY` environment variable.
+ * `--decide` refuses without either, so a recorded decision is never silently attributed to a
+ * placeholder. It is not necessarily who made the underlying call; `--statement` is where a
+ * ruling's actual origin is recorded.
  */
 
 import { writeFileSync } from 'fs';
@@ -91,7 +101,7 @@ import {
   type TranscriptionNoiseFloorEntry,
   type TranscriptionReferenceFreeVariantComparison,
 } from '../lib/eval/compare/transcription';
-import { runCostLatency, providerPinMismatches } from '../lib/eval/compare/shared';
+import { runCostLatency, providerPinMismatches, pinsAgree, servedProviders } from '../lib/eval/compare/shared';
 import { pairedComparison, pairedMappingComparison, mappingNoiseFloor, nonInferiorityVerdict, meanAndCi95 } from '../lib/eval/scoring';
 import { resolveTolerance, describeToleranceSource } from '../lib/eval/tolerances';
 import type { AuditGateCriterion, GradingReference } from '../lib/eval/runner';
@@ -119,6 +129,61 @@ function warnProviderPinMismatches(runs: EvalRunRow[], resultsByRunId: Map<strin
   }
 }
 
+/**
+ * How a baseline and a candidate compare on serving host. When both runs carry a `provider_pin`,
+ * the pins are compared. When either is unpinned, the pins say nothing about who served the calls,
+ * so the hosts recorded on the results (`served_provider`) are compared instead, and their absence
+ * is reported as such rather than as agreement.
+ */
+function describeHostConfound(
+  baselineRun: EvalRunRow,
+  candidate: EvalRunRow,
+  resultsByRunId: Map<string, EvalResultRow[]>,
+): { summary: string; warning: string | undefined } {
+  if (baselineRun.provider_pin !== null && candidate.provider_pin !== null) {
+    if (pinsAgree(baselineRun.provider_pin, candidate.provider_pin)) return { summary: 'provider_pin agrees', warning: undefined };
+    return {
+      summary: 'provider_pin differs',
+      warning: `Warning: provider_pin differs (baseline '${baselineRun.provider_pin}', candidate '${candidate.provider_pin}'), a confound beyond the model itself.`,
+    };
+  }
+  const unpinned = baselineRun.provider_pin === null && candidate.provider_pin === null ? 'both unpinned' : baselineRun.provider_pin === null ? 'baseline unpinned' : 'candidate unpinned';
+  const baselineHosts = servedProviders(resultsByRunId.get(baselineRun.id) ?? []);
+  const candidateHosts = servedProviders(resultsByRunId.get(candidate.id) ?? []);
+  if (baselineHosts.length === 0 || candidateHosts.length === 0) {
+    return {
+      summary: `${unpinned}; served hosts not recorded`,
+      warning: 'Warning: at least one run is unpinned and its results carry no served_provider, so which host served it is unknown, a confound beyond the model itself.',
+    };
+  }
+  const same = baselineHosts.join(',') === candidateHosts.join(',');
+  const summary = `${unpinned}; served by ${baselineHosts.join('+')} vs. ${candidateHosts.join('+')}`;
+  return {
+    summary,
+    warning: same ? undefined : `Warning: served hosts differ (baseline ${baselineHosts.join('+')}, candidate ${candidateHosts.join('+')}), a confound beyond the model itself.`,
+  };
+}
+
+/**
+ * One line per candidate stating whether it shares `prompt_hash` with the baseline and how the two
+ * compare on serving host (see `describeHostConfound`), plus a warning line for whichever differs
+ * or is unknown. Both are confounds beyond the model itself, and a reader of the verdict needs to
+ * see them regardless of which task produced the report above.
+ */
+function buildConfoundLines(baselineRun: EvalRunRow, candidateRuns: EvalRunRow[], resultsByRunId: Map<string, EvalResultRow[]>): string[] {
+  const lines: string[] = ['', '## Confounds (baseline vs. each candidate)', ''];
+  for (const candidate of candidateRuns) {
+    const sameHash = baselineRun.prompt_hash === candidate.prompt_hash;
+    const host = describeHostConfound(baselineRun, candidate, resultsByRunId);
+    lines.push(`- ${candidate.model} (${candidate.id}) vs. baseline (${baselineRun.id}): prompt_hash ${sameHash ? 'matches' : 'differs'}; ${host.summary}.`);
+    if (!sameHash) {
+      lines.push(`  Warning: prompt_hash differs (baseline '${baselineRun.prompt_hash ?? 'none'}', candidate '${candidate.prompt_hash ?? 'none'}'), so the two ran against different prompt text, a confound beyond the model itself.`);
+    }
+    if (host.warning) lines.push(`  ${host.warning}`);
+  }
+  return lines;
+}
+
 const DECIDE_KINDS = ['adopt', 'reject', 'defer'] as const;
 type DecideKind = (typeof DECIDE_KINDS)[number];
 
@@ -140,9 +205,9 @@ export const cli = defineCli(
       help: "Records this comparison's decision as an eval_findings row and moves the candidate's experiment to decided (adopt/reject) or deferred (defer). Requires --write-db and --statement; 'adopt' additionally requires a non-inferior verdict against a reference.",
     },
     statement: { type: 'string', help: 'One-line human-readable statement for the eval_findings row (required with --decide)' },
-    candidate: { type: 'string', help: 'Which of --runs the decision is about (required with --decide when --runs names more than one candidate)' },
+    candidate: { type: 'string', help: "Which of --runs the comparison's decision_rule (and, with --decide, the decision) is about; required with --decide, or with multiple candidates citing different experiments, when --runs names more than one" },
     supersedes: { type: 'string', help: 'eval_findings id this decision supersedes — required to re-decide a baseline/candidate pair an experiment already has a finding for' },
-    'decided-by': { type: 'string', help: 'Who this decision is attributed to; falls back to EVAL_DECIDED_BY, required with --decide' },
+    'decided-by': { type: 'string', help: 'The operator running this command, recorded on the row; falls back to EVAL_DECIDED_BY, required with --decide' },
   },
   {
     name: 'eval-compare',
@@ -383,24 +448,40 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
     process.exit(1);
   }
 
-  // Every compared run must cite the same experiment or none: a tolerance override is a property
-  // of one experiment, so comparing runs from two different ones has no single rule to resolve.
-  const experimentIds = new Set(runs.map((r) => r.experiment_id).filter((id): id is string => id !== null));
-  if (experimentIds.size > 1) {
-    logger.error(`Runs in --runs/--baseline cite different experiments (${[...experimentIds].join(', ')}); every compared run must share one experiment or none.`);
+  // The decision_rule a verdict is judged against comes from the candidate's own experiment, never
+  // the baseline's: a baseline run is routinely reused across many later experiments, so its own
+  // experiment_id (if any) carries no rule relevant to this comparison. With --candidate (or
+  // --decide naming one candidate), that run's experiment; otherwise, the one experiment every
+  // candidate in --runs shares. Candidates spanning more than one experiment with nothing to
+  // disambiguate are refused, since there would be no single rule to resolve.
+  let ruleExperimentId: string | undefined;
+  if (decideCandidateRun) {
+    ruleExperimentId = decideCandidateRun.experiment_id ?? undefined;
+  } else if (options.candidate) {
+    const found = candidateRuns.find((r) => r.id === options.candidate);
+    if (!found) {
+      logger.error(`--candidate ${options.candidate} is not among --runs' candidates (${candidateRuns.map((r) => r.id).join(', ')}).`);
+      process.exit(1);
+    }
+    ruleExperimentId = found.experiment_id ?? undefined;
+  } else {
+    const candidateExperimentIds = new Set(candidateRuns.map((r) => r.experiment_id).filter((id): id is string => id !== null));
+    if (candidateExperimentIds.size > 1) {
+      logger.error(`Candidate runs in --runs cite different experiments (${[...candidateExperimentIds].join(', ')}); pass --candidate to say which candidate's decision_rule applies.`);
+      process.exit(1);
+    }
+    ruleExperimentId = [...candidateExperimentIds][0];
+  }
+  const ruleExperiment = ruleExperimentId ? await store.getExperiment(ruleExperimentId) : null;
+  if (ruleExperimentId && !ruleExperiment) {
+    logger.error(`No eval_experiments row found for id ${ruleExperimentId}, cited by a candidate run.`);
     process.exit(1);
   }
-  const sharedExperimentId = experimentIds.size === 1 ? [...experimentIds][0] : undefined;
-  const sharedExperiment = sharedExperimentId ? await store.getExperiment(sharedExperimentId) : null;
-  if (sharedExperimentId && !sharedExperiment) {
-    logger.error(`No eval_experiments row found for id ${sharedExperimentId}, cited by one of --runs/--baseline.`);
-    process.exit(1);
-  }
-  const resolvedTolerance = resolveTolerance(task, sharedExperiment?.decision_rule);
+  const resolvedTolerance = resolveTolerance(task, ruleExperiment?.decision_rule);
   if (resolvedTolerance.unknownKeys.length > 0) {
-    logger.warn(`Experiment ${sharedExperiment!.slug}'s decision_rule has unrecognized key(s), ignored: ${resolvedTolerance.unknownKeys.join(', ')}.`);
+    logger.warn(`Experiment ${ruleExperiment!.slug}'s decision_rule has unrecognized key(s), ignored: ${resolvedTolerance.unknownKeys.join(', ')}.`);
   }
-  const toleranceNote = describeToleranceSource(resolvedTolerance);
+  const toleranceNote = describeToleranceSource(resolvedTolerance, ruleExperiment?.slug);
 
   const resultsByRunId = new Map<string, EvalResultRow[]>();
   for (const r of runs) {
@@ -662,7 +743,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
       });
     }
   }
-  const markdown = outcome.markdown;
+  const markdown = `${outcome.markdown}\n${buildConfoundLines(baselineRun, candidateRuns, resultsByRunId).join('\n')}`;
 
   console.log(markdown);
 

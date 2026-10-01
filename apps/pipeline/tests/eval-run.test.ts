@@ -104,14 +104,19 @@ describe('buildEffectiveCallSettings', () => {
     expect(settings).toEqual({
       temperature: 0.1,
       jsonMode: true,
-      provider: { order: ['Mistral'], allowFallbacks: false },
+      provider: { order: ['mistral'], allowFallbacks: false },
     });
   });
 
   it('lets --temperature override the audit production default', () => {
     const settings = buildEffectiveCallSettings('audit', { temperature: 0.5 });
     expect(settings.temperature).toBe(0.5);
-    expect(settings.provider).toEqual({ order: ['Mistral'], allowFallbacks: false });
+    expect(settings.provider).toEqual({ order: ['mistral'], allowFallbacks: false });
+  });
+
+  it('lowercases a hand-typed --provider value', () => {
+    const settings = buildEffectiveCallSettings('grading', { provider: 'Anthropic' });
+    expect(settings.provider).toEqual({ order: ['anthropic'], allowFallbacks: false });
   });
 
   it('lets --provider override the audit production pin', () => {

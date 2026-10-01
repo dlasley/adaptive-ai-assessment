@@ -148,11 +148,13 @@ export function resolveTolerance(task: EvalTask, decisionRule?: Record<string, u
 
 /** Names which rule a resolved tolerance applied, for a comparison report to state plainly:
  * "task default" when `decision_rule` carried no recognized override, otherwise which key(s) and
- * value(s) were overridden. */
-export function describeToleranceSource(resolved: ResolvedTolerance): string {
+ * value(s) were overridden. `experimentSlug`, when given, names the experiment the rule was
+ * resolved from (the candidate's own, never the baseline's), appended so the report states where
+ * the rule came from even when it resolved to the task default. */
+export function describeToleranceSource(resolved: ResolvedTolerance, experimentSlug?: string): string {
   const keys = Object.keys(resolved.appliedOverrides) as DecisionRuleNumericKey[];
-  if (keys.length === 0) return 'task default';
-  return `experiment override: ${keys.map((key) => `${key} ${resolved.appliedOverrides[key]}`).join(', ')}`;
+  const base = keys.length === 0 ? 'task default' : `experiment override: ${keys.map((key) => `${key} ${resolved.appliedOverrides[key]}`).join(', ')}`;
+  return experimentSlug ? `${base} (from experiment '${experimentSlug}')` : base;
 }
 
 /** Per-run budget caps (USD). A run refuses to start if its projected cost

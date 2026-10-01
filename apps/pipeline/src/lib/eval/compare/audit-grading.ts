@@ -530,8 +530,7 @@ export function buildCompareMarkdown(params: {
   generatedAt: string;
   rejectedKeys?: RejectedKeysReport;
   /** Which tolerance rule the verdicts below were judged against: `describeToleranceSource`'s
-   * output. Defaults to "task default" for a caller that hasn't resolved one, matching the
-   * behaviour before an experiment could override it. */
+   * output. Defaults to "task default" for a caller that hasn't resolved one. */
   toleranceNote?: string;
 }): string {
   const isAudit = params.task === 'audit';

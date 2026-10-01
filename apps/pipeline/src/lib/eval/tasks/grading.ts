@@ -71,7 +71,7 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome, Grad
 
   cleanupContext() {},
 
-  async runCall({ call, run, callSettings, reasoning, callLlmFn, throttleIfMistral }) {
+  async runCall({ call, run, callSettings, reasoning, callLlmFn, throttleIfMistral, samplingConstraints }) {
     const key = variantKey(call.variant);
     const outcomes: GradingItemOutcome[] = [];
     const resultRows: NewEvalResultRow[] = [];
@@ -94,8 +94,8 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome, Grad
       let usage: ResultUsage = {};
 
       // Grading never disables reasoning by default (unlike mapping/transcription), so only the
-      // temperature can need adjusting for a model MODEL_CONSTRAINTS flags.
-      const { temperature: effectiveTemperature } = resolveEffectiveSamplingSettings(call.variant.model, callSettings.temperature, reasoning, reasoning !== undefined);
+      // temperature can need adjusting for a model samplingConstraints flags.
+      const { temperature: effectiveTemperature } = resolveEffectiveSamplingSettings(samplingConstraints, callSettings.temperature, reasoning, reasoning !== undefined);
 
       try {
         const result = await withRateLimitRetry(() => callLlmFn({

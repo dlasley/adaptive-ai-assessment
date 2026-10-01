@@ -90,3 +90,21 @@ export function providerPinMismatches(run: EvalRunRow, results: EvalResultRow[])
   );
   return [...mismatches];
 }
+
+/** Whether two pinned runs' `provider_pin` values name the same host, using the same normalisation
+ * `providerPinMismatches` compares a pin against what served it. Callers handle an unpinned run
+ * separately (see `servedProviders`), since two unpinned runs may have been served by anyone. */
+export function pinsAgree(a: string, b: string): boolean {
+  return normalizePin(a) === normalizePin(b);
+}
+
+/** The distinct hosts that actually served a run's calls, normalised the way pins are and sorted,
+ * from the `served_provider` recorded on each result. Empty when no result recorded one (runs
+ * from before the column existed). */
+export function servedProviders(results: Array<Pick<EvalResultRow, 'served_provider'>>): string[] {
+  const names = new Set<string>();
+  for (const r of results) {
+    if (r.served_provider) names.add(normalizeProviderName(r.served_provider));
+  }
+  return [...names].sort();
+}

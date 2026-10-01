@@ -672,7 +672,7 @@ adopt/reject/defer decision, so it never moves an experiment's status the way `e
 numbered experiment or not relate to one at all; `--runs` and `--items` are the evidence it cites,
 each validated (a run must resolve, an item must belong to the set of one of the cited runs) before
 insert. Dry run by default, printing the row it would insert; `--write-db` inserts it with
-`decided_by: user`.
+`decided_by` naming the operator who ran the command.
 
 `eval-judge` is a reference-free alternative to `eval-compare` for the transcription task: instead of
 scoring against a checked transcript (itself seeded from production's own model output, so a run

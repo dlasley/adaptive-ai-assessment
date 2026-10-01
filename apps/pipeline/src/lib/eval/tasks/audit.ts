@@ -84,7 +84,7 @@ export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome, Audit
 
   cleanupContext() {},
 
-  async runCall({ call, context, run, callSettings, reasoning, callLlmFn, throttleIfMistral }) {
+  async runCall({ call, context, run, callSettings, reasoning, callLlmFn, throttleIfMistral, samplingConstraints }) {
     const key = variantKey(call.variant);
     const outcomes: AuditItemOutcome[] = [];
     const resultRows: NewEvalResultRow[] = [];
@@ -95,8 +95,8 @@ export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome, Audit
     await throttleIfMistral(call.variant.model);
     const startedAt = Date.now();
     // Audit never disables reasoning by default (unlike mapping/transcription), so only the
-    // temperature can need adjusting for a model MODEL_CONSTRAINTS flags.
-    const { temperature: effectiveTemperature } = resolveEffectiveSamplingSettings(call.variant.model, callSettings.temperature, reasoning, reasoning !== undefined);
+    // temperature can need adjusting for a model samplingConstraints flags.
+    const { temperature: effectiveTemperature } = resolveEffectiveSamplingSettings(samplingConstraints, callSettings.temperature, reasoning, reasoning !== undefined);
     let groupResults: MistralAuditResult[] | undefined;
     let groupError: 'api' | undefined;
     let groupErrorMessage: string | undefined;

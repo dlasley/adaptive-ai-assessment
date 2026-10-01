@@ -591,7 +591,8 @@ and `--shuffle-groups` have no effect on it. Each task defaults to production's 
 (audit: temperature 0.1, JSON mode, pinned to Mistral; grading: `GRADING_CALL_SETTINGS`; mapping and
 transcription: no temperature override, no JSON mode, no provider pin) unless
 `--temperature`/`--provider` override them, so an unlabeled baseline run reproduces what production
-actually sends. Projects each variant's cost before it starts and refuses to run a variant over
+actually sends. A `--provider` value is lowercased before it's recorded as `provider_pin` and
+`settings.provider`, so `--provider Anthropic` and `--provider anthropic` are stored identically. Projects each variant's cost before it starts and refuses to run a variant over
 `--max-cost`, including one with no listed price unless `--allow-unpriced` is given: the projection
 accounts for `--group-size` on the audit task, since a smaller group needs more calls and repeats
 more of the shared material per item; mapping always projects a single call regardless of item
@@ -621,14 +622,17 @@ snapshot per slug) and `--experiment`, if given, against `eval_experiments`; eit
 registry row or an unresolvable experiment refuses to start the whole invocation: the same style as
 the budget-cap refusal below, printing what's missing rather than running with a gap.
 
-A model `MODEL_CONSTRAINTS` (`@adaptive/shared/models`) flags as unable to accept the task's
-intended temperature or default-disabled reasoning gets both adjusted per variant before its calls
-go out: `temperature` is dropped outright for a model that requires its own fixed default, and a
-task that would otherwise send `reasoning: { enabled: false }` sends the lowest effort tier that
-still counts as enabled instead. An explicit `--reasoning` is a deliberate choice and is never
-adjusted this way; it's left to fail if the model rejects it. Each adjustment is logged once per
-variant, and the values actually sent are recorded as `settings.effectiveTemperature`/
-`settings.effectiveReasoning` alongside the intended `settings.temperature`/`settings.reasoning`.
+A model's sampling constraints, resolved once per distinct model, adjust the task's intended
+temperature or default-disabled reasoning before its calls go out: `temperature` is dropped
+outright for a model `MODEL_CONSTRAINTS` (`@adaptive/shared/models`) flags as requiring its own
+fixed default, and a task that would otherwise send `reasoning: { enabled: false }` sends an effort
+tier instead when the model's own registry row (`eval_models_current.reasoning`) says reasoning is
+mandatory, sending the lowest entry of that row's registered `efforts` list (ranked `minimal < low
+< medium < high < xhigh < max`), or `low` with a logged warning when the row has no recognized
+efforts list. An explicit `--reasoning` is a deliberate choice and is never adjusted this way; it's left to
+fail if the model rejects it. Each adjustment is logged once per variant, and the values actually
+sent are recorded as `settings.effectiveTemperature`/`settings.effectiveReasoning` alongside the
+intended `settings.temperature`/`settings.reasoning`.
 
 A resolved run stamps `experiment_id` and `model_version_id` on its `eval_runs` row, and each call's response stamps
 `served_provider` on its `eval_results` rows alongside the existing `served_model` (what OpenRouter
@@ -648,18 +652,24 @@ variant or several, with no `:r<n>` repeat suffix; that distinction lives in `re
 instead. `--label` defaults to the experiment slug when `--experiment` is given, else the task
 name, so a run is never left unlabeled; labels written before this convention may differ.
 `repeat_index` is the invocation's own repeat offset for an ad hoc run with no `--experiment`,
-restarting at 1 per invocation. With one, it is one more than the number of existing, non-failed
-runs already on that experiment for the same model, judged by prompt hash and the
-caller-controlled settings (`temperature`, `reasoning`, `provider`, `groupSize`, `shuffleSeed`,
-`exclusionPass`, `renderDpi`; the derived `effectiveTemperature`/`effectiveReasoning` don't count,
-since they follow from `MODEL_CONSTRAINTS` rather than anything asked for), plus the invocation's
-own offset. A settings key missing on a run recorded before it existed is not compared at all, so
-(for example) a `transcription` run from before `--render-dpi` existed still counts toward a new
-run's repeat regardless of dpi, rather than being permanently excluded over a value it never
-recorded. This count is resolved once per distinct model before any run in the invocation is
-inserted, so several repeats of the same model in one invocation get consecutive numbers; a
-repeat launched by hand in a later invocation continues the count instead of restarting at 1, and
-a changed setting (`--render-dpi`, a different `--temperature`, ...) starts its own count from 1.
+restarting at 1 per invocation. With one, it is one more than the number of existing runs already on
+that experiment for the same set and model, excluding `failed` and `aborted` runs (neither produced
+a usable result), judged by prompt hash and the caller-controlled settings (`temperature`,
+`reasoning`, `provider`, `groupSize`, `shuffleSeed`, `exclusionPass`, `renderDpi`; the derived
+`effectiveTemperature`/`effectiveReasoning` don't count, since they follow from the model's sampling
+constraints rather than anything asked for), plus the invocation's own offset. A settings key
+missing on a run's stored settings compares against the value that was actually in force when it
+ran, not a wildcard: `temperature` absent means no override was sent (mapping and transcription
+write no `temperature` key at all unless `--temperature` overrides it, so this is their steady
+state, not just a historical gap), `reasoning`/`shuffleSeed`/`exclusionPass` absent means `null`,
+`provider` absent means unpinned (and present values compare case-insensitively), `groupSize` absent
+means the task's own default, `renderDpi` absent means the pre-flag default of 120. This
+normalisation lives in one exported function, `normalizeRepeatIdentitySettings`, so a verification
+script can reproduce the grouping directly against stored rows. The count is resolved once per
+distinct model before any run in the invocation is inserted, so several repeats of the same model in
+one invocation get consecutive numbers; a repeat launched by hand in a later invocation continues the
+count instead of restarting at 1, and a changed setting (`--render-dpi`, a different `--temperature`,
+...) starts its own count from 1.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-run.ts --set <id> --task <audit|grading|mapping|transcription> --models <slug>[,<slug>...] [options]
@@ -719,16 +729,24 @@ verdict against a resolved tolerance, and the noise floor from any repeats of th
 among the runs given. Always writes the markdown report; dry run by default otherwise, `--write-db`
 additionally updates each run's own `eval_runs.summary.compare`.
 
-The tolerance a verdict is judged against is the task's own default (`TASK_TOLERANCES` in
-`tolerances.ts`) unless every run in `--runs`/`--baseline` cites the same `eval_experiments` row
-(`eval_runs.experiment_id`) and that experiment's `decision_rule` carries a numeric override:
-`tolerance`, `precisionTolerance` (audit's secondary precision check), or `maxSlideDrop`
-(transcription's per-slide limit), alongside a `description` string for a human reading the
-experiment record. Runs in `--runs`/`--baseline` that cite different experiments are refused
-outright: a tolerance override is a property of one experiment, so there's no single rule to
-resolve across two. A `decision_rule` key other than those four is ignored and logged as a
-warning rather than silently applied or refused. The report's "Tolerance:" line always states
-which rule applied: `task default`, or `experiment override: <key> <value>[, ...]`.
+The tolerance a verdict is judged against comes from the candidate's own `eval_experiments` row,
+never the baseline's: with `--candidate`, that run's `experiment_id`; otherwise, the one experiment
+every candidate in `--runs` shares. A baseline run is routinely reused across many later
+experiments, so its own `experiment_id` carries no rule relevant to this comparison. Candidates
+citing more than one experiment with no `--candidate` to disambiguate are refused outright, naming
+the experiments. The resolved experiment's `decision_rule` can carry a numeric override: `tolerance`,
+`precisionTolerance` (audit's secondary precision check), or `maxSlideDrop` (transcription's
+per-slide limit), alongside a `description` string for a human reading the experiment record;
+falling back to the task's own default (`TASK_TOLERANCES` in `tolerances.ts`) when the resolved
+experiment has none, or there is no experiment at all. A `decision_rule` key other than those four is
+ignored and logged as a warning rather than silently applied or refused. The report's "Tolerance:"
+line always states which rule applied and the experiment it came from: `task default`, or
+`experiment override: <key> <value>[, ...]`, each suffixed `(from experiment '<slug>')` when the
+rule came from one. The report also prints, per candidate against the baseline, whether they share
+`prompt_hash` and how they compare on serving host: when both runs are pinned, whether the pins
+agree; when either is unpinned, which hosts the results record as having served each run, or
+"served hosts not recorded" when a run carries none. A warning line follows whenever either
+differs or is unknown, since both are confounds beyond the model itself.
 
 The mapping and transcription tasks get their own report shape, since their primary metric
 (per-topic heading-set F1, or `1 - normalized edit distance` against a checked transcript, both in
@@ -790,8 +808,10 @@ compared run ids and moves the experiment to `decided` (adopt/reject) or `deferr
 `eval_findings` is append-only, a second decision citing the same baseline/candidate pair under the
 same experiment is refused unless `--supersedes <finding_id>` names the earlier one.
 
-`--decide` also requires attribution: the row's `decided_by` comes from `--decided-by <name>`, or
-else the `EVAL_DECIDED_BY` environment variable. `--decide` refuses when neither is set.
+`--decide` also requires attribution: `decided_by` names the operator who ran this command, from the
+explicit `--decided-by <name>`, or else the `EVAL_DECIDED_BY` environment variable. `--decide`
+refuses when neither is set. The column names who recorded the row, not necessarily who made the
+underlying call; `--statement` is where a ruling's actual origin is recorded.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-compare.ts --runs <id,id,...> --baseline <id> [options]
@@ -803,9 +823,9 @@ Options:
   --include-rejected-keys     Grading task: include items whose question key the reviewer marked Incorrect in the accuracy figures (excluded by default)
   --decide <kind>             adopt|reject|defer: records the decision as an eval_findings row and moves the experiment to decided (adopt/reject) or deferred (defer); requires --write-db, --statement, and attribution, and a candidate run with an experiment_id
   --statement <text>          One-line human-readable statement for the eval_findings row (required with --decide)
-  --candidate <id>            Which of --runs the decision is about (required with --decide when --runs names more than one candidate)
+  --candidate <id>            Which of --runs the comparison's decision_rule (and, with --decide, the decision) is about; required with --decide, or with multiple candidates citing different experiments, when --runs names more than one
   --supersedes <id>           eval_findings id this decision supersedes — required to re-decide a pair an experiment already has a finding for
-  --decided-by <name>         Who this decision is attributed to; falls back to EVAL_DECIDED_BY, required with --decide
+  --decided-by <name>         The operator running this command, recorded on the row; falls back to EVAL_DECIDED_BY, required with --decide
 ```
 
 Plus the shared Database target and Logging flags above.
@@ -820,9 +840,11 @@ since an observation can predate a numbered experiment or not relate to one at a
 `--items` are the evidence this observation cites: each run id must resolve, and each item id must
 belong to the set of at least one of the cited runs. `--supersedes <finding_id>` names an earlier
 finding this one revises. `--kind` accepts only `observation`; `adopt`, `reject`, and `defer` stay
-with `eval-compare --decide`. `decided_by` comes from `--decided-by <name>`, or else the
-`EVAL_DECIDED_BY` environment variable; `--write-db` refuses when neither is set. Dry run by
-default, printing the row it would insert. Never touches `eval_experiments`.
+with `eval-compare --decide`. `decided_by` names the operator who ran this command: `--decided-by
+<name>`, or else the `EVAL_DECIDED_BY` environment variable; `--write-db` refuses when neither is
+set. It is not necessarily who made the underlying observation; `--statement`/`--evidence` is
+where that origin is recorded. Dry run by default, printing the row it would insert. Never touches
+`eval_experiments`.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-finding.ts --statement "<one paragraph>" [options]
@@ -836,7 +858,7 @@ Options:
   --runs <ids>            Comma-separated eval_runs ids cited as evidence
   --items <ids>           Comma-separated eval_items ids cited as evidence, each belonging to one of the cited runs
   --supersedes <id>       eval_findings id this observation supersedes
-  --decided-by <name>     Who this finding is attributed to; falls back to EVAL_DECIDED_BY, required with --write-db
+  --decided-by <name>     The operator running this command, recorded on the row; falls back to EVAL_DECIDED_BY, required with --write-db
 ```
 
 Plus the shared Database target and Logging flags above.

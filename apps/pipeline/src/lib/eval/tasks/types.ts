@@ -59,6 +59,20 @@ export interface ExclusionPassSettings {
   promptHash: string;
 }
 
+/** What a model requires of the sampling settings sent to it, resolved once per model by
+ * `eval-run.ts` from `MODEL_CONSTRAINTS` (`@adaptive/shared/models`) and the model's own registry
+ * row, then handed to each call instead of a task module resolving either itself. */
+export interface ModelSamplingConstraints {
+  /** The model rejects any request that sends a temperature other than its own fixed default, so
+   * none is sent at all. */
+  fixedTemperature: boolean;
+  /** The model rejects a request that disables reasoning outright (`{ enabled: false }`). */
+  reasoningMandatory: boolean;
+  /** The effort tier sent instead of disabling reasoning outright, when `reasoningMandatory` and
+   * the caller would otherwise disable it. */
+  fallbackReasoningEffort: string;
+}
+
 export interface TaskRunCallParams<TContext> {
   call: InterleavedCall<EvalItemRow, Variant>;
   context: TContext;
@@ -70,6 +84,7 @@ export interface TaskRunCallParams<TContext> {
    * task obeys the same one-request-per-second throttle regardless of interleaving. */
   throttleIfMistral: (model: string) => Promise<void>;
   exclusionPass?: ExclusionPassSettings;
+  samplingConstraints: ModelSamplingConstraints;
 }
 
 export interface EvalTaskDefinition<TContext, TOutcome, TSummary = Record<string, unknown>> {

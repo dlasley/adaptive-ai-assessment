@@ -123,6 +123,10 @@ export interface EvalModelCurrentRow {
   price_prompt_usd_per_m: string | number | null;
   price_completion_usd_per_m: string | number | null;
   hosts: Array<{ provider_pin: string; quantization?: string; notes?: string }>;
+  /** Whether and how this model supports reasoning: `mandatory` true means a request disabling
+   * reasoning outright is rejected; `efforts` lists its registered effort tiers, lowest first or in
+   * any order. Null when the model has no reasoning mode at all. */
+  reasoning: { mandatory?: boolean; default_on?: boolean; efforts?: string[] } | null;
 }
 
 export interface EvalFindingRow {

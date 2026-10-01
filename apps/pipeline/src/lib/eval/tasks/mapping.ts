@@ -94,7 +94,7 @@ export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome,
 
   cleanupContext() {},
 
-  async runCall({ call, context, run, callSettings, reasoning, callLlmFn, throttleIfMistral }) {
+  async runCall({ call, context, run, callSettings, reasoning, callLlmFn, throttleIfMistral, samplingConstraints }) {
     const key = variantKey(call.variant);
     const outcomes: MappingItemOutcome[] = [];
     const resultRows: NewEvalResultRow[] = [];
@@ -113,8 +113,8 @@ export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome,
     // Production always disables reasoning for this call (mapExistingHeadings's
     // disableReasoning: true); --reasoning overrides that default, same as every task.
     // resolveEffectiveSamplingSettings further adjusts both settings for a model
-    // MODEL_CONSTRAINTS flags as unable to accept them as given.
-    const effective = resolveEffectiveSamplingSettings(call.variant.model, callSettings.temperature, reasoning ?? { enabled: false }, reasoning !== undefined);
+    // samplingConstraints flags as unable to accept them as given.
+    const effective = resolveEffectiveSamplingSettings(samplingConstraints, callSettings.temperature, reasoning ?? { enabled: false }, reasoning !== undefined);
 
     try {
       const result = await withRateLimitRetry(() => callLlmFn({

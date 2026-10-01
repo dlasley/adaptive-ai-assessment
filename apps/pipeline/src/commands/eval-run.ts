@@ -25,13 +25,15 @@
  * variant or several; `--label` defaults to the experiment slug when `--experiment` is given, else
  * the task name, so a run is never left unlabeled. `repeat_index` is the invocation's own repeat
  * offset for an ad hoc run with no `--experiment`; with one, it continues the count already on
- * record for that experiment and model, judged by prompt hash and the caller-controlled settings
- * (`temperature`, `reasoning`, `provider`, `groupSize`, `shuffleSeed`, `exclusionPass`,
- * `renderDpi`; a key missing on a run recorded before it existed is not compared at all, so an old
- * row can still count toward a new one's repeat even where it never recorded that value), so a
- * repeat launched by hand in a later invocation gets the next number instead of restarting at 1.
- * This count is resolved once per distinct model before any run in the invocation is inserted, so
- * several repeats of one model in a single invocation get consecutive numbers rather than gaps.
+ * record for that experiment and model, judged by prompt hash, status (an `aborted` or `failed` run
+ * never counts), and the caller-controlled settings (`temperature`, `reasoning`, `provider`,
+ * `groupSize`, `shuffleSeed`, `exclusionPass`, `renderDpi`). A key missing on a run's stored settings
+ * compares against the value that was actually in force when it ran, not a wildcard: `temperature`
+ * absent means no override was sent, `provider` absent means unpinned, `groupSize` absent means the
+ * task's own default, `renderDpi` absent means the pre-flag default of 120. A repeat launched by
+ * hand in a later invocation gets the next number instead of restarting at 1. This count is resolved
+ * once per distinct model before any run in the invocation is inserted, so several repeats of one
+ * model in a single invocation get consecutive numbers rather than gaps.
  */
 
 import { loadEnv } from '../lib/env';
@@ -47,10 +49,11 @@ import { mulberry32, shuffle } from '../lib/eval/sampling';
 import { BUDGET_CAPS_USD, isWithinBudget, projectCostUsd, projectVariantCostUsd, registryPriceOf, type ModelPrice } from '../lib/eval/tolerances';
 import { TASK_DEFINITIONS } from '../lib/eval/tasks/registry';
 import { resolveEffectiveSamplingSettings } from '../lib/eval/tasks/shared';
-import { variantKey, type Variant, type EffectiveCallSettings, type ExclusionPassSettings } from '../lib/eval/tasks/types';
+import { variantKey, type Variant, type EffectiveCallSettings, type ExclusionPassSettings, type ModelSamplingConstraints } from '../lib/eval/tasks/types';
 import { CLASSIFY_PROMPT_HASH } from '../lib/slide-content-classifier';
 import { callLlm, type LlmCallOptions } from '@adaptive/shared/llm';
 import { GRADING_CALL_SETTINGS } from '@adaptive/shared/grading-prompt';
+import { MODEL_CONSTRAINTS } from '@adaptive/shared/models';
 import { defineCli } from '../lib/options/define-cli';
 import { dbTargetFlags, loggingFlags } from '../lib/options/groups';
 import { createLogger, levelFromFlags, setLogLevel } from '../lib/logger';
@@ -159,20 +162,22 @@ export function parseReasoningFlag(raw: string | undefined): LlmCallOptions['rea
  * exactly that, not an unpinned, room-temperature approximation of it — a baseline run exists
  * specifically to be the reference every later comparison is read against. */
 const AUDIT_PRODUCTION_TEMPERATURE = 0.1;
-const AUDIT_PRODUCTION_PROVIDER: NonNullable<LlmCallOptions['provider']> = { order: ['Mistral'], allowFallbacks: false };
+const AUDIT_PRODUCTION_PROVIDER: NonNullable<LlmCallOptions['provider']> = { order: ['mistral'], allowFallbacks: false };
 
 /**
  * The call settings a variant actually uses: the task's production default unless the user
  * overrides it with `--temperature`/`--provider`. Grading's production default is
  * `GRADING_CALL_SETTINGS`; audit's matches `questions-audit.ts`'s own sync call; mapping's and
  * transcription's both match their own production call (no temperature override, no JSON mode, no
- * provider pin — transcription's `convertPdfToMarkdown` sends none of those either).
+ * provider pin, since transcription's `convertPdfToMarkdown` sends none of those either). A
+ * `--provider` value is lowercased before it's stored, so a hand-typed `--provider Anthropic` is
+ * recorded the same way as `anthropic`.
  */
 export function buildEffectiveCallSettings(
   task: 'audit' | 'grading' | 'mapping' | 'transcription',
   options: { temperature?: number; provider?: string },
 ): EffectiveCallSettings {
-  const overrideProvider = options.provider ? { order: [options.provider], allowFallbacks: false } : undefined;
+  const overrideProvider = options.provider ? { order: [options.provider.toLowerCase()], allowFallbacks: false } : undefined;
   if (task === 'audit') {
     return {
       temperature: options.temperature ?? AUDIT_PRODUCTION_TEMPERATURE,
@@ -215,41 +220,126 @@ function canonicalizeForComparison(value: unknown): unknown {
 
 /** The `settings` keys a repeat's identity is judged on: every flag the caller actually chose.
  * `jsonMode` is a fixed fact about the task, not a choice, so it's left out; `effectiveTemperature`/
- * `effectiveReasoning` are left out too, since they're derived from `MODEL_CONSTRAINTS` rather than
- * requested, and that map can change independently of anything the caller asked for. */
+ * `effectiveReasoning` are left out too, since they're derived from `MODEL_CONSTRAINTS` and the
+ * model registry rather than requested, and either can change independently of anything the caller
+ * asked for. */
 const REPEAT_IDENTITY_SETTINGS_KEYS = ['temperature', 'reasoning', 'provider', 'groupSize', 'shuffleSeed', 'exclusionPass', 'renderDpi'] as const;
+type RepeatIdentityKey = (typeof REPEAT_IDENTITY_SETTINGS_KEYS)[number];
+type RepeatIdentityTask = 'audit' | 'grading' | 'mapping' | 'transcription';
 
-/** Whether two runs' settings count as the same repeat for `resolveExistingRepeatCount`, judged
- * only on `REPEAT_IDENTITY_SETTINGS_KEYS`. A key missing entirely on either side (a run recorded
- * before that key existed) is not compared at all rather than compared against a default: an old
- * row with no `renderDpi` key, say, matches a new transcription row at any dpi, instead of being
- * permanently excluded from its own repeat count because a value it never recorded doesn't match
- * whatever the current default happens to be. */
-function settingsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
-  return REPEAT_IDENTITY_SETTINGS_KEYS.every((key) => {
-    const aValue = a[key];
-    const bValue = b[key];
-    if (aValue === undefined || bValue === undefined) return true;
-    return JSON.stringify(canonicalizeForComparison(aValue)) === JSON.stringify(canonicalizeForComparison(bValue));
-  });
+/** `temperature`'s "no override was sent" state: distinct from any number the task's own default
+ * could resolve to, and from `null`. Mapping and transcription write no `temperature` key at all
+ * unless `--temperature` overrides it, so this is their steady state, not a historical gap. */
+const TEMPERATURE_NOT_SENT = '__temperature_not_sent__';
+
+/** A stored `provider` value with each `order` entry lowercased, so a run recorded before provider
+ * pins were lowercased still compares equal to one recorded after. `null`/absent both mean
+ * unpinned. */
+function normalizeStoredProvider(value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  const provider = value as { order?: unknown };
+  if (!Array.isArray(provider.order)) return provider;
+  return { ...provider, order: provider.order.map((entry) => (typeof entry === 'string' ? entry.toLowerCase() : entry)) };
+}
+
+/** The value `key` compares against when a run's settings don't carry it at all: the value that
+ * was actually in force at the time, not a wildcard that matches anything. */
+function normalizeRepeatIdentityValue(key: RepeatIdentityKey, value: unknown, task: RepeatIdentityTask): unknown {
+  if (key === 'temperature') return value === undefined ? TEMPERATURE_NOT_SENT : value;
+  if (key === 'provider') return normalizeStoredProvider(value);
+  if (key === 'groupSize') return value === undefined ? (task === 'audit' ? AUDIT_GROUP_SIZE : 1) : value;
+  if (key === 'renderDpi') return value === undefined ? DEFAULT_RENDER_DPI : value;
+  // reasoning, shuffleSeed, exclusionPass: absent means null, same as how buildSettingsForModel
+  // writes them when the caller didn't ask for one.
+  return value === undefined ? null : value;
 }
 
 /**
- * The number of existing, non-failed runs already on `experimentId` for `model`, with the same
- * prompt hash and the same caller-controlled settings (`settingsEqual`): what `repeat_index` for
- * a new run of this model continues from. Called once per distinct model before any run in this
+ * Normalizes one run's settings to `REPEAT_IDENTITY_SETTINGS_KEYS`' comparison form, filling in the
+ * value that was in force for any key the settings don't carry at all. Exported so a verification
+ * script can reproduce `resolveExistingRepeatCount`'s grouping directly against stored rows instead
+ * of approximating it.
+ */
+export function normalizeRepeatIdentitySettings(settings: Record<string, unknown>, task: RepeatIdentityTask): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+  for (const key of REPEAT_IDENTITY_SETTINGS_KEYS) {
+    normalized[key] = normalizeRepeatIdentityValue(key, settings[key], task);
+  }
+  return normalized;
+}
+
+/** Whether two runs' settings count as the same repeat for `resolveExistingRepeatCount`: every
+ * `REPEAT_IDENTITY_SETTINGS_KEYS` entry must match once `normalizeRepeatIdentitySettings` has
+ * filled in the value in force for any key either side's settings don't carry. */
+function settingsEqual(a: Record<string, unknown>, b: Record<string, unknown>, task: RepeatIdentityTask): boolean {
+  const normalizedA = normalizeRepeatIdentitySettings(a, task);
+  const normalizedB = normalizeRepeatIdentitySettings(b, task);
+  return REPEAT_IDENTITY_SETTINGS_KEYS.every(
+    (key) => JSON.stringify(canonicalizeForComparison(normalizedA[key])) === JSON.stringify(canonicalizeForComparison(normalizedB[key])),
+  );
+}
+
+/**
+ * The number of existing runs already on `experimentId` for `model`, with the same prompt hash and
+ * the same caller-controlled settings (`settingsEqual`): what `repeat_index` for a new run of this
+ * model continues from. A run whose status is `failed` or `aborted` never counts: neither produced a
+ * usable result to compare against. Called once per distinct model before any run in this
  * invocation is inserted, so a later variant's count is never inflated by an earlier variant's own
  * insert within the same invocation.
  */
 export async function resolveExistingRepeatCount(
   store: EvalStore,
   experimentId: string,
+  setId: string,
   model: string,
   promptHash: string | null,
   settings: Record<string, unknown>,
+  task: RepeatIdentityTask,
 ): Promise<number> {
   const existing = await store.listRunsByExperimentAndModel(experimentId, model);
-  return existing.filter((r) => r.status !== 'failed' && r.prompt_hash === promptHash && settingsEqual(r.settings, settings)).length;
+  return existing.filter(
+    (r) => r.status !== 'failed' && r.status !== 'aborted' && r.set_id === setId && r.prompt_hash === promptHash && settingsEqual(r.settings, settings, task),
+  ).length;
+}
+
+/** The reasoning effort ranking a model's registered `efforts` list is read against: `minimal` is
+ * lowest, `max` highest. An entry outside this list (a typo, a tier OpenRouter has since renamed)
+ * is ignored rather than crashing the comparison. */
+const REASONING_EFFORT_RANK = ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
+const FALLBACK_REASONING_EFFORT_DEFAULT = 'low';
+
+/** The lowest-ranked entry of a model's registered reasoning efforts, or undefined when the list
+ * is empty or carries no entry `REASONING_EFFORT_RANK` recognizes. */
+function lowestRegisteredReasoningEffort(efforts: string[] | undefined): string | undefined {
+  const ranked = (efforts ?? []).filter((effort) => REASONING_EFFORT_RANK.includes(effort));
+  if (ranked.length === 0) return undefined;
+  return ranked.reduce((lowest, effort) => (REASONING_EFFORT_RANK.indexOf(effort) < REASONING_EFFORT_RANK.indexOf(lowest) ? effort : lowest));
+}
+
+/**
+ * A model's sampling constraints: `fixedTemperature` from `MODEL_CONSTRAINTS`
+ * (`@adaptive/shared/models`), whether reasoning is mandatory and which effort to fall back to from
+ * the model's own registry row (`eval_models_current.reasoning`). When reasoning is mandatory but
+ * the row has no efforts list `REASONING_EFFORT_RANK` recognizes, warns once and falls back to
+ * `FALLBACK_REASONING_EFFORT_DEFAULT`.
+ */
+function resolveModelSamplingConstraints(model: string, registryRow: EvalModelCurrentRow | undefined): ModelSamplingConstraints {
+  const reasoning = registryRow?.reasoning ?? null;
+  const reasoningMandatory = reasoning?.mandatory === true;
+  let fallbackReasoningEffort = FALLBACK_REASONING_EFFORT_DEFAULT;
+  if (reasoningMandatory) {
+    const lowest = lowestRegisteredReasoningEffort(reasoning?.efforts);
+    if (lowest) {
+      fallbackReasoningEffort = lowest;
+    } else {
+      logger.warn(`${model}: reasoning is mandatory but its registry row has no recognized efforts list; falling back to '${FALLBACK_REASONING_EFFORT_DEFAULT}'.`);
+    }
+  }
+  return {
+    fixedTemperature: MODEL_CONSTRAINTS[model]?.fixedTemperature ?? false,
+    reasoningMandatory,
+    fallbackReasoningEffort,
+  };
 }
 
 /** True when every one of `resultRows` carries a non-null `error`: a variant whose loop finished
@@ -394,7 +484,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   const exclusionPass: ExclusionPassSettings | undefined = options.exclusionPass
     ? {
         model: options.exclusionPass,
-        provider: options.exclusionProvider ? { order: [options.exclusionProvider], allowFallbacks: false } : callSettings.provider,
+        provider: options.exclusionProvider ? { order: [options.exclusionProvider.toLowerCase()], allowFallbacks: false } : callSettings.provider,
         promptHash: CLASSIFY_PROMPT_HASH,
       }
     : undefined;
@@ -442,12 +532,25 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   // one. Fetched before any run row exists so a failure here cannot strand a row at 'running'.
   const reviewRound = await store.latestReviewRound(options.set);
 
-  // The settings a model's calls actually use, including MODEL_CONSTRAINTS' adjustments. The
+  // Each model's sampling constraints (MODEL_CONSTRAINTS' fixedTemperature, the registry row's
+  // reasoning mandate and fallback effort), resolved once per distinct model so a mandatory-
+  // reasoning-with-no-efforts-list warning is logged once rather than once per call.
+  const samplingConstraintsByModel = new Map<string, ModelSamplingConstraints>();
+  function samplingConstraintsFor(model: string): ModelSamplingConstraints {
+    let constraints = samplingConstraintsByModel.get(model);
+    if (!constraints) {
+      constraints = resolveModelSamplingConstraints(model, modelBySlug.get(model));
+      samplingConstraintsByModel.set(model, constraints);
+    }
+    return constraints;
+  }
+
+  // The settings a model's calls actually use, including its sampling constraints' adjustments. The
   // same for every repeat of one model, so this is computed once per model rather than once per
   // variant, both for the repeat-count lookup below and for the row this invocation inserts.
   function buildSettingsForModel(model: string): { settings: Record<string, unknown>; adjustments: string[] } {
     const intendedReasoning = reasoning ?? (TASKS_DISABLING_REASONING_BY_DEFAULT.has(options.task) ? { enabled: false } : undefined);
-    const effectiveSampling = resolveEffectiveSamplingSettings(model, callSettings.temperature, intendedReasoning, reasoning !== undefined);
+    const effectiveSampling = resolveEffectiveSamplingSettings(samplingConstraintsFor(model), callSettings.temperature, intendedReasoning, reasoning !== undefined);
     const settings: Record<string, unknown> = {
       temperature: callSettings.temperature,
       jsonMode: callSettings.jsonMode,
@@ -466,15 +569,14 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   }
 
   // Resolved once per distinct model, before any run row exists, so a later variant's count is
-  // never inflated by an earlier variant's own insert within this same invocation (the gap A8's
-  // review caught: re-resolving per variant after each insert produced 1, 3, 5 instead of 1, 2, 3).
-  // Empty (every lookup below falls back to 0) for an ad hoc run with no --experiment, which is
-  // exactly "repeat_index is just the invocation's own offset."
+  // never inflated by an earlier variant's own insert within this same invocation. Empty (every
+  // lookup below falls back to 0) for an ad hoc run with no --experiment, which is exactly
+  // "repeat_index is just the invocation's own offset."
   const existingRepeatCountByModel = new Map<string, number>();
   if (experiment) {
     for (const model of new Set(variants.map((v) => v.model))) {
       const { settings } = buildSettingsForModel(model);
-      existingRepeatCountByModel.set(model, await resolveExistingRepeatCount(store, experiment.id, model, promptHash, settings));
+      existingRepeatCountByModel.set(model, await resolveExistingRepeatCount(store, experiment.id, options.set, model, promptHash, settings, options.task));
     }
   }
 
@@ -581,6 +683,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
 
         const { outcomes, resultRows } = await taskDef.runCall({
           call, context: taskContext, run, callSettings, reasoning, callLlmFn, throttleIfMistral, exclusionPass,
+          samplingConstraints: samplingConstraintsFor(call.variant.model),
         });
         outcomesByVariant.get(key)!.push(...outcomes);
         resultRowsByVariant.get(key)!.push(...resultRows);

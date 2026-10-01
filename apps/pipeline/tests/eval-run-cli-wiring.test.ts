@@ -86,6 +86,7 @@ function makeFakeStore(overrides: Partial<EvalStore> = {}): { store: EvalStore; 
     slug: 'openai/gpt-4.1-nano',
     effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4',
     hosts: [],
+    reasoning: null,
   };
 
   const store: EvalStore = {
@@ -507,8 +508,9 @@ describe('eval-run: run label and repeat_index convention', () => {
     expect(runs[0].repeat_index).toBe(1);
 
     // Simulate a run recorded before effectiveTemperature/effectiveReasoning existed as settings
-    // keys (this task's renderDpi is always null, so dropping it too simulates the same gap).
-    const { effectiveTemperature, effectiveReasoning, renderDpi, ...oldShapeSettings } = runs[0].settings;
+    // keys, neither of which is part of REPEAT_IDENTITY_SETTINGS_KEYS, so dropping them must never
+    // affect the repeat count.
+    const { effectiveTemperature, effectiveReasoning, ...oldShapeSettings } = runs[0].settings;
     runs[0].settings = oldShapeSettings;
 
     await main({ argv, store, callLlmFn: stubCallLlmFn() });
@@ -526,6 +528,18 @@ describe('eval-run: run label and repeat_index convention', () => {
     expect(runs[1].repeat_index).toBe(1);
   });
 
+  it('does not count a run on a different set toward the repeat count, even under the same experiment', async () => {
+    const { store, runs } = makeFakeStore();
+    const base = ['--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--write-db'];
+
+    await main({ argv: ['--set', 'set-1', ...base], store, callLlmFn: stubCallLlmFn() });
+    expect(runs[0].repeat_index).toBe(1);
+
+    runs[0].set_id = 'set-other';
+    await main({ argv: ['--set', 'set-1', ...base], store, callLlmFn: stubCallLlmFn() });
+    expect(runs[1].repeat_index).toBe(1);
+  });
+
   it('excludes a failed run from the repeat count', async () => {
     const { store, runs } = makeFakeStore();
     const argv = ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--write-db'];
@@ -537,12 +551,38 @@ describe('eval-run: run label and repeat_index convention', () => {
     expect(runs[1].repeat_index).toBe(1);
   });
 
+  it('excludes an aborted run from the repeat count', async () => {
+    const { store, runs } = makeFakeStore();
+    const argv = ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--write-db'];
+
+    await main({ argv, store, callLlmFn: stubCallLlmFn() });
+    expect(runs[0].repeat_index).toBe(1);
+    runs[0].status = 'aborted';
+
+    await main({ argv, store, callLlmFn: stubCallLlmFn() });
+    expect(runs[1].repeat_index).toBe(1);
+  });
+
+  it('matches a provider pin recorded before pins were lowercased', async () => {
+    const { store, runs } = makeFakeStore();
+    const argv = ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--write-db'];
+
+    await main({ argv: [...argv, '--provider', 'Mistral'], store, callLlmFn: stubCallLlmFn() });
+    expect(runs[0].repeat_index).toBe(1);
+    expect(runs[0].settings.provider).toEqual({ order: ['mistral'], allowFallbacks: false });
+    // Simulate a run recorded before provider pins were lowercased at write time.
+    runs[0].settings = { ...runs[0].settings, provider: { order: ['Mistral'], allowFallbacks: false } };
+
+    await main({ argv: [...argv, '--provider', 'mistral'], store, callLlmFn: stubCallLlmFn() });
+    expect(runs[1].repeat_index).toBe(2);
+  });
+
   it('gives each of several models in one invocation its own repeat_index sequence', async () => {
     const SECOND_MODEL = 'anthropic/claude-sonnet-5';
     const { store, runs } = makeFakeStore({
       async getModelBySlug(slug) {
-        if (slug === 'openai/gpt-4.1-nano') return { id: 'model-1', family_id: 'family-1', slug, effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [] };
-        if (slug === SECOND_MODEL) return { id: 'model-2', family_id: 'family-2', slug, effective_date: '2026-09-25', price_prompt_usd_per_m: '0.5', price_completion_usd_per_m: '2', hosts: [] };
+        if (slug === 'openai/gpt-4.1-nano') return { id: 'model-1', family_id: 'family-1', slug, effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [], reasoning: null };
+        if (slug === SECOND_MODEL) return { id: 'model-2', family_id: 'family-2', slug, effective_date: '2026-09-25', price_prompt_usd_per_m: '0.5', price_completion_usd_per_m: '2', hosts: [], reasoning: null };
         return null;
       },
     });
@@ -572,6 +612,95 @@ describe('eval-run: run label and repeat_index convention', () => {
       argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--write-db'],
       store, callLlmFn: stubCallLlmFn(),
     });
+    expect(runs[2].repeat_index).toBe(1);
+  });
+});
+
+describe('eval-run: repeat_index identity on the transcription task (temperature, renderDpi)', () => {
+  const TRANSCRIPTION_MODEL = 'google/gemini-2.5-flash';
+
+  beforeEach(() => {
+    vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new ProcessExitError(code ?? 0);
+    }) as unknown as typeof process.exit);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function makeTranscriptionFakeStore(): { store: EvalStore; runs: EvalRunRow[] } {
+    const runs: EvalRunRow[] = [];
+    let nextRunId = 0;
+    const set = makeEvalSetRow({ task: 'transcription', selection: { pdfPath: 'unit-1.pdf' } });
+    const item = makeEvalItemRow({ item_key: 'slide-1', payload: { slide: 1, text_layer: 'Bonjour', category: 'text' } });
+    const experiment: EvalExperimentRow = {
+      id: 'exp-1', slug: 'transcription-experiment', legacy_code: null, question: 'q', tasks: ['transcription'],
+      variants_declared: [], decision_rule: {}, depends_on: [], status: 'proposed', decided_at: null, notes: null,
+      created_at: '2026-09-29T00:00:00Z', updated_at: '2026-09-29T00:00:00Z',
+    };
+    const model: EvalModelCurrentRow = {
+      id: 'model-1', family_id: 'family-1', slug: TRANSCRIPTION_MODEL, effective_date: '2026-09-25',
+      price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [], reasoning: null,
+    };
+
+    const store: EvalStore = {
+      ...baseFakeEvalStore(),
+      async getSet(id) { return id === set.id ? set : null; },
+      async listItems(setId) { return setId === set.id ? [item] : []; },
+      async latestReviewRound() { return null; },
+      async getExperiment(idOrSlug) { return idOrSlug === experiment.id || idOrSlug === experiment.slug ? experiment : null; },
+      async getModelBySlug(slug) { return slug === model.slug ? model : null; },
+      async listRunsByExperimentAndModel(experimentId, modelSlug) {
+        return runs.filter((r) => r.experiment_id === experimentId && r.model === modelSlug);
+      },
+      async insertRun(row) {
+        const run = makeEvalRunRow({ id: `run-${++nextRunId}`, ...row, status: row.status ?? 'running' });
+        runs.push(run);
+        return run;
+      },
+      async updateRun(id, patch) {
+        const run = runs.find((r) => r.id === id);
+        if (!run) throw new Error(`no run ${id}`);
+        Object.assign(run, patch);
+      },
+      async insertResults() {},
+    };
+    return { store, runs };
+  }
+
+  const stubTranscriptionCallLlmFn = () => vi.fn(async (opts: LlmCallOptions) => ({ text: 'Bonjour', model: opts.model, raw: {} } satisfies LlmResult));
+
+  it('a run with --temperature 0.7 starts its own sequence, since the default sends no temperature key at all', async () => {
+    const { store, runs } = makeTranscriptionFakeStore();
+    const argv = ['--set', 'set-1', '--task', 'transcription', '--models', TRANSCRIPTION_MODEL, '--experiment', 'transcription-experiment', '--write-db'];
+
+    await main({ argv, store, callLlmFn: stubTranscriptionCallLlmFn() });
+    expect(runs[0].repeat_index).toBe(1);
+    expect(runs[0].settings.temperature).toBeUndefined();
+
+    await main({ argv: [...argv, '--temperature', '0.7'], store, callLlmFn: stubTranscriptionCallLlmFn() });
+    expect(runs[1].repeat_index).toBe(1);
+  });
+
+  it('an old row with no renderDpi key continues a new 120 dpi run\'s sequence and does not count toward a 200 dpi run', async () => {
+    const { store, runs } = makeTranscriptionFakeStore();
+    const argv = ['--set', 'set-1', '--task', 'transcription', '--models', TRANSCRIPTION_MODEL, '--experiment', 'transcription-experiment', '--write-db'];
+
+    await main({ argv, store, callLlmFn: stubTranscriptionCallLlmFn() });
+    expect(runs[0].repeat_index).toBe(1);
+    expect(runs[0].settings.renderDpi).toBe(120);
+    // Simulate a run recorded before --render-dpi existed as a settings key.
+    const { renderDpi, ...oldShapeSettings } = runs[0].settings;
+    runs[0].settings = oldShapeSettings;
+
+    await main({ argv: [...argv, '--render-dpi', '120'], store, callLlmFn: stubTranscriptionCallLlmFn() });
+    expect(runs[1].repeat_index).toBe(2);
+
+    await main({ argv: [...argv, '--render-dpi', '200'], store, callLlmFn: stubTranscriptionCallLlmFn() });
     expect(runs[2].repeat_index).toBe(1);
   });
 });
@@ -625,6 +754,7 @@ describe('eval-run CLI wiring: task audit', () => {
       slug: 'mistralai/mistral-large-2512',
       effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4',
       hosts: [],
+      reasoning: null,
     };
 
     const store: EvalStore = {
@@ -776,6 +906,7 @@ describe('eval-run CLI wiring: task mapping', () => {
       slug: 'anthropic/claude-haiku-4.5',
       effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4',
       hosts: [],
+      reasoning: null,
     };
 
     const store: EvalStore = {
@@ -887,6 +1018,7 @@ describe('eval-run CLI wiring: task transcription', () => {
       slug: 'google/gemini-2.5-flash',
       effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4',
       hosts: [],
+      reasoning: null,
     };
 
     const store: EvalStore = {
@@ -1004,6 +1136,7 @@ describe('eval-run CLI wiring: task transcription', () => {
           slug: TRANSCRIPTION_MODEL,
           effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4',
           hosts: [],
+          reasoning: null,
         },
         [CLASSIFIER_MODEL]: {
           id: 'model-classifier',
@@ -1011,6 +1144,7 @@ describe('eval-run CLI wiring: task transcription', () => {
           slug: CLASSIFIER_MODEL,
           effective_date: '2026-09-25', price_prompt_usd_per_m: '1', price_completion_usd_per_m: '5',
           hosts: [],
+          reasoning: null,
         },
       };
 
@@ -1242,9 +1376,10 @@ describe('eval-run cli: --render-dpi', () => {
   });
 });
 
-describe('eval-run: per-model sampling adjustments (MODEL_CONSTRAINTS)', () => {
+describe('eval-run: per-model sampling adjustments (MODEL_CONSTRAINTS and the registry\'s reasoning mandate)', () => {
   const SONNET_5_5 = 'anthropic/claude-sonnet-5.5';
   const UNCONSTRAINED_MODEL = 'openai/gpt-4.1-nano';
+  let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
@@ -1252,7 +1387,7 @@ describe('eval-run: per-model sampling adjustments (MODEL_CONSTRAINTS)', () => {
     }) as unknown as typeof process.exit);
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -1270,8 +1405,8 @@ describe('eval-run: per-model sampling adjustments (MODEL_CONSTRAINTS)', () => {
       },
     });
     const models: Record<string, EvalModelCurrentRow> = {
-      [UNCONSTRAINED_MODEL]: { id: 'model-unconstrained', family_id: 'f1', slug: UNCONSTRAINED_MODEL, effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [] },
-      [SONNET_5_5]: { id: 'model-sonnet-5.5', family_id: 'f2', slug: SONNET_5_5, effective_date: '2026-09-25', price_prompt_usd_per_m: '1', price_completion_usd_per_m: '5', hosts: [] },
+      [UNCONSTRAINED_MODEL]: { id: 'model-unconstrained', family_id: 'f1', slug: UNCONSTRAINED_MODEL, effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [], reasoning: null },
+      [SONNET_5_5]: { id: 'model-sonnet-5.5', family_id: 'f2', slug: SONNET_5_5, effective_date: '2026-09-25', price_prompt_usd_per_m: '1', price_completion_usd_per_m: '5', hosts: [], reasoning: null },
     };
 
     const store: EvalStore = {
@@ -1345,12 +1480,12 @@ describe('eval-run: per-model sampling adjustments (MODEL_CONSTRAINTS)', () => {
     expect(run.settings.effectiveTemperature).toBeNull();
   });
 
-  function makeTranscriptionFakeStoreForConstraints(): { store: EvalStore; runs: EvalRunRow[] } {
+  function makeTranscriptionFakeStoreForConstraints(reasoning: EvalModelCurrentRow['reasoning'] = null): { store: EvalStore; runs: EvalRunRow[] } {
     const runs: EvalRunRow[] = [];
     let nextRunId = 0;
     const set = makeEvalSetRow({ task: 'transcription', selection: { pdfPath: 'unit-1.pdf' } });
     const item = makeEvalItemRow({ item_key: 'slide-1', payload: { slide: 1, text_layer: 'Bonjour', category: 'text' } });
-    const model: EvalModelCurrentRow = { id: 'model-sonnet-5.5', family_id: 'f2', slug: SONNET_5_5, effective_date: '2026-09-25', price_prompt_usd_per_m: '1', price_completion_usd_per_m: '5', hosts: [] };
+    const model: EvalModelCurrentRow = { id: 'model-sonnet-5.5', family_id: 'f2', slug: SONNET_5_5, effective_date: '2026-09-25', price_prompt_usd_per_m: '1', price_completion_usd_per_m: '5', hosts: [], reasoning };
 
     const store: EvalStore = {
       ...baseFakeEvalStore(),
@@ -1373,8 +1508,8 @@ describe('eval-run: per-model sampling adjustments (MODEL_CONSTRAINTS)', () => {
     return { store, runs };
   }
 
-  it('sends the lowest reasoning effort instead of disabling reasoning for a reasoningRequired model on the transcription task', async () => {
-    const { store, runs } = makeTranscriptionFakeStoreForConstraints();
+  it('sends the lowest registered reasoning effort instead of disabling reasoning for a model whose reasoning is mandatory', async () => {
+    const { store, runs } = makeTranscriptionFakeStoreForConstraints({ mandatory: true, efforts: ['max', 'xhigh', 'high', 'medium', 'low'] });
     const callLlmFn = vi.fn(async (opts: LlmCallOptions) => ({
       text: 'Bonjour',
       model: opts.model,
@@ -1388,10 +1523,47 @@ describe('eval-run: per-model sampling adjustments (MODEL_CONSTRAINTS)', () => {
     });
 
     expect(callLlmFn).toHaveBeenCalledTimes(1);
-    expect(callLlmFn.mock.calls[0][0].reasoning).toEqual({ effort: 'minimal' });
+    expect(callLlmFn.mock.calls[0][0].reasoning).toEqual({ effort: 'low' });
     expect(runs[0].status).toBe('completed');
     expect(runs[0].settings.reasoning).toBeNull();
-    expect(runs[0].settings.effectiveReasoning).toEqual({ effort: 'minimal' });
+    expect(runs[0].settings.effectiveReasoning).toEqual({ effort: 'low' });
+  });
+
+  it("warns and falls back to 'low' when reasoning is mandatory but the registry row has no recognized efforts list", async () => {
+    const { store, runs } = makeTranscriptionFakeStoreForConstraints({ mandatory: true });
+    const callLlmFn = vi.fn(async (opts: LlmCallOptions) => ({
+      text: 'Bonjour',
+      model: opts.model,
+      raw: {},
+    } satisfies LlmResult));
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'transcription', '--models', SONNET_5_5, '--write-db'],
+      store,
+      callLlmFn,
+    });
+
+    expect(callLlmFn.mock.calls[0][0].reasoning).toEqual({ effort: 'low' });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no recognized efforts list'));
+    expect(runs[0].status).toBe('completed');
+  });
+
+  it('sends disabled reasoning, unchanged, for a model whose reasoning is not mandatory', async () => {
+    const { store, runs } = makeTranscriptionFakeStoreForConstraints({ mandatory: false, efforts: ['low', 'medium'] });
+    const callLlmFn = vi.fn(async (opts: LlmCallOptions) => ({
+      text: 'Bonjour',
+      model: opts.model,
+      raw: {},
+    } satisfies LlmResult));
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'transcription', '--models', SONNET_5_5, '--write-db'],
+      store,
+      callLlmFn,
+    });
+
+    expect(callLlmFn.mock.calls[0][0].reasoning).toEqual({ enabled: false });
+    expect(runs[0].settings.effectiveReasoning).toEqual({ enabled: false });
   });
 });
 
@@ -1410,7 +1582,21 @@ describe('eval-run: a variant whose every call errors finalises failed', () => {
   });
 
   it('every call erroring finalises the run failed, with summary.error naming the error kind', async () => {
-    const { store, runs } = makeFakeStore();
+    const itemOne = makeEvalItemRow({
+      id: 'item-1', item_key: 'item-1',
+      payload: { question: 'Comment dit-on "hello"?', submitted_answer: 'bonjour', correct_answer: 'bonjour', type: 'fill-in-blank', difficulty: 'easy', label_class: 'correct' },
+    });
+    const itemTwo = makeEvalItemRow({
+      id: 'item-2', item_key: 'item-2',
+      payload: { question: 'Comment dit-on "goodbye"?', submitted_answer: 'au revoir', correct_answer: 'au revoir', type: 'fill-in-blank', difficulty: 'easy', label_class: 'correct' },
+    });
+    const itemThree = makeEvalItemRow({
+      id: 'item-3', item_key: 'item-3',
+      payload: { question: 'Comment dit-on "please"?', submitted_answer: 's\'il vous plaît', correct_answer: 's\'il vous plaît', type: 'fill-in-blank', difficulty: 'easy', label_class: 'correct' },
+    });
+    const { store, runs } = makeFakeStore({
+      async listItems(setId) { return setId === 'set-1' ? [itemOne, itemTwo, itemThree] : []; },
+    });
     const callLlmFn = vi.fn(async () => {
       throw new Error('model rejects this reasoning setting');
     });
@@ -1423,7 +1609,7 @@ describe('eval-run: a variant whose every call errors finalises failed', () => {
 
     expect(runs).toHaveLength(1);
     expect(runs[0].status).toBe('failed');
-    expect(runs[0].summary?.error).toBe("every call errored (1 of 1, all 'api')");
+    expect(runs[0].summary?.error).toBe("every call errored (3 of 3, all 'api')");
   });
 
   it('one of several calls erroring leaves the run completed', async () => {

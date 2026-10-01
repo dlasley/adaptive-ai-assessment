@@ -147,7 +147,7 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
     fs.rmSync(tmpDir, { recursive: true, force: true });
   },
 
-  async runCall({ call, context, run, callSettings, reasoning, callLlmFn, throttleIfMistral, exclusionPass }) {
+  async runCall({ call, context, run, callSettings, reasoning, callLlmFn, throttleIfMistral, exclusionPass, samplingConstraints }) {
     const key = variantKey(call.variant);
     const outcomes: TranscriptionItemOutcome[] = [];
     const resultRows: NewEvalResultRow[] = [];
@@ -199,8 +199,8 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
         const content = buildTranscriptionMessageContent(slideText, imageBytes);
         // Production always disables reasoning for this call; --reasoning overrides that default,
         // same as every task. resolveEffectiveSamplingSettings further adjusts both settings for a
-        // model MODEL_CONSTRAINTS flags as unable to accept them as given.
-        const effective = resolveEffectiveSamplingSettings(call.variant.model, callSettings.temperature, reasoning ?? { enabled: false }, reasoning !== undefined);
+        // model samplingConstraints flags as unable to accept them as given.
+        const effective = resolveEffectiveSamplingSettings(samplingConstraints, callSettings.temperature, reasoning ?? { enabled: false }, reasoning !== undefined);
         try {
           const result = await withRateLimitRetry(() => callLlmFn({
             model: call.variant.model,
