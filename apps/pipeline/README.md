@@ -502,7 +502,7 @@ This is the one script that calls `assertSupabaseTarget({ write: true })` direct
 
 ### Evaluation framework
 
-The seven `eval-` commands below test whether a different model, provider, or setting would do as
+The `eval-` commands below test whether a different model, provider, or setting would do as
 well or better than what production currently uses on the audit, grading, mapping, or transcription
 task, on a frozen sample and through the exact prompt builder and parser production itself calls, so
 a candidate is judged on the same conditions it would actually run under. See
@@ -520,29 +520,45 @@ variant's `model_slug` resolved to; `--write-db` persists it.
 
 `--tasks` accepts the task vocabulary in `apps/pipeline/src/lib/eval/types.ts`; `generation` and
 `validation` are accepted but warned about, since no `eval-run` runner exists for either yet.
-`--variants` is a path to a JSON array of `{label, model_slug, role, settings?}`: `label` must be
-non-empty and unique within the file; `model_slug` must resolve against `eval_models_current` unless
-it is `'*'` (matches any model); `role` is one of `baseline`, `candidate`, `exclusion_pass`,
-`step_down`, `cross_vendor`, `specialist`, `prompt_variant`, or `successor` (the vocabulary existing
-rows use); `settings`, when given, is limited to the repeat-identity keys `eval-run` itself writes
-(`temperature`, `reasoning`, `provider`, `groupSize`, `shuffleSeed`, `exclusionPass`, `renderDpi`,
-exported from `eval-run.ts` as `REPEAT_IDENTITY_SETTINGS_KEYS` rather than re-listed here), each
-checked against the shape `eval-run` actually writes for it (for example `provider` as a bare pin
-string or an `{order: [...]}` object, `renderDpi` as a whole number from 72 to 400). `--decision-rule`
-is a path to a JSON object limited to the keys `resolveTolerance()` (`tolerances.ts`) knows:
-`tolerance`, `precisionTolerance`, `maxSlideDrop` (each a number between 0 and 1), and `description`,
-refusing an unrecognized key outright rather than warning, since this is creation time, before
-anything has run under it. `--depends-on` is a comma-separated list of experiment slugs, each
-checked to exist. `--status` accepts only `proposed` or `running`; `decided`, `deferred`, and
-`superseded` are set exclusively by `eval-compare --decide`.
+`--variants` is a path to a JSON array of `{label, model_slug, role, settings?, baseline_from?}`:
+`label` must be non-empty and unique within the file; `model_slug` must resolve against
+`eval_models_current`, unless it is `'*'` or `null`, which name no model: such a declaration spans
+several models and matches no run by design; `role` is one of `baseline`, `candidate`,
+`exclusion_pass`, `step_down`, `cross_vendor`, `specialist`, `prompt_variant`, or `successor` (the
+vocabulary existing rows use); `settings`, when given, is limited to the repeat-identity keys
+`eval-run` itself writes (`temperature`, `reasoning`, `provider`, `groupSize`, `shuffleSeed`,
+`exclusionPass`, `renderDpi`, `mode`, `grouping`, exported from `eval-run.ts` as
+`REPEAT_IDENTITY_SETTINGS_KEYS` rather than re-listed here), each checked against the shape
+`eval-run` actually writes for it (for example `provider` as a bare pin string or an
+`{order: [...]}` object, `renderDpi` as a whole number from 72 to 400). `mode` is `sync` or `batch`
+and `grouping` is `by_order` or `by_topic`; `eval-run` writes neither (it has no flag for either),
+so a run that carries neither counts as `sync` and `by_order`, and a declaration naming `batch` or
+`by_topic` matches no run until a runner writes it. `repeats` is refused: it describes how many
+runs to make, not what a run is, so it is set with `eval-run --repeat`. `baseline_from`, valid on a
+`baseline` only, names another experiment (it must exist and not be this one) whose runs the
+declaration draws on instead of this experiment's own: a candidate can be decided against a
+baseline run that belongs to another experiment, and `eval_experiment_variants` then counts that
+experiment's matching runs for the baseline and reports the slug as `runs_from_slug`. A declaration
+with a wildcard or null `model_slug` has no such runs to count. `--decision-rule` is a path to a
+JSON object limited to the keys `resolveTolerance()` (`tolerances.ts`) knows: `tolerance`,
+`precisionTolerance`, `maxSlideDrop` (each a number between 0 and 1), and `description`, refusing an
+unrecognized key outright rather than warning, since this is creation time, before anything has run
+under it. `--depends-on` is a comma-separated list of experiment slugs, each checked to exist.
+`--status` accepts only `proposed` or `running`; `decided`, `deferred`, and `superseded` are set
+exclusively by `eval-compare --decide`.
 
 `--update <slug>` replaces any subset of `--question`, `--variants`, `--decision-rule`,
 `--depends-on`, `--notes` on an existing experiment, through the same validation. `--slug` cannot be
 combined with `--update` (the slug is the public identifier and is never edited); `--tasks` and
 `--status` cannot be changed this way either (a task list is fixed at creation, and status moves only
-through `eval-compare --decide`). An update that would drop a declared variant (by its `label`) that
-already has matching `eval_runs` rows is refused, read through `eval_experiment_variants` with that
-view's own match rule, so an edit can never silently orphan a run's attribution.
+through `eval-compare --decide`). An update that would orphan runs is refused. The runs each declared
+label matches today are read from `eval_experiment_variants`, and `declaredVariantMatchesRun` (the
+TypeScript twin of that view's match rule) decides whether each still matches under the new
+declaration; the update is refused when it drops a label that has runs, or keeps a label whose new
+declaration no longer matches a run it matches today (a different `model_slug`, a settings key whose
+value a run does not carry, a `baseline_from` that moves the candidate runs to another experiment),
+naming the label and the runs. Dropping a settings key, adding one the runs already carry, and giving
+a label with no runs a new declaration all pass.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-experiment-create.ts --slug <slug> --question "<text>" --tasks <task,...> --variants <path.json> [options]
@@ -552,7 +568,7 @@ Options:
   --update <value>             Slug of an existing experiment to update, instead of creating a new one
   --question <value>           The falsifiable question this experiment answers (required to create)
   --tasks <value>              Comma-separated task(s) this experiment covers (required to create; fixed after creation)
-  --variants <value>           Path to a JSON array of {label, model_slug, role, settings?} (required to create)
+  --variants <value>           Path to a JSON array of {label, model_slug, role, settings?, baseline_from?} (required to create)
   --decision-rule <value>      Path to a JSON object of decision-rule overrides (tolerance, precisionTolerance, maxSlideDrop, description)
   --depends-on <value>         Comma-separated experiment slugs this one depends on
   --status <proposed|running>  Initial status (default: proposed); decided/deferred/superseded come only from eval-compare --decide
@@ -711,7 +727,7 @@ name, so a run is never left unlabeled; labels written before this convention ma
 restarting at 1 per invocation. With one, it is one more than the number of existing runs already on
 that experiment for the same set and model, excluding `failed` and `aborted` runs (neither produced
 a usable result), judged by prompt hash and the caller-controlled settings (`temperature`,
-`reasoning`, `provider`, `groupSize`, `shuffleSeed`, `exclusionPass`, `renderDpi`; the derived
+`reasoning`, `provider`, `groupSize`, `shuffleSeed`, `exclusionPass`, `renderDpi`, `mode`, `grouping`; the derived
 `effectiveTemperature`/`effectiveReasoning` don't count, since they follow from the model's sampling
 constraints rather than anything asked for), plus the invocation's own offset. A settings key
 missing on a run's stored settings compares against the value that was actually in force when it
@@ -719,7 +735,8 @@ ran, not a wildcard: `temperature` absent means no override was sent (mapping an
 write no `temperature` key at all unless `--temperature` overrides it, so this is their steady
 state, not just a historical gap), `reasoning`/`shuffleSeed`/`exclusionPass` absent means `null`,
 `provider` absent means unpinned (and present values compare case-insensitively), `groupSize` absent
-means the task's own default, `renderDpi` absent means the pre-flag default of 120. This
+means the task's own default, `renderDpi` absent means the pre-flag default of 120, `mode` absent
+means `sync` and `grouping` absent means `by_order` (this command writes neither). This
 normalisation lives in one exported function, `normalizeRepeatIdentitySettings`, so a verification
 script can reproduce the grouping directly against stored rows. The count is resolved once per
 distinct model before any run in the invocation is inserted, so several repeats of the same model in
@@ -943,14 +960,23 @@ This cancels a judge's tendency to favor whichever transcript it sees first.
 Dry run by default, printing the projected judge cost from the model registry's list price against
 the same candidate budget cap `eval-run` uses; an unpriced judge model is refused unless
 `--allow-unpriced`. `--write-db` calls the judge and, on each shared item's result row for both runs,
-merges an entry into `eval_results.judge_verdict` keyed by the other run's id and then by the judge
-prompt hash that produced it (`{"<other_run_id>": {"<judge_prompt_hash>": {"outcome", "judge_model",
-"reasons", "judged_at"}}}`), merged rather than replaced, so a run judged against several others, or
-re-judged against the same one under a changed prompt, accumulates one entry per (pairing, prompt).
-Refuses to write over an existing entry for the same pairing and the current judge prompt hash
-unless `--overwrite` is passed. Stamps `judge_model`/`judge_prompt_hash` on both `eval_runs` rows.
-Prints items judged, wins for each run, ties, the item keys of every non-tie, and projected versus
-actual judge cost.
+appends an entry to the list stored in `eval_results.judge_verdict` under the other run's id and then
+the judge prompt hash that produced it (`{"<other_run_id>": {"<judge_prompt_hash>": [{"outcome",
+"judge_model", "repeat", "reasons", "judged_at", "judge_call", "calls"}, ...]}}`). Every run of the
+command appends, so the same pair can be judged again under the same prompt, by the same judge model
+or a different one, and every earlier entry is kept; there is no overwrite. `repeat` is 0-based and
+counts the entries already in that list from the same judge model, so a second judging by the same
+model is repeat 1 and the first judging by a new model is repeat 0. Before calling the judge the
+command prints how many entries the pair already holds under the current hash, per judge model, and
+which repeat index this run will take. `judge_call` records the settings the command sent (the
+`--provider` pin or null, reasoning off, and a null temperature meaning none was set), and `calls`
+holds one object per position order with the response facts of that call: the response id and
+creation time, each choice's finish reason, the usage fields beyond token counts that OpenRouter
+reports, and the model and host OpenRouter says served the call. No message content is stored. A
+stored entry that is not a list (a single object from an earlier storage shape, to be converted to a
+one-element list) makes the command stop. Stamps `judge_model`/`judge_prompt_hash` on both `eval_runs` rows; those two
+columns describe the latest judge call on the run, not any one pairing. Prints items judged, wins for
+each run, ties, the item keys of every non-tie, and projected versus actual judge cost.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-judge.ts --runs <run_a,run_b> --judge-model <slug> [options]
@@ -960,7 +986,6 @@ Options:
   --judge-model <slug>     OpenRouter model slug for the judge (required)
   --provider <pin>         Provider tag to pin the judge call to (single upstream, fallbacks disabled)
   --allow-unpriced         Call the judge model even when it has no listed price, so its cost cannot be projected or capped
-  --overwrite              Re-judge even when a shared item already carries a judge_verdict entry for this pairing under the current judge prompt hash
 ```
 
 Plus the shared Database target and Logging flags above.

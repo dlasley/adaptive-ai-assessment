@@ -10,6 +10,7 @@ import path from 'node:path';
 import { REPO_ROOT } from '../src/lib/paths';
 import { DEFAULT_RENDER_DPI } from '../src/lib/pdf-conversion';
 import { AUDIT_GROUP_SIZE } from '../src/lib/pipeline-config';
+import { DEFAULT_RUN_GROUPING, DEFAULT_RUN_MODE } from '../src/commands/eval-run';
 
 const schema = fs.readFileSync(path.join(REPO_ROOT, 'supabase', 'schema.sql'), 'utf-8');
 
@@ -235,4 +236,69 @@ describe('supabase/schema.sql declares the evaluation framework cross-cutting vi
       expect(schema).not.toContain(name);
     },
   );
+
+  it("eval_variant_stability and eval_experiment_variants default mode and grouping to the normalizer's own defaults", () => {
+    const stabilityStart = schema.indexOf('CREATE VIEW eval_variant_stability');
+    const variantsStart = schema.indexOf('CREATE VIEW eval_experiment_variants');
+    const variantsEnd = schema.indexOf('CREATE VIEW eval_experiment_dependencies');
+    for (const body of [schema.slice(stabilityStart, variantsStart), schema.slice(variantsStart, variantsEnd)]) {
+      expect(body).toContain(`COALESCE(r.settings -> 'mode', '"${DEFAULT_RUN_MODE}"'::jsonb)`);
+      expect(body).toContain(`COALESCE(r.settings -> 'grouping', '"${DEFAULT_RUN_GROUPING}"'::jsonb)`);
+    }
+  });
+
+  it('eval_variant_stability exposes mode and grouping after render_dpi and groups by them', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_variant_stability');
+    const viewEnd = schema.indexOf('CREATE VIEW eval_experiment_variants');
+    const viewBody = schema.slice(viewStart, viewEnd);
+    expect(viewBody).toMatch(/AS render_dpi,\s*\n\s*norm_mode\s+AS mode,\s*\n\s*norm_grouping\s+AS grouping,\s*\n\s*count\(\*\)/);
+    expect(viewBody).toMatch(/GROUP BY[^;]*norm_mode, norm_grouping;/);
+  });
+
+  it('eval_experiment_variants matches a declared mode and grouping', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_experiment_variants');
+    const viewEnd = schema.indexOf('CREATE VIEW eval_experiment_dependencies');
+    const viewBody = schema.slice(viewStart, viewEnd);
+    expect(viewBody).toContain("va.declared_settings ? 'mode'");
+    expect(viewBody).toContain("va.declared_settings ? 'grouping'");
+  });
+
+  it('eval_experiment_variants draws on the experiment named by baseline_from and exposes it as runs_from_slug after run_ids', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_experiment_variants');
+    const viewEnd = schema.indexOf('CREATE VIEW eval_experiment_dependencies');
+    const viewBody = schema.slice(viewStart, viewEnd);
+    expect(viewBody).toContain("v.declared ->> 'baseline_from'");
+    expect(viewBody).toContain('ON ri.experiment_id = va.candidate_experiment_id');
+    expect(viewBody).toMatch(/AS run_ids,\s*\n\s*va\.baseline_from\s+AS runs_from_slug\s*\nFROM variants va/);
+  });
+
+  it('eval_findings_current is created before eval_experiment_summary, which reads it for current findings', () => {
+    const findingsStart = schema.indexOf('CREATE VIEW eval_findings_current');
+    const summaryStart = schema.indexOf('CREATE VIEW eval_experiment_summary');
+    expect(findingsStart).toBeGreaterThan(-1);
+    expect(summaryStart).toBeGreaterThan(findingsStart);
+    const summaryBody = schema.slice(summaryStart, schema.indexOf(';', summaryStart));
+    expect(summaryBody).toContain('FROM eval_findings_current c WHERE c.experiment_id = e.id) AS current_finding_count');
+    expect(summaryBody).toMatch(/FROM eval_findings_current c\s*\n\s*WHERE c\.experiment_id = e\.id\s*\n\s*ORDER BY c\.decided_at DESC/);
+    expect(summaryBody).toContain('FROM eval_findings f WHERE f.experiment_id = e.id) AS finding_count');
+  });
+
+  it('eval_run_pair_agreement names one verdict_kind per task, taken from eval_result_verdict branches', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_run_pair_agreement');
+    const viewBody = schema.slice(viewStart, schema.indexOf(';', viewStart));
+    for (const [task, kind] of [['grading', 'is_correct'], ['audit', 'gate_criteria'], ['mapping', 'headings'], ['transcription', 'no_content_marker']]) {
+      expect(viewBody).toContain(`WHEN '${task}' THEN '${kind}'`);
+    }
+    expect(viewBody).toMatch(/AS verdict_kind/);
+  });
+
+  it('every COMMENT ON for an eval_* object is a COMMENT ON statement, none in the schema file carries an em dash', () => {
+    const commentLines = schema.split('\n').filter((line) => /^COMMENT ON .* eval_/.test(line));
+    expect(commentLines.length).toBeGreaterThan(0);
+    expect(commentLines.filter((line) => line.includes(String.fromCharCode(0x2014)))).toEqual([]);
+  });
+
+  it('eval_runs.scoring_review_round_id carries a COMMENT ON COLUMN statement', () => {
+    expect(schema).toContain('COMMENT ON COLUMN eval_runs.scoring_review_round_id IS');
+  });
 });

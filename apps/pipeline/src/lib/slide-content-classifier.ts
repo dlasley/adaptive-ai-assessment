@@ -21,7 +21,16 @@ export const CLASSIFY_PROMPT = renderCoursePrompt(
  * to the exact prompt that produced it. */
 export const CLASSIFY_PROMPT_HASH = hashText(CLASSIFY_PROMPT);
 
-export class SlideClassificationParseError extends Error {}
+/** A classifier answer that did not parse. When the call itself returned a response, the host,
+ * model and response facts it carried are kept on `response`, so a caller can still record them. */
+export class SlideClassificationParseError extends Error {
+  constructor(
+    message: string,
+    readonly response?: { servedModel?: string; servedProvider?: string; responseMeta?: Record<string, unknown> },
+  ) {
+    super(message);
+  }
+}
 
 export interface SlideClassification {
   teachesLanguage: boolean;
@@ -99,13 +108,23 @@ export async function classifySlideContent(params: ClassifySlideContentParams): 
     sessionId: params.sessionId,
     messages: [{ role: 'user', content }],
   });
-  const { teachesLanguage, reason } = parseSlideClassification(result.text);
+  const responseMeta = responseMetaFromLlmResult(result);
+  let classification: { teachesLanguage: boolean; reason: string };
+  try {
+    classification = parseSlideClassification(result.text);
+  } catch (err) {
+    if (err instanceof SlideClassificationParseError) {
+      throw new SlideClassificationParseError(err.message, { servedModel: result.servedModel, servedProvider: result.servedProvider, responseMeta });
+    }
+    throw err;
+  }
+  const { teachesLanguage, reason } = classification;
   return {
     teachesLanguage,
     reason,
     usage: result.usage,
     servedModel: result.servedModel,
     servedProvider: result.servedProvider,
-    responseMeta: responseMetaFromLlmResult(result),
+    responseMeta,
   };
 }

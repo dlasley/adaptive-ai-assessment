@@ -12,11 +12,12 @@ import { main } from '../src/commands/eval-experiment-create';
 import type {
   EvalStore,
   EvalExperimentRow,
+  EvalRunRow,
   EvalModelCurrentRow,
   NewEvalExperimentRow,
   EvalExperimentVariantRunCountRow,
 } from '../src/lib/eval/db';
-import { baseFakeEvalStore, makeEvalExperimentRow } from './helpers/eval-store';
+import { baseFakeEvalStore, makeEvalExperimentRow, makeEvalRunRow } from './helpers/eval-store';
 
 class ProcessExitError extends Error {
   constructor(public code: number) {
@@ -43,6 +44,7 @@ function makeFakeStore(
     experiments?: EvalExperimentRow[];
     models?: EvalModelCurrentRow[];
     variantRunCounts?: EvalExperimentVariantRunCountRow[];
+    runs?: EvalRunRow[];
   } = {},
 ): {
   store: EvalStore;
@@ -52,6 +54,7 @@ function makeFakeStore(
   const experiments = opts.experiments ?? [];
   const models = opts.models ?? [];
   const variantRunCounts = opts.variantRunCounts ?? [];
+  const runs = opts.runs ?? [];
   const insertExperimentCalls: NewEvalExperimentRow[] = [];
   const updateExperimentCalls: Array<{ id: string; patch: Record<string, unknown> }> = [];
 
@@ -82,6 +85,9 @@ function makeFakeStore(
     },
     async updateExperiment(id, patch) {
       updateExperimentCalls.push({ id, patch });
+    },
+    async getRun(id) {
+      return runs.find((r) => r.id === id) ?? null;
     },
     async listDeclaredVariantRunCounts() {
       return variantRunCounts;
@@ -127,7 +133,7 @@ describe('eval-experiment-create', () => {
     return path;
   }
 
-  function oneVariant(overrides: Partial<{ label: string; model_slug: string; role: string; settings: Record<string, unknown> }> = {}) {
+  function oneVariant(overrides: Partial<{ label: string; model_slug: string | null; role: string; settings: Record<string, unknown>; baseline_from: string }> = {}) {
     return {
       label: 'baseline',
       model_slug: 'anthropic/claude-sonnet-5',
@@ -205,14 +211,94 @@ describe('eval-experiment-create', () => {
     const { store, insertExperimentCalls } = makeFakeStore({ models: [] });
     await main({ argv: [...baseCreateArgs(variantsPath), '--write-db'], store });
     expect(insertExperimentCalls).toHaveLength(1);
-    expect(logText()).toContain("matches any model");
+    expect(logText()).toContain('spans models');
   });
 
   it('refuses a settings key outside the repeat-identity vocabulary', async () => {
-    const variantsPath = writeJson('variants.json', [oneVariant({ settings: { mode: 'sync' } })]);
+    const variantsPath = writeJson('variants.json', [oneVariant({ settings: { prompt: 'v2' } })]);
     const { store, insertExperimentCalls } = makeFakeStore({ models: [makeModelRow()] });
     await expect(main({ argv: baseCreateArgs(variantsPath), store })).rejects.toThrow(ProcessExitError);
-    expect(errorText()).toContain('mode');
+    expect(errorText()).toContain("'prompt'");
+    expect(insertExperimentCalls).toHaveLength(0);
+  });
+
+  it('accepts mode sync or batch and grouping by_order or by_topic, and refuses other values', async () => {
+    const goodPath = writeJson('good.json', [
+      oneVariant({ label: 'sync', settings: { mode: 'sync' } }),
+      oneVariant({ label: 'batch', settings: { mode: 'batch' } }),
+      oneVariant({ label: 'ordered', settings: { grouping: 'by_order', groupSize: 5 } }),
+      oneVariant({ label: 'topic', settings: { grouping: 'by_topic', groupSize: 5 } }),
+    ]);
+    const good = makeFakeStore({ models: [makeModelRow()] });
+    await main({ argv: [...baseCreateArgs(goodPath), '--write-db'], store: good.store });
+    expect(good.insertExperimentCalls).toHaveLength(1);
+
+    const badPath = writeJson('bad.json', [oneVariant({ label: 'a', settings: { mode: 'async' } }), oneVariant({ label: 'b', settings: { grouping: 'random' } })]);
+    const bad = makeFakeStore({ models: [makeModelRow()] });
+    await expect(main({ argv: baseCreateArgs(badPath), store: bad.store })).rejects.toThrow(ProcessExitError);
+    expect(errorText()).toContain('settings.mode must be one of sync, batch');
+    expect(errorText()).toContain('settings.grouping must be one of by_order, by_topic');
+    expect(bad.insertExperimentCalls).toHaveLength(0);
+  });
+
+  it('refuses settings.repeats and names the --repeat flag of eval-run', async () => {
+    const variantsPath = writeJson('variants.json', [oneVariant({ settings: { repeats: 3 } })]);
+    const { store, insertExperimentCalls } = makeFakeStore({ models: [makeModelRow()] });
+    await expect(main({ argv: baseCreateArgs(variantsPath), store })).rejects.toThrow(ProcessExitError);
+    expect(errorText()).toContain('settings.repeats');
+    expect(errorText()).toContain('--repeat');
+    expect(insertExperimentCalls).toHaveLength(0);
+  });
+
+  it('accepts a null model_slug as a declaration that spans models', async () => {
+    const variantsPath = writeJson('variants.json', [oneVariant({ model_slug: null })]);
+    const { store, insertExperimentCalls } = makeFakeStore();
+    await main({ argv: [...baseCreateArgs(variantsPath), '--write-db'], store });
+    expect(insertExperimentCalls).toHaveLength(1);
+    expect(insertExperimentCalls[0].variants_declared).toEqual([oneVariant({ model_slug: null })]);
+    expect(logText()).toContain('spans models');
+  });
+
+  it('accepts baseline_from naming another existing experiment on a baseline', async () => {
+    const source = makeEvalExperimentRow({ id: 'exp-src', slug: 'noise-floor' });
+    const variantsPath = writeJson('variants.json', [oneVariant({ baseline_from: 'noise-floor' })]);
+    const { store, insertExperimentCalls } = makeFakeStore({ experiments: [source], models: [makeModelRow()] });
+    await main({ argv: [...baseCreateArgs(variantsPath), '--write-db'], store });
+    expect(insertExperimentCalls[0].variants_declared).toEqual([oneVariant({ baseline_from: 'noise-floor' })]);
+  });
+
+  it('refuses baseline_from naming an experiment that does not exist', async () => {
+    const variantsPath = writeJson('variants.json', [oneVariant({ baseline_from: 'no-such-experiment' })]);
+    const { store, insertExperimentCalls } = makeFakeStore({ models: [makeModelRow()] });
+    await expect(main({ argv: baseCreateArgs(variantsPath), store })).rejects.toThrow(ProcessExitError);
+    expect(errorText()).toContain('no-such-experiment');
+    expect(insertExperimentCalls).toHaveLength(0);
+  });
+
+  it("refuses baseline_from given as an experiment's id, since the view joins on slug", async () => {
+    const source = makeEvalExperimentRow({ id: 'exp-src', slug: 'noise-floor' });
+    const variantsPath = writeJson('variants.json', [oneVariant({ baseline_from: 'exp-src' })]);
+    const { store, insertExperimentCalls } = makeFakeStore({ experiments: [source], models: [makeModelRow()] });
+    await expect(main({ argv: baseCreateArgs(variantsPath), store })).rejects.toThrow(ProcessExitError);
+    expect(errorText()).toContain("must be the experiment's slug");
+    expect(errorText()).toContain('noise-floor');
+    expect(insertExperimentCalls).toHaveLength(0);
+  });
+
+  it('refuses baseline_from naming the experiment itself', async () => {
+    const variantsPath = writeJson('variants.json', [oneVariant({ baseline_from: 'my-experiment' })]);
+    const { store, insertExperimentCalls } = makeFakeStore({ models: [makeModelRow()] });
+    await expect(main({ argv: baseCreateArgs(variantsPath), store })).rejects.toThrow(ProcessExitError);
+    expect(errorText()).toContain('itself');
+    expect(insertExperimentCalls).toHaveLength(0);
+  });
+
+  it('refuses baseline_from on a variant whose role is not baseline', async () => {
+    const source = makeEvalExperimentRow({ id: 'exp-src', slug: 'noise-floor' });
+    const variantsPath = writeJson('variants.json', [oneVariant({ role: 'candidate', baseline_from: 'noise-floor' })]);
+    const { store, insertExperimentCalls } = makeFakeStore({ experiments: [source], models: [makeModelRow()] });
+    await expect(main({ argv: baseCreateArgs(variantsPath), store })).rejects.toThrow(ProcessExitError);
+    expect(errorText()).toContain('only valid on a variant whose role is baseline');
     expect(insertExperimentCalls).toHaveLength(0);
   });
 
@@ -381,8 +467,8 @@ describe('eval-experiment-create', () => {
       experiments: [existing],
       models: [makeModelRow()],
       variantRunCounts: [
-        { declared_label: 'baseline', run_count: 3 },
-        { declared_label: 'candidate', run_count: 2 },
+        { declared_label: 'baseline', run_count: 3, run_ids: [] },
+        { declared_label: 'candidate', run_count: 2, run_ids: ['run-c1', 'run-c2'] },
       ],
     });
     await expect(
@@ -403,12 +489,93 @@ describe('eval-experiment-create', () => {
       experiments: [existing],
       models: [makeModelRow()],
       variantRunCounts: [
-        { declared_label: 'baseline', run_count: 3 },
-        { declared_label: 'candidate', run_count: 0 },
+        { declared_label: 'baseline', run_count: 3, run_ids: [] },
+        { declared_label: 'candidate', run_count: 0, run_ids: [] },
       ],
     });
     await main({ argv: ['--update', 'my-experiment', '--variants', variantsPath, '--write-db'], store });
     expect(updateExperimentCalls).toHaveLength(1);
     expect(updateExperimentCalls[0].patch).toMatchObject({ variants_declared: [oneVariant({ label: 'baseline' })] });
+  });
+
+  describe('--update when a kept label already has runs', () => {
+    const matchedRun = makeEvalRunRow({
+      id: 'run-1',
+      task: 'transcription',
+      status: 'completed',
+      model: 'anthropic/claude-sonnet-5',
+      experiment_id: 'exp-1',
+      settings: { provider: null, reasoning: null },
+    });
+    const existing = makeEvalExperimentRow({
+      id: 'exp-1',
+      slug: 'my-experiment',
+      variants_declared: [oneVariant({ label: 'baseline', settings: { renderDpi: 120 } })],
+    });
+    const counts: EvalExperimentVariantRunCountRow[] = [{ declared_label: 'baseline', run_count: 1, run_ids: ['run-1'] }];
+
+    function updateWith(variant: ReturnType<typeof oneVariant>, extra: { models?: EvalModelCurrentRow[] } = {}) {
+      const variantsPath = writeJson('variants.json', [variant]);
+      const fake = makeFakeStore({
+        experiments: [existing],
+        models: extra.models ?? [makeModelRow(), makeModelRow({ id: 'model-2', slug: 'anthropic/claude-haiku-4.5' })],
+        variantRunCounts: counts,
+        runs: [matchedRun],
+      });
+      return { ...fake, run: () => main({ argv: ['--update', 'my-experiment', '--variants', variantsPath, '--write-db'], store: fake.store }) };
+    }
+
+    it('refuses a changed model_slug that no longer matches the run', async () => {
+      const { run, updateExperimentCalls } = updateWith(oneVariant({ label: 'baseline', model_slug: 'anthropic/claude-haiku-4.5', settings: { renderDpi: 120 } }));
+      await expect(run()).rejects.toThrow(ProcessExitError);
+      expect(errorText()).toContain("'baseline'");
+      expect(errorText()).toContain('run-1');
+      expect(updateExperimentCalls).toHaveLength(0);
+    });
+
+    it('refuses an added settings key whose value the run does not carry', async () => {
+      const { run, updateExperimentCalls } = updateWith(oneVariant({ label: 'baseline', settings: { renderDpi: 120, groupSize: 5 } }));
+      await expect(run()).rejects.toThrow(ProcessExitError);
+      expect(errorText()).toContain('run-1');
+      expect(updateExperimentCalls).toHaveLength(0);
+    });
+
+    it('refuses adding baseline_from, which moves the candidate runs to another experiment', async () => {
+      const source = makeEvalExperimentRow({ id: 'exp-src', slug: 'noise-floor' });
+      const variantsPath = writeJson('variants.json', [oneVariant({ label: 'baseline', settings: { renderDpi: 120 }, baseline_from: 'noise-floor' })]);
+      const { store, updateExperimentCalls } = makeFakeStore({
+        experiments: [existing, source],
+        models: [makeModelRow()],
+        variantRunCounts: counts,
+        runs: [matchedRun],
+      });
+      await expect(
+        main({ argv: ['--update', 'my-experiment', '--variants', variantsPath, '--write-db'], store }),
+      ).rejects.toThrow(ProcessExitError);
+      expect(updateExperimentCalls).toHaveLength(0);
+    });
+
+    it('allows removing a settings key', async () => {
+      const { run, updateExperimentCalls } = updateWith(oneVariant({ label: 'baseline' }));
+      await run();
+      expect(updateExperimentCalls).toHaveLength(1);
+    });
+
+    it('allows an added settings key the run already carries', async () => {
+      const { run, updateExperimentCalls } = updateWith(oneVariant({ label: 'baseline', settings: { renderDpi: 120, reasoning: null } }));
+      await run();
+      expect(updateExperimentCalls).toHaveLength(1);
+    });
+
+    it('allows a new declaration for a label with no runs', async () => {
+      const variantsPath = writeJson('variants.json', [oneVariant({ label: 'baseline', model_slug: 'anthropic/claude-haiku-4.5' })]);
+      const { store, updateExperimentCalls } = makeFakeStore({
+        experiments: [existing],
+        models: [makeModelRow({ slug: 'anthropic/claude-haiku-4.5' })],
+        variantRunCounts: [{ declared_label: 'baseline', run_count: 0, run_ids: [] }],
+      });
+      await main({ argv: ['--update', 'my-experiment', '--variants', variantsPath, '--write-db'], store });
+      expect(updateExperimentCalls).toHaveLength(1);
+    });
   });
 });

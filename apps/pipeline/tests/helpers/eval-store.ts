@@ -1,6 +1,6 @@
 /**
  * Shared `EvalStore` test fake and row fixture builders, used by every eval command's test file
- * instead of each hand-rolling its own full 18-method fake. `baseFakeEvalStore()` throws on every
+ * instead of each hand-rolling its own full fake. `baseFakeEvalStore()` throws on every
  * method by default, so a test spreads it and overrides only the methods it actually exercises — a
  * call to a method the test didn't expect fails loudly instead of returning `undefined` or silently
  * succeeding. The fixture builders return a fully-populated row with sensible defaults, overridable
@@ -50,6 +50,9 @@ export function baseFakeEvalStore(): EvalStore {
       throw new Error('not used by this test');
     },
     async listResults() {
+      throw new Error('not used by this test');
+    },
+    async getResult() {
       throw new Error('not used by this test');
     },
     async updateResult() {

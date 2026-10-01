@@ -85,6 +85,10 @@ export interface EvalResultRow {
   run_id: string;
   item_id: string;
   output: Record<string, unknown> | null;
+  /** Set only by `eval-judge`: { [otherRunId]: { [judgePromptHash]: JudgeVerdictEntry[] } }. Each
+   * run of the command appends one entry to the list for its pairing and hash, so repeats and
+   * other judge models sit side by side; an entry records the judge model, its repeat index, the
+   * call settings sent and the response facts of both position-order calls (see `judge.ts`). */
   judge_verdict: Record<string, unknown> | null;
   deterministic_checks: Record<string, unknown> | null;
   score: number | null;
@@ -101,16 +105,23 @@ export interface EvalResultRow {
   error: 'parse' | 'api' | 'empty' | null;
   /** OpenRouter response facts with no column of their own: response id, created, each choice's
    * finish_reason/native_finish_reason, and the usage sub-fields parseUsage doesn't map (cached
-   * tokens, upstream cost breakdown). Never contains message content. One shape per task: the
-   * primary call's fields at the top level; a transcription row whose slide went through
-   * --exclusion-pass adds a `classifier` key holding the same fields for the classifier call plus
-   * its served_model/served_provider (the row's own served_model/served_provider columns describe
-   * the transcription call only), so a transcription row is one of top-level-only (no exclusion
-   * pass), top-level-plus-classifier (both calls ran), or classifier-only (the classifier dropped
-   * the slide, so no transcription call was made). For a grouped audit call this is the whole
-   * call's response, written identically on every row in the group. Unlike the per-row token
-   * columns, which are that group's split, this is not divisible and must not be summed across
-   * rows. Null when the call that would have produced it errored. */
+   * tokens, upstream cost breakdown). Never contains message content. Kept when a call
+   * returned content, including content that then failed to parse (error `parse`); null when the
+   * call failed or returned no content (error `api` or `empty`). One shape per task: the primary
+   * call's fields at the top level; a transcription row whose slide went through --exclusion-pass
+   * adds a `classifier` key holding the same fields for the classifier call plus its
+   * served_model/served_provider (the row's own served_model/served_provider columns describe the
+   * transcription call only). A transcription row is one of four shapes: null (no call returned a
+   * response), top-level only (no exclusion pass), top-level plus classifier (both calls returned
+   * a response), or classifier alone, meaning the transcription call returned nothing to record,
+   * told apart by the row's `error` and `deterministic_checks.exclusion_decision`: the classifier
+   * dropped the slide (no error, decision `drop`), the transcription call failed after the
+   * classifier kept it (`api`/`empty`, decision `keep`), or the classifier's own response did not
+   * parse (`parse`, decision null). For a grouped audit call this is the whole call's response,
+   * written identically on every row in the group. Unlike the per-row token columns, which are
+   * that group's split, this is not divisible and must not be summed across rows. Nothing reads
+   * the column yet; it exists so a question asked later about one call can be answered from the
+   * row. */
   response_meta: Record<string, unknown> | null;
   created_at: string;
 }
@@ -137,11 +148,13 @@ export type NewEvalExperimentRow = Pick<EvalExperimentRow, 'slug' | 'question' |
   Partial<Pick<EvalExperimentRow, 'variants_declared' | 'decision_rule' | 'depends_on' | 'status' | 'notes'>>;
 
 /** One row of `eval_experiment_variants`, scoped to one experiment: a declared variant's label, and
- * how many eval_runs rows currently match it under that view's rule. `eval-experiment-create`'s
- * `--update` path reads this to refuse dropping a declared variant that already has matching runs. */
+ * the eval_runs rows (count and ids) that currently match it under that view's rule.
+ * `eval-experiment-create`'s `--update` path reads this to refuse an update that would orphan the
+ * runs a declared variant matches today. */
 export interface EvalExperimentVariantRunCountRow {
   declared_label: string | null;
   run_count: number;
+  run_ids: string[];
 }
 
 /** One dated snapshot from `eval_models_current` (the latest row per slug) — the subset `eval-run`
@@ -218,11 +231,12 @@ export interface EvalStore {
   insertResults(rows: NewEvalResultRow[]): Promise<void>;
   listResults(runId: string): Promise<EvalResultRow[]>;
   updateResult(id: string, patch: Partial<Pick<EvalResultRow, 'score'>>): Promise<void>;
-  /** Replaces one eval_results row's judge_verdict column wholesale — `eval-judge` reads the row's
-   * current value first and passes the merged object, keyed by the other run's id and then by the
-   * judge prompt hash that produced the entry, so a run judged against several others, or re-judged
-   * under a changed prompt, accumulates one entry per (pairing, prompt) instead of the column being
-   * overwritten each time. */
+  /** One eval_results row by id, or null when it does not exist. `eval-judge` re-reads a row's
+   * judge_verdict through this immediately before each write. */
+  getResult(id: string): Promise<EvalResultRow | null>;
+  /** Replaces one eval_results row's judge_verdict column wholesale. `eval-judge` reads the row's
+   * current value immediately before the write and passes the object back with one more entry
+   * appended to the list for its pairing and judge prompt hash, so earlier entries are kept. */
   updateResultJudgeVerdict(id: string, verdict: Record<string, unknown>): Promise<void>;
   /** Resolves `idOrSlug` against `eval_experiments.id` first, then `.slug` — --experiment accepts either. */
   getExperiment(idOrSlug: string): Promise<EvalExperimentRow | null>;
@@ -326,6 +340,11 @@ export function createSupabaseEvalStore(supabase: SupabaseClient): EvalStore {
       if (error) fail(`list eval_results for run ${runId}`, error);
       return (data as EvalResultRow[]) ?? [];
     },
+    async getResult(id) {
+      const { data, error } = await supabase.from('eval_results').select().eq('id', id).maybeSingle();
+      if (error) fail(`fetch eval_results row ${id}`, error);
+      return (data as EvalResultRow) ?? null;
+    },
     async updateResult(id, patch) {
       const { error } = await supabase.from('eval_results').update(patch).eq('id', id);
       if (error) fail(`update eval_results row ${id}`, error);
@@ -357,7 +376,7 @@ export function createSupabaseEvalStore(supabase: SupabaseClient): EvalStore {
     async listDeclaredVariantRunCounts(experimentId) {
       const { data, error } = await supabase
         .from('eval_experiment_variants')
-        .select('declared_label, run_count')
+        .select('declared_label, run_count, run_ids')
         .eq('experiment_id', experimentId);
       if (error) fail(`list eval_experiment_variants for experiment ${experimentId}`, error);
       return (data as EvalExperimentVariantRunCountRow[]) ?? [];

@@ -370,6 +370,32 @@ describe('eval-run CLI wiring', () => {
     expect(JSON.stringify(results[0].response_meta)).not.toContain(sentinel);
   });
 
+  it('keeps response_meta on a grading row whose response did not parse, and leaves it null when the call failed', async () => {
+    const { store, results } = makeFakeStore();
+    const unparsable: LlmResult = {
+      text: 'not json at all',
+      model: 'openai/gpt-4.1-nano',
+      usage: { promptTokens: 100, completionTokens: 20, costUsd: 0.0001 },
+      raw: { id: 'gen-unparsed', choices: [{ finish_reason: 'stop' }] },
+    };
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--write-db'],
+      store,
+      callLlmFn: vi.fn(async (_options: LlmCallOptions) => unparsable),
+    });
+    expect(results[0].error).toBe('parse');
+    expect(results[0].response_meta).toEqual({ id: 'gen-unparsed', choices: [{ finish_reason: 'stop' }] });
+
+    const failed = makeFakeStore();
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--write-db'],
+      store: failed.store,
+      callLlmFn: vi.fn(async (_options: LlmCallOptions) => { throw new Error('connection reset'); }),
+    });
+    expect(failed.results[0].error).toBe('api');
+    expect(failed.results[0].response_meta).toBeNull();
+  });
+
   it('resolves --experiment by its row id, not only its slug', async () => {
     const { store, runs } = makeFakeStore();
     const stubResult: LlmResult = {
@@ -893,6 +919,41 @@ describe('eval-run CLI wiring: task audit', () => {
     expect(result.response_meta).toEqual({ id: 'gen-audit-1', choices: [{ finish_reason: 'stop' }] });
   });
 
+  it('keeps response_meta on a row whose audit response did not parse, recording the parse error', async () => {
+    const { store, results } = makeAuditFakeStore();
+    vi.mocked(callMistralAuditGroup).mockResolvedValue([
+      { ...auditResult, notes: 'PARSE_ERROR: not json', answer_correct: true },
+    ]);
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'audit', '--models', 'mistralai/mistral-large-2512', '--write-db'],
+      store,
+      callLlmFn: vi.fn(),
+      fetchUnitsFromDbFn: vi.fn(async () => []),
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].error).toBe('parse');
+    expect(results[0].response_meta).toEqual({ id: 'gen-audit-1', choices: [{ finish_reason: 'stop' }] });
+  });
+
+  it('leaves response_meta null on a row whose audit call failed outright', async () => {
+    const { store, results } = makeAuditFakeStore();
+    vi.mocked(callMistralAuditGroup).mockResolvedValue([
+      { ...auditResult, notes: 'API_ERROR: connection reset', response_meta: null, usage: null, served_model: null, served_provider: null },
+    ]);
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'audit', '--models', 'mistralai/mistral-large-2512', '--write-db'],
+      store,
+      callLlmFn: vi.fn(),
+      fetchUnitsFromDbFn: vi.fn(async () => []),
+    });
+
+    expect(results[0].error).toBe('api');
+    expect(results[0].response_meta).toBeNull();
+  });
+
   it('writes the same response_meta on every row of a grouped audit call, not divided', async () => {
     const { store, results } = makeAuditFakeStore(['q-2']);
     vi.mocked(callMistralAuditGroup).mockResolvedValue([
@@ -1347,6 +1408,75 @@ describe('eval-run CLI wiring: task transcription', () => {
         },
       });
       expect(JSON.stringify(dropped.response_meta)).not.toContain(CLASSIFIER_SENTINEL);
+    });
+
+    it('records the classifier alone when the transcription call fails after the classifier kept the slide', async () => {
+      const { store, results } = makeExclusionPassFakeStore();
+      const callLlmFn = vi.fn(async (opts: LlmCallOptions) => {
+        if (opts.jsonMode) {
+          return {
+            text: JSON.stringify({ teaches_language: true, reason: 'Vocabulary list.' }),
+            model: opts.model,
+            servedModel: opts.model,
+            servedProvider: 'Anthropic',
+            raw: { id: 'gen-classify-1', choices: [{ finish_reason: 'stop' }] },
+          } satisfies LlmResult;
+        }
+        throw new Error('connection reset');
+      });
+
+      await main({
+        argv: ['--set', 'set-1', '--task', 'transcription', '--models', TRANSCRIPTION_MODEL, '--exclusion-pass', CLASSIFIER_MODEL, '--write-db'],
+        store,
+        callLlmFn,
+      });
+
+      for (const row of results) {
+        expect(row.error).toBe('api');
+        expect(row.deterministic_checks).toMatchObject({ exclusion_decision: 'keep' });
+        expect(Object.keys(row.response_meta ?? {})).toEqual(['classifier']);
+      }
+    });
+
+    it('records the classifier alone when the classifier response does not parse', async () => {
+      const { store, results } = makeExclusionPassFakeStore();
+      const callLlmFn = vi.fn(async (opts: LlmCallOptions) => ({
+        text: 'not json',
+        model: opts.model,
+        servedModel: opts.model,
+        servedProvider: 'Anthropic',
+        raw: { id: 'gen-classify-bad', choices: [{ finish_reason: 'stop' }] },
+      } satisfies LlmResult));
+
+      await main({
+        argv: ['--set', 'set-1', '--task', 'transcription', '--models', TRANSCRIPTION_MODEL, '--exclusion-pass', CLASSIFIER_MODEL, '--write-db'],
+        store,
+        callLlmFn,
+      });
+
+      for (const row of results) {
+        expect(row.error).toBe('parse');
+        expect(row.deterministic_checks).toMatchObject({ exclusion_decision: null });
+        expect(row.response_meta).toEqual({
+          classifier: { id: 'gen-classify-bad', choices: [{ finish_reason: 'stop' }], served_model: CLASSIFIER_MODEL, served_provider: 'Anthropic' },
+        });
+      }
+    });
+
+    it('leaves response_meta null when no call returned a response', async () => {
+      const { store, results } = makeExclusionPassFakeStore();
+      const callLlmFn = vi.fn(async (_opts: LlmCallOptions) => { throw new Error('connection reset'); });
+
+      await main({
+        argv: ['--set', 'set-1', '--task', 'transcription', '--models', TRANSCRIPTION_MODEL, '--exclusion-pass', CLASSIFIER_MODEL, '--write-db'],
+        store,
+        callLlmFn,
+      });
+
+      for (const row of results) {
+        expect(row.error).toBe('api');
+        expect(row.response_meta).toBeNull();
+      }
     });
 
     it("refuses when --exclusion-pass is given on a task other than transcription", async () => {

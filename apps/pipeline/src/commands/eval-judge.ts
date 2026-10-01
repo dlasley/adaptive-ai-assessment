@@ -13,11 +13,13 @@
  *
  * Dry run by default, printing the projected judge cost; `--write-db` calls the judge and writes the
  * verdict onto both runs' `eval_results.judge_verdict`, keyed first by the other run's id and then by
- * the judge prompt hash that produced it ({ [otherRunId]: { [judgePromptHash]: {...} } }), so a run
- * judged against several others, or re-judged against the same one under a changed prompt,
- * accumulates one entry per (pairing, prompt) rather than the column being overwritten. Refuses to
- * write over an existing entry for the same pairing and the current prompt hash unless `--overwrite`
- * is passed. Also stamps both runs' `judge_model`/`judge_prompt_hash` with the hash used this time.
+ * the judge prompt hash that produced it ({ [otherRunId]: { [judgePromptHash]: [entry, ...] } }).
+ * Every run appends one entry to that list, so the same pairing judged again under the same prompt,
+ * by the same or a different judge model, keeps every earlier entry; each entry carries a `repeat`
+ * index (how many entries from the same judge model came before it), the call settings the command
+ * sent, and the response facts of both position-order calls. Also stamps both runs'
+ * `judge_model`/`judge_prompt_hash` with the model and hash used this time: those two columns
+ * describe the latest judge call on the run, not any one pairing.
  */
 
 import fs from 'fs';
@@ -33,11 +35,15 @@ import { BUDGET_CAPS_USD, isWithinBudget, projectCostUsd, registryPriceOf } from
 import {
   JUDGE_PROMPT_HASH,
   combineJudgeOrders,
+  nextJudgeRepeat,
   parseJudgeVerdict,
   buildJudgeMessageContent,
+  type JudgeCallMeta,
+  type JudgeCallSettings,
   type JudgeVerdict,
+  type JudgeVerdictEntry,
 } from '../lib/eval/judge';
-import { callLlm, type LlmCallOptions } from '@adaptive/shared/llm';
+import { callLlm, responseMetaFromLlmResult, type LlmCallOptions } from '@adaptive/shared/llm';
 import { defineCli } from '../lib/options/define-cli';
 import { dbTargetFlags, loggingFlags } from '../lib/options/groups';
 import { createLogger, levelFromFlags, setLogLevel } from '../lib/logger';
@@ -62,11 +68,10 @@ export const cli = defineCli(
     'judge-model': { type: 'string', required: true, help: 'OpenRouter model slug for the judge' },
     provider: { type: 'string', help: 'Provider tag to pin the judge call to (single upstream, fallbacks disabled)' },
     'allow-unpriced': { type: 'boolean', default: false, help: 'Call the judge model even when it has no listed price, so its cost cannot be projected or capped' },
-    overwrite: { type: 'boolean', default: false, help: 'Re-judge even when a shared item already carries a judge_verdict entry for this pairing under the current judge prompt hash' },
   },
   {
     name: 'eval-judge',
-    description: "Paired, position-swapped judge comparison of two completed transcription runs on their shared items, scored by a third model against the slide image directly rather than through a seeded reference. Dry run by default; --write-db calls the judge and writes eval_results.judge_verdict.",
+    description: "Paired, position-swapped judge comparison of two completed transcription runs on their shared items, scored by a third model against the slide image directly rather than through a seeded reference. Dry run by default; --write-db calls the judge and appends an entry to eval_results.judge_verdict. Each run adds an entry, so a pair can be judged repeatedly and by several judge models. The runs' judge_model and judge_prompt_hash columns describe the latest judge call on the run.",
     examples: [
       'npx tsx apps/pipeline/src/commands/eval-judge.ts --runs run-a,run-b --judge-model google/gemini-3.1-flash-lite',
       'npx tsx apps/pipeline/src/commands/eval-judge.ts --runs run-a,run-b --judge-model google/gemini-3.1-flash-lite --provider google-ai-studio --write-db',
@@ -75,6 +80,52 @@ export const cli = defineCli(
 );
 
 type Options = ReturnType<typeof cli.parse>;
+
+/** A judge call is a single short classification; reasoning tokens would only spend budget without
+ * changing the JSON contract it has to produce. */
+const JUDGE_REASONING = { enabled: false } as const;
+
+/** The entries already stored on one result row for a pairing under the current judge prompt hash.
+ * A value that is not a list is a single-object entry from an earlier storage shape that has not been
+ * converted to a one-element list; writing over it would drop it, so it is refused. */
+function entriesUnderCurrentHash(result: EvalResultRow, otherRunId: string): JudgeVerdictEntry[] {
+  const stored = (result.judge_verdict as Record<string, Record<string, unknown>> | null)?.[otherRunId]?.[JUDGE_PROMPT_HASH];
+  if (stored === undefined) return [];
+  if (!Array.isArray(stored)) {
+    throw new Error(`Result ${result.id} holds a judge_verdict entry for run ${otherRunId} that is not a list: it is a single-object entry from an earlier storage shape and must be converted to a one-element list before judging again.`);
+  }
+  return stored as JudgeVerdictEntry[];
+}
+
+/** Says how many entries the pairing already holds under the current hash, per judge model, and
+ * which repeat index this run takes for `judgeModel`. */
+function describeExistingEntries(entryListsPerItem: JudgeVerdictEntry[][], judgeModel: string): string {
+  const byModel = new Map<string, Map<number, number>>();
+  for (const entries of entryListsPerItem) {
+    const counts = new Map<string, number>();
+    for (const entry of entries) counts.set(entry.judge_model, (counts.get(entry.judge_model) ?? 0) + 1);
+    for (const [model, count] of counts) {
+      const histogram = byModel.get(model) ?? new Map<number, number>();
+      histogram.set(count, (histogram.get(count) ?? 0) + 1);
+      byModel.set(model, histogram);
+    }
+  }
+  const total = entryListsPerItem.length;
+  const lines = [`Existing judge entries for this pairing under judge prompt hash ${JUDGE_PROMPT_HASH}:`];
+  if (byModel.size === 0) lines.push('  none');
+  for (const [model, histogram] of byModel) {
+    const parts = [...histogram].sort((x, y) => x[0] - y[0]).map(([count, items]) => `${count} entr${count === 1 ? 'y' : 'ies'} on ${items} of ${total} item(s)`);
+    lines.push(`  ${model}: ${parts.join(', ')}`);
+  }
+  const repeats = new Map<number, number>();
+  for (const entries of entryListsPerItem) {
+    const repeat = nextJudgeRepeat(entries, judgeModel);
+    repeats.set(repeat, (repeats.get(repeat) ?? 0) + 1);
+  }
+  const repeatParts = [...repeats].sort((x, y) => x[0] - y[0]).map(([repeat, items]) => `repeat ${repeat} on ${items} item(s)`);
+  lines.push(`This run (${judgeModel}) takes ${repeatParts.join(', ')}.`);
+  return lines.join('\n');
+}
 
 function resultByItem(results: EvalResultRow[]): Map<string, EvalResultRow> {
   return new Map(results.map((r) => [r.item_id, r]));
@@ -182,8 +233,20 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   const projectedLabel = projected !== undefined ? `$${projected.toFixed(4)}` : 'unknown (unpriced judge model)';
   console.log(`Judge ${options.judgeModel}: ${callCount} call(s) (two per item, positions swapped), projected ${projectedLabel} against a $${cap} cap.`);
 
+  let existingByItem: Map<string, { forA: JudgeVerdictEntry[]; forB: JudgeVerdictEntry[] }>;
+  try {
+    existingByItem = new Map(sharedItems.map(({ item }) => [item.id, {
+      forA: entriesUnderCurrentHash(byItemA.get(item.id)!, runB.id),
+      forB: entriesUnderCurrentHash(byItemB.get(item.id)!, runA.id),
+    }]));
+  } catch (err) {
+    logger.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
+  console.log(describeExistingEntries(sharedItems.map(({ item }) => existingByItem.get(item.id)!.forA), options.judgeModel));
+
   if (!options.writeDb) {
-    console.log('\nDry run. Pass --write-db to call the judge model and write judge_verdict.');
+    console.log('\nDry run. Pass --write-db to call the judge model and append a judge_verdict entry.');
     return;
   }
 
@@ -194,18 +257,8 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
     process.exit(1);
   }
 
-  if (!options.overwrite) {
-    const alreadyJudged = sharedItems.filter(({ item }) => {
-      const existing = byItemA.get(item.id)!.judge_verdict as Record<string, Record<string, unknown>> | null;
-      return existing?.[runB.id]?.[JUDGE_PROMPT_HASH] !== undefined;
-    });
-    if (alreadyJudged.length > 0) {
-      logger.error(`${alreadyJudged.length} of ${sharedItems.length} shared item(s) already carry a judge_verdict entry for run ${runA.id} vs run ${runB.id} under the current judge prompt hash (${JUDGE_PROMPT_HASH}). Pass --overwrite to re-judge and replace them.`);
-      process.exit(1);
-    }
-  }
-
   const providerPin: LlmCallOptions['provider'] = options.provider ? { order: [options.provider], allowFallbacks: false } : undefined;
+  const judgeCall: JudgeCallSettings = { provider_pin: options.provider?.toLowerCase() ?? null, reasoning: JUDGE_REASONING, temperature: null };
   const judgedAt = new Date().toISOString();
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-judge-slides-'));
 
@@ -219,14 +272,14 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
       const slideText = String(item.payload.text_layer ?? '');
       const imageBytes = renderSlideImage(pdfPath, slide, tmpDir);
 
-      const judgeOnce = async (transcriptA: string, transcriptB: string): Promise<JudgeVerdict> => {
+      const judgeOnce = async (transcriptA: string, transcriptB: string): Promise<{ verdict: JudgeVerdict; meta: JudgeCallMeta }> => {
         const content = buildJudgeMessageContent(slideText, transcriptA, transcriptB, imageBytes);
         const result = await withRateLimitRetry(() => callLlmFn({
           model: options.judgeModel,
           jsonMode: true,
           // A judge call is a single short classification; reasoning tokens would only spend budget
           // without changing the JSON contract it has to produce.
-          reasoning: { enabled: false },
+          reasoning: judgeCall.reasoning,
           provider: providerPin,
           sessionId: `${runA.id}:${runB.id}`,
           messages: [{ role: 'user', content }],
@@ -235,11 +288,14 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
           onRateLimited: (attempt, backoffMs) => logger.warn(`Rate limited (429) on item ${item.item_key}. Retry ${attempt + 1}/${MODEL_CALL_RETRY.maxRetries} in ${backoffMs / 1000}s...`),
         });
         actualCostUsd += result.usage?.costUsd ?? 0;
-        return parseJudgeVerdict(result.text);
+        const meta: JudgeCallMeta = { ...(responseMetaFromLlmResult(result) ?? {}) };
+        if (result.servedModel !== undefined) meta.served_model = result.servedModel;
+        if (result.servedProvider !== undefined) meta.served_provider = result.servedProvider;
+        return { verdict: parseJudgeVerdict(result.text), meta };
       };
 
-      let order1: JudgeVerdict;
-      let order2: JudgeVerdict;
+      let order1: { verdict: JudgeVerdict; meta: JudgeCallMeta };
+      let order2: { verdict: JudgeVerdict; meta: JudgeCallMeta };
       try {
         order1 = await judgeOnce(markdownA, markdownB);
         order2 = await judgeOnce(markdownB, markdownA);
@@ -249,7 +305,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
         continue;
       }
 
-      const outcome = combineJudgeOrders(order1, order2);
+      const outcome = combineJudgeOrders(order1.verdict, order2.verdict);
       wins[outcome]++;
       if (outcome !== 'tie') {
         nonTieItems.push({ itemKey: item.item_key, winnerRunId: outcome === 'a' ? runA.id : runB.id });
@@ -257,35 +313,47 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
 
       const outcomeForA = outcome === 'a' ? 'win' : outcome === 'b' ? 'loss' : 'tie';
       const outcomeForB = outcome === 'b' ? 'win' : outcome === 'a' ? 'loss' : 'tie';
-      const reasons = [order1.reason, order2.reason];
+      const reasons = [order1.verdict.reason, order2.verdict.reason];
+      const calls = [order1.meta, order2.meta];
       const resultA = byItemA.get(item.id)!;
       const resultB = byItemB.get(item.id)!;
-      const existingForA = (resultA.judge_verdict as Record<string, Record<string, unknown>> | null) ?? {};
-      const existingForB = (resultB.judge_verdict as Record<string, Record<string, unknown>> | null) ?? {};
+      // Each write re-reads the row so entries another eval-judge process stored in the meantime are kept.
+      const appendEntry = async (resultId: string, otherRunId: string, outcomeForRun: JudgeVerdictEntry['outcome']) => {
+        const fresh = await store.getResult(resultId);
+        if (!fresh) throw new Error(`Result ${resultId} no longer exists.`);
+        const column = (fresh.judge_verdict as Record<string, Record<string, unknown>> | null) ?? {};
+        const prior = entriesUnderCurrentHash(fresh, otherRunId);
+        const entry: JudgeVerdictEntry = {
+          outcome: outcomeForRun,
+          judge_model: options.judgeModel,
+          repeat: nextJudgeRepeat(prior, options.judgeModel),
+          reasons,
+          judged_at: judgedAt,
+          judge_call: judgeCall,
+          calls,
+        };
+        await store.updateResultJudgeVerdict(resultId, {
+          ...column,
+          [otherRunId]: {
+            ...(column[otherRunId] ?? {}),
+            [JUDGE_PROMPT_HASH]: [...prior, entry],
+          },
+        });
+      };
 
-      await store.updateResultJudgeVerdict(resultA.id, {
-        ...existingForA,
-        [runB.id]: {
-          ...(existingForA[runB.id] ?? {}),
-          [JUDGE_PROMPT_HASH]: { outcome: outcomeForA, judge_model: options.judgeModel, reasons, judged_at: judgedAt },
-        },
-      });
-      await store.updateResultJudgeVerdict(resultB.id, {
-        ...existingForB,
-        [runA.id]: {
-          ...(existingForB[runA.id] ?? {}),
-          [JUDGE_PROMPT_HASH]: { outcome: outcomeForB, judge_model: options.judgeModel, reasons, judged_at: judgedAt },
-        },
-      });
+      await appendEntry(resultA.id, runB.id, outcomeForA);
+      await appendEntry(resultB.id, runA.id, outcomeForB);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
-  await store.updateRun(runA.id, { judge_model: options.judgeModel, judge_prompt_hash: JUDGE_PROMPT_HASH });
-  await store.updateRun(runB.id, { judge_model: options.judgeModel, judge_prompt_hash: JUDGE_PROMPT_HASH });
-
   const judgedCount = wins.a + wins.b + wins.tie;
+  if (judgedCount > 0) {
+    await store.updateRun(runA.id, { judge_model: options.judgeModel, judge_prompt_hash: JUDGE_PROMPT_HASH });
+    await store.updateRun(runB.id, { judge_model: options.judgeModel, judge_prompt_hash: JUDGE_PROMPT_HASH });
+  }
+
   console.log('');
   console.log(`Items judged: ${judgedCount}`);
   console.log(`Wins for run ${runA.id}: ${wins.a}`);

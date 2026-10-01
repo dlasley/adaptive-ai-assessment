@@ -575,7 +575,7 @@ for the workflow and [`apps/pipeline/README.md`](../apps/pipeline/README.md) for
 reference. Currently wired up for the audit, grading, mapping, and transcription tasks;
 generation and validation share the same tables but have no runner yet.
 
-Four tables, service-role only, no anon policies:
+The task tables, service-role only, no anon policies:
 
 - **`eval_sets`**: one frozen item sample. Records which task it's for, where it was drawn from
   (`source`, a batch id or similar), how it was sampled (`selection`: strata, seed, filters), and a
@@ -594,14 +594,22 @@ Four tables, service-role only, no anon policies:
   score, latency, cost, token usage, and an `error` (`parse` / `api` / `empty`) when the call
   produced nothing usable. `response_meta` carries the OpenRouter response facts that have no
   column of their own (response id, created, each choice's finish reason, cached token counts, the
-  upstream-cost breakdown), picked out by name and never including message content. A grouped
+  upstream-cost breakdown), picked out by name and never including message content. It is kept
+  when a call returned content, including content that then failed to parse (`error` `parse`),
+  and is null when the call failed or returned no content (`error` `api` or `empty`). A grouped
   audit call (several questions in one call) writes the same `response_meta` on every row in the
   group, since it describes the whole call, not a per-question share. A transcription row gains a
   `classifier` key holding the same fields for its exclusion-pass classifier call (plus that call's
   served model and provider, which the row's own `served_model`/`served_provider` columns describe
-  only for the transcription call) when `--exclusion-pass` ran: top-level fields only if no
-  exclusion pass ran, top-level plus `classifier` if both calls ran, or `classifier` alone if the
-  classifier dropped the slide before any transcription call was made.
+  only for the transcription call) when `--exclusion-pass` ran. A transcription row is one of four
+  shapes: null (no call returned a response), top-level fields only (no exclusion pass ran),
+  top-level plus `classifier` (both calls returned a response), or `classifier` alone, which means
+  the transcription call returned nothing to record and is told apart by the row's `error` and
+  `deterministic_checks.exclusion_decision`: the classifier dropped the slide (no error, decision
+  `drop`, no transcription call made), the transcription call failed after the classifier kept the
+  slide (`api` or `empty`, decision `keep`), or the classifier's own response did not parse
+  (`parse`, decision null). Nothing reads the column yet; it exists so a question asked later
+  about one specific call can be answered from the row.
 
 For the audit task, `eval_items.payload` snapshots a question's fields plus the production
 auditor's own verdict (`production_audit`), for a production-verdict comparison when approved
@@ -692,17 +700,22 @@ scoring against a checked transcript (itself seeded from production's own model 
 compared through it is partly scored against that model's choices), a third model looks directly at
 the slide image and the two runs' transcripts and picks the more complete and faithful one. Every
 shared item is judged twice with the two runs' positions swapped, and a run wins the item only when
-it wins in both orders, cancelling the judge's position bias. `--write-db` merges an entry into each
-judged item's `eval_results.judge_verdict`, keyed first by the other run's id and then by the judge
-prompt hash that produced it, so a run can be judged against several others, or re-judged against
-the same one under a changed prompt, without clobbering an earlier entry; re-judging the same pair
-under the same hash refuses unless `--overwrite` is passed. Stamps `judge_model`/`judge_prompt_hash`
-on both `eval_runs` rows. Dry run by default, projecting the judge cost from the model registry's
-list price.
+it wins in both orders, cancelling the judge's position bias. `--write-db` appends an entry to the
+list in each judged item's `eval_results.judge_verdict`, keyed first by the other run's id and then
+by the judge prompt hash that produced it. Every run of the command appends, so a run can be judged
+against several others, and the same pair can be judged again under the same prompt, by the same
+judge model or another, with every earlier entry kept; that is what lets the judge's own
+run-to-run noise be measured. Each entry carries a `repeat` index (the count of earlier entries from
+the same judge model), the call settings the command sent (`judge_call`: the provider pin or null,
+reasoning off, no temperature set) and the response facts of both position-order calls (`calls`:
+response id, finish reason, the model and host OpenRouter says served each call; never message
+content). Stamps `judge_model`/`judge_prompt_hash` on both `eval_runs` rows, which describe the
+latest judge call on the run rather than any one pairing. Dry run by default, projecting the judge
+cost from the model registry's list price.
 
 ### The durable layer: experiments, model registry, findings
 
-More tables sit above the four task tables, recording the parts of an evaluation program
+More tables sit above the task tables, recording the parts of an evaluation program
 that outlive any single run, all service-role only with no anon policies:
 
 - **`eval_experiments`**: one named question under test (for example, whether a cheaper vision model
@@ -737,7 +750,7 @@ that outlive any single run, all service-role only with no anon policies:
   `eval_items.reviewed_by`/`reviewed_at`, which are per item. A re-review under a revised rubric adds
   a new round rather than overwriting the claim about what confidence applied under the old one.
 
-Fourteen views compute across these tables so a comparison, or the dashboard, doesn't need a
+These views compute across the tables so a comparison, or the dashboard, doesn't need a
 hand-written join each time: `eval_models_current` (latest known snapshot per slug, which `eval-run`
 resolves `--models` against when stamping `model_version_id`), `eval_run_scorecard` (one row per
 run, with its model's registry attributes and experiment slug joined in, plus its own
@@ -753,24 +766,37 @@ per item with at least two completed, non-error runs, with how many runs agree o
 and error counts, parse-failure rate, mean cost, latency p50/p95, and a task-specific behaviour
 column that needs no reference, which is what ranks audit and grading variants while their
 references are still pending), `eval_variant_stability` (one row per variant identity, grouped on
-`experiment_id`, `set_id`, `model`, `prompt_hash`, and the caller-chosen settings keys, normalized
-the same way `normalizeRepeatIdentitySettings` in `apps/pipeline/src/commands/eval-run.ts` does,
-never on `variant_label`, with run count, the metric's mean and spread, mean cost, and the run ids),
+`experiment_id`, `set_id`, `model`, `prompt_hash`, and the caller-chosen settings keys (including
+`mode`, `sync` or `batch`, and `grouping`, `by_order` or `by_topic`; `eval-run` writes neither, so a
+run carries `sync` and `by_order` by default), normalized the same way
+`normalizeRepeatIdentitySettings` in `apps/pipeline/src/commands/eval-run.ts` does, never on
+`variant_label`, with run count, the metric's mean and spread, mean cost, and the run ids),
 `eval_experiment_variants` (one row per declared variant, joined to the runs that exist for it by
 matching model slug and, for every settings key the declaration carries, the run's own normalized
-settings; `ambiguous` is true when another declared variant on the same experiment matches at least
-one of the same runs, so an overlap is reported under both rather than one being picked silently),
-`eval_experiment_dependencies` (one row per `depends_on` entry with that dependency's current status,
-or `missing` when no experiment carries the slug), `eval_overview` (one row of header counts: every
-table's size, `eval_runs`/`eval_experiments` by status, `eval_findings` by kind, and the count of
-registered models), `eval_experiment_summary` (one row per experiment, with its run and finding
-counts, its most recent finding, how many of its declared variants have matched at least one run per
-`eval_experiment_variants`, and how many of its dependencies are not yet decided per
-`eval_experiment_dependencies`), `eval_findings_current` (the findings feed with a
-`supersedes_finding_id` chain, however many links deep, collapsed to its most recent entry, carrying
-the chain's length and the ids it replaces), and `eval_run_pair_agreement` (one row per unordered
-pair of completed runs on the same set, with the number of items both scored without error and the
-share where they reached the same verdict). Provider-pin mismatch is compared through
+settings, as `declaredVariantMatchesRun` does in TypeScript; `ambiguous` is true when another
+declared variant on the same experiment matches at least one of the same runs, so an overlap is
+reported under both rather than one being picked silently. A decision may be made against a baseline
+run that belongs to another experiment, so a declaration may carry `baseline_from`, the slug of the
+experiment whose runs it draws on; the view then counts that experiment's matching runs and reports
+the slug as `runs_from_slug`, null when the runs are the declaring experiment's own. A declaration
+whose `model_slug` is `'*'` or null matches no run by design, so a baseline declared that way always
+shows no runs), `eval_experiment_dependencies` (one row per `depends_on` entry with that
+dependency's current status, or `missing` when no experiment carries the slug), `eval_overview` (one
+row of header counts: every table's size, `eval_runs`/`eval_experiments` by status, `eval_findings`
+by kind, and the count of registered models), `eval_experiment_summary` (one row per experiment,
+with its run count, its finding counts, how many of its declared variants have matched at least one
+run per `eval_experiment_variants` (a shared baseline counts as having run), and how many of its
+dependencies are not yet decided per `eval_experiment_dependencies`; `finding_count` is every
+finding that cites the experiment, superseded ones included, `current_finding_count` and the latest
+finding's kind and date read `eval_findings_current`, so a superseded finding never ranks as the
+latest), `eval_findings_current` (the findings feed with a `supersedes_finding_id` chain, however
+many links deep, collapsed to its most recent entry, carrying the chain's length and the ids it
+replaces), and `eval_run_pair_agreement` (one row per unordered pair of completed runs on the same
+set, with the number of items both scored without error and the share where they reached the same
+verdict; `verdict_kind` names what that verdict is for the task, `is_correct`, `gate_criteria`,
+`headings` or `no_content_marker`, so a rate is only comparable within one kind; for transcription it
+measures agreement on the no-content marker, not on how alike two transcripts are). Provider-pin
+mismatch is compared through
 `eval_normalize_provider(name, is_pin)`, a SQL mirror of `normalizeProviderName`/`normalizePin` in
 `apps/pipeline/src/lib/eval/compare/shared.ts` (lowercase, strip non-alphanumerics, and for a pin
 drop everything after the first `/`), so a hand-typed `--provider anthropic` isn't flagged against
@@ -782,7 +808,9 @@ deterministic_checks)`, so the two views cannot drift apart on what a verdict me
 The evaluation dashboard (`.private/eval/scripts/dashboard-snapshot.sql`) reads only these views and
 plain columns on the underlying tables; it never re-derives an aggregate a view already computes.
 
-Every view also carries `metric_status`, which explains a null `primary_metric`/`primary_metric_value`
+Three run views, `eval_run_scorecard`, `eval_run_model_stats` and `eval_run_behaviour`, carry
+`metric_status` (`eval_family_history` passes through `eval_run_model_stats`'s), which explains a null
+`primary_metric`/`primary_metric_value`
 rather than leaving it to guesswork, checked in this order: `failed run` (the run itself didn't
 complete); `reference reviewed after scoring` (a metric is present, but either the run's `scored_at`
 predates the newest `reviewed_at` among the set's approved items, or an `eval_review_rounds` row on

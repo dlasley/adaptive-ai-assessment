@@ -1428,6 +1428,23 @@ describe('callMistralAuditGroup', () => {
     expect(results.every((r) => r.served_provider === 'Mistral')).toBe(true);
   });
 
+  it('keeps the call\'s response facts on every row when the response does not parse', async () => {
+    const questions = [makeQuestion({ id: 'q-1' }), makeQuestion({ id: 'q-2' })];
+    const callLlmFn = vi.fn().mockResolvedValue({
+      text: 'this is not JSON',
+      servedModel: 'mistralai/mistral-large-2512',
+      servedProvider: 'Mistral',
+      raw: { id: 'gen-unparsed', choices: [{ finish_reason: 'length' }] },
+    });
+
+    const results = await callMistralAuditGroup(questions, [], { model: 'mistralai/mistral-large-2512' }, callLlmFn);
+
+    expect(results.map((r) => r.notes.startsWith('PARSE_ERROR:'))).toEqual([true, true]);
+    for (const result of results) {
+      expect(result.response_meta).toEqual({ id: 'gen-unparsed', choices: [{ finish_reason: 'length' }] });
+    }
+  });
+
   it('passes reasoning and provider through when set, alongside providerOnly/temperature omitted', async () => {
     const questions = [makeQuestion({ id: 'q-1' })];
     const callLlmFn = vi.fn().mockResolvedValue({ text: '[]' });

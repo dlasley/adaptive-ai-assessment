@@ -27,10 +27,12 @@
  * offset for an ad hoc run with no `--experiment`; with one, it continues the count already on
  * record for that experiment and model, judged by prompt hash, status (an `aborted` or `failed` run
  * never counts), and the caller-controlled settings (`temperature`, `reasoning`, `provider`,
- * `groupSize`, `shuffleSeed`, `exclusionPass`, `renderDpi`). A key missing on a run's stored settings
+ * `groupSize`, `shuffleSeed`, `exclusionPass`, `renderDpi`, `mode`, `grouping`). A key missing on a run's stored settings
  * compares against the value that was actually in force when it ran, not a wildcard: `temperature`
  * absent means no override was sent, `provider` absent means unpinned, `groupSize` absent means the
- * task's own default, `renderDpi` absent means the pre-flag default of 120. A repeat launched by
+ * task's own default, `renderDpi` absent means the pre-flag default of 120, `mode` absent means
+ * `'sync'` and `grouping` absent means `'by_order'` (this command writes neither: it has no flag for
+ * either, so the absent-means rule is what every run it makes carries). A repeat launched by
  * hand in a later invocation gets the next number instead of restarting at 1. This count is resolved
  * once per distinct model before any run in the invocation is inserted, so several repeats of one
  * model in a single invocation get consecutive numbers rather than gaps.
@@ -226,9 +228,20 @@ function canonicalizeForComparison(value: unknown): unknown {
 /** Exported so a caller validating settings before they're written (`eval-experiment-create`'s
  * declared-variant `settings` check) checks keys against this list instead of a second, divergent
  * copy of it. */
-export const REPEAT_IDENTITY_SETTINGS_KEYS = ['temperature', 'reasoning', 'provider', 'groupSize', 'shuffleSeed', 'exclusionPass', 'renderDpi'] as const;
+export const REPEAT_IDENTITY_SETTINGS_KEYS = ['temperature', 'reasoning', 'provider', 'groupSize', 'shuffleSeed', 'exclusionPass', 'renderDpi', 'mode', 'grouping'] as const;
 export type RepeatIdentityKey = (typeof REPEAT_IDENTITY_SETTINGS_KEYS)[number];
 type RepeatIdentityTask = 'audit' | 'grading' | 'mapping' | 'transcription';
+
+/** The values `mode` may take: how the calls of a run are made, one request at a time or through a
+ * provider's batch endpoint. A run with no `mode` key is `'sync'`. */
+export const RUN_MODES = ['sync', 'batch'] as const;
+export const DEFAULT_RUN_MODE = 'sync';
+
+/** The values `grouping` may take: how audit questions are put into calls. `'by_order'` is the only
+ * grouping `eval-run` performs, consecutive items in the (optionally seeded) shuffled order; a run
+ * with no `grouping` key is `'by_order'`. */
+export const RUN_GROUPINGS = ['by_order', 'by_topic'] as const;
+export const DEFAULT_RUN_GROUPING = 'by_order';
 
 /** `temperature`'s "no override was sent" state: distinct from any number the task's own default
  * could resolve to, and from `null`. Mapping and transcription write no `temperature` key at all
@@ -252,6 +265,10 @@ function normalizeRepeatIdentityValue(key: RepeatIdentityKey, value: unknown, ta
   if (key === 'provider') return normalizeStoredProvider(value);
   if (key === 'groupSize') return value === undefined ? (task === 'audit' ? AUDIT_GROUP_SIZE : 1) : value;
   if (key === 'renderDpi') return value === undefined ? DEFAULT_RENDER_DPI : value;
+  // `eval-run` writes neither mode nor grouping (it has no flag for either), so this fill-in is what
+  // every run it makes carries.
+  if (key === 'mode') return value === undefined ? DEFAULT_RUN_MODE : value;
+  if (key === 'grouping') return value === undefined ? DEFAULT_RUN_GROUPING : value;
   // reasoning, shuffleSeed, exclusionPass: absent means null, same as how buildSettingsForModel
   // writes them when the caller didn't ask for one.
   return value === undefined ? null : value;
@@ -280,6 +297,70 @@ function settingsEqual(a: Record<string, unknown>, b: Record<string, unknown>, t
   return REPEAT_IDENTITY_SETTINGS_KEYS.every(
     (key) => JSON.stringify(canonicalizeForComparison(normalizedA[key])) === JSON.stringify(canonicalizeForComparison(normalizedB[key])),
   );
+}
+
+/** One entry of `eval_experiments.variants_declared`. `model_slug` null or `'*'` names no model, so
+ * the declaration matches no run. `baseline_from` is the slug of another experiment whose runs this
+ * declaration draws on instead of the declaring experiment's own (valid on a baseline). */
+export interface DeclaredVariant {
+  label: string;
+  model_slug: string | null;
+  role: string;
+  settings?: Record<string, unknown>;
+  baseline_from?: string | null;
+}
+
+/** What `declaredVariantMatchesRun` needs to know about the experiments around a declaration:
+ * the one declaring it, and every experiment's id by slug (for `baseline_from`). */
+export interface VariantMatchContext {
+  declaringExperimentId: string;
+  experimentIdBySlug: ReadonlyMap<string, string>;
+}
+
+/** A settings `exclusionPass` value reduced to the classifier model slug: a declaration names the
+ * classifier by slug while a run stores the whole object it called, so both sides compare on the
+ * model alone. */
+function exclusionPassModel(value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'object') return (value as { model?: unknown }).model ?? null;
+  return value;
+}
+
+/**
+ * Whether `run` counts as a run of `declared`: the TypeScript twin of the match rule in the
+ * `eval_experiment_variants` view, and it must change with it. The run must belong to the
+ * experiment the declaration draws on (the declaring experiment, or the one `baseline_from` names;
+ * an unknown slug matches nothing), be neither failed nor aborted, and have `model` equal to
+ * `model_slug` (null or `'*'` matches nothing). Then every settings key the declaration carries
+ * must equal the run's value for it after `normalizeRepeatIdentitySettings` fills in the value in
+ * force for a key the run does not carry; a key the declaration does not carry is unconstrained.
+ * `exclusionPass` compares on the classifier model slug alone and a provider pin's `order` is
+ * lowercased on both sides.
+ */
+export function declaredVariantMatchesRun(
+  declared: DeclaredVariant,
+  run: Pick<EvalRunRow, 'task' | 'model' | 'status' | 'settings' | 'experiment_id'>,
+  context: VariantMatchContext,
+): boolean {
+  if (declared.model_slug === null || declared.model_slug === undefined || declared.model_slug === '*') return false;
+  if (run.status === 'failed' || run.status === 'aborted') return false;
+  if (run.model !== declared.model_slug) return false;
+
+  const candidateExperimentId = declared.baseline_from == null
+    ? context.declaringExperimentId
+    : context.experimentIdBySlug.get(declared.baseline_from);
+  if (candidateExperimentId === undefined || run.experiment_id !== candidateExperimentId) return false;
+
+  const declaredSettings = declared.settings ?? {};
+  const normalizedRun = normalizeRepeatIdentitySettings(run.settings, run.task as RepeatIdentityTask);
+  return REPEAT_IDENTITY_SETTINGS_KEYS.every((key) => {
+    if (!Object.prototype.hasOwnProperty.call(declaredSettings, key)) return true;
+    const declaredValue = key === 'provider'
+      ? normalizeStoredProvider(declaredSettings[key])
+      : key === 'exclusionPass' ? exclusionPassModel(declaredSettings[key]) : declaredSettings[key];
+    const runValue = key === 'exclusionPass' ? exclusionPassModel(normalizedRun[key]) : normalizedRun[key];
+    return JSON.stringify(canonicalizeForComparison(declaredValue)) === JSON.stringify(canonicalizeForComparison(runValue));
+  });
 }
 
 /**

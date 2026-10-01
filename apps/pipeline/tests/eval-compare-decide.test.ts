@@ -237,6 +237,28 @@ describe('eval-compare --decide', () => {
     expect(insertFindingCalls[0].supersedes_finding_id).toBeUndefined();
   });
 
+  it('does not treat a decision that a later finding supersedes as a conflict, but still refuses on a live one', async () => {
+    const pair = ['run-baseline', 'run-candidate-good'];
+    const deadReject: EvalFindingRow = {
+      id: 'finding-dead', experiment_id: 'exp-1', kind: 'reject', task: 'grading', statement: 'earlier reject',
+      evidence_note: null, run_ids: pair, item_ids: [], external_refs: [],
+      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '',
+    };
+    const supersedingObservation: EvalFindingRow = {
+      id: 'finding-obs', experiment_id: 'exp-1', kind: 'observation', task: 'grading', statement: 'reread the evidence',
+      evidence_note: null, run_ids: pair, item_ids: [], external_refs: [],
+      decided_by: null, decided_at: '', supersedes_finding_id: 'finding-dead', created_at: '',
+    };
+    const superseded = makeFakeStore({ findings: [deadReject, supersedingObservation] });
+    await main({ argv: argv(['--write-db', '--decide', 'adopt', '--statement', 'Decided after the reject was superseded.']), store: superseded.store });
+    expect(superseded.insertFindingCalls).toHaveLength(1);
+
+    const liveReject: EvalFindingRow = { ...deadReject, id: 'finding-live' };
+    const live = makeFakeStore({ findings: [liveReject] });
+    await expect(main({ argv: argv(['--write-db', '--decide', 'adopt', '--statement', 'x']), store: live.store })).rejects.toThrow(ProcessExitError);
+    expect(live.insertFindingCalls).toHaveLength(0);
+  });
+
   it('adopts a non-inferior candidate, writing one eval_findings row and moving the experiment to decided', async () => {
     const { store, insertFindingCalls, updateExperimentCalls } = makeFakeStore();
     await main({ argv: argv(['--write-db', '--decide', 'adopt', '--statement', 'Sonnet matches baseline recall.']), store });
@@ -307,5 +329,28 @@ describe('eval-compare --decide', () => {
       }),
     ).rejects.toThrow(ProcessExitError);
     expect(insertFindingCalls).toHaveLength(0);
+  });
+  it('refuses --supersedes naming a finding that another finding already supersedes, and names that finding', async () => {
+    const pair = ['run-baseline', 'run-candidate-good'];
+    const first: EvalFindingRow = {
+      id: 'finding-first', experiment_id: 'exp-1', kind: 'reject', task: 'grading', statement: 'earlier reject',
+      evidence_note: null, run_ids: pair, item_ids: [], external_refs: [],
+      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '',
+    };
+    const successor: EvalFindingRow = {
+      id: 'finding-successor', experiment_id: 'exp-1', kind: 'observation', task: 'grading', statement: 'reread the evidence',
+      evidence_note: null, run_ids: pair, item_ids: [], external_refs: [],
+      decided_by: null, decided_at: '', supersedes_finding_id: 'finding-first', created_at: '',
+    };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { store, insertFindingCalls } = makeFakeStore({ findings: [first, successor] });
+    await expect(
+      main({
+        argv: argv(['--write-db', '--decide', 'adopt', '--statement', 'x', '--supersedes', 'finding-first']),
+        store,
+      }),
+    ).rejects.toThrow(ProcessExitError);
+    expect(insertFindingCalls).toHaveLength(0);
+    expect(errorSpy.mock.calls.map((args) => args.join(' ')).join('\n')).toContain('finding-successor');
   });
 });

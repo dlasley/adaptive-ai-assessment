@@ -117,10 +117,13 @@ function resultUsageFromLlmUsage(usage: LlmUsage | undefined): ResultUsage {
 }
 
 /** Builds a transcription row's `response_meta`. When no exclusion pass ran, this is just the
- * transcription call's own meta. When one did, the classifier's meta (plus its served model and
- * provider, which no column on this row otherwise carries) nests under a `classifier` key,
- * alongside the transcription call's meta if it ran too, or alone if the classifier dropped the
- * slide before any transcription call was made. */
+ * transcription call's own meta, or null when that call returned no response. When one did, the
+ * classifier's meta (plus its served model and provider, which no column on this row otherwise
+ * carries) nests under a `classifier` key, alongside the transcription call's meta if that call
+ * returned a response too. A row carrying only `classifier` means the transcription call returned
+ * nothing to record: the classifier dropped the slide (no transcription call was made), the
+ * transcription call failed after the classifier kept the slide, or the classifier's own answer
+ * did not parse; the row's `error` and `deterministic_checks.exclusion_decision` say which. */
 function buildResponseMeta(
   transcriptionMeta: Record<string, unknown> | undefined,
   classifierMeta: Record<string, unknown> | undefined,
@@ -211,6 +214,11 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
           classifierServedProvider = classification.servedProvider;
         } catch (err) {
           error = err instanceof SlideClassificationParseError ? 'parse' : isEmptyContentError(err) ? 'empty' : 'api';
+          if (err instanceof SlideClassificationParseError && err.response) {
+            classifierResponseMeta = err.response.responseMeta;
+            classifierServedModel = err.response.servedModel;
+            classifierServedProvider = err.response.servedProvider;
+          }
           logger.error(`Slide ${slide} classification failed for variant ${key} (${error}): ${err instanceof Error ? err.message : String(err)}`);
         }
       }

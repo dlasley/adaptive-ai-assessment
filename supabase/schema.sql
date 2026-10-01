@@ -590,10 +590,10 @@ ALTER TABLE eval_results ENABLE ROW LEVEL SECURITY;
 COMMENT ON TABLE eval_sets IS 'One frozen item sample for a task: how it was drawn (selection), from where (source), and the input hash it depends on. Items live in eval_items; variants run against it live in eval_runs.';
 COMMENT ON COLUMN eval_sets.source IS 'Where the sample was drawn from. Free text, not a foreign key; shape varies by task: a batch id for audit/grading (e.g. capped-unit-1-2026-09-26), a bare unit id for mapping (e.g. unit-1), a markdown file path or display title for transcription.';
 COMMENT ON COLUMN eval_sets.selection IS 'How the sample was drawn: strata, random seed, and any filters applied.';
-COMMENT ON COLUMN eval_sets.inputs_hash IS 'Hash of the frozen inputs the items depend on (unit markdown content hash, units row hash) — a mismatch on reuse means the underlying material changed since the set was created.';
+COMMENT ON COLUMN eval_sets.inputs_hash IS 'Hash of the frozen inputs the items depend on (unit markdown content hash, units row hash); a mismatch on reuse means the underlying material changed since the set was created.';
 
 COMMENT ON TABLE eval_items IS 'One item in an eval_sets sample: a frozen input snapshot (payload) plus an optional reviewer-assigned reference label. reference_status tracks review state independently of whether reference is populated.';
-COMMENT ON COLUMN eval_items.item_key IS 'Stable identifier within its set (e.g. a question id or slide reference) — unique per set, not globally.';
+COMMENT ON COLUMN eval_items.item_key IS 'Stable identifier within its set (e.g. a question id or slide reference), unique per set, not globally.';
 COMMENT ON COLUMN eval_items.payload IS 'The frozen input snapshot this item was sampled with: question fields, slide reference, answer, etc., depending on task.';
 COMMENT ON COLUMN eval_items.seeded_class IS 'A design-time label: the class this item was constructed to carry when its set was built (grading: correct, typo, missing_accent, partially_correct, wrong, valid_paraphrase, and so on from GradingLabelClass; audit, once seeded: planted defects). Never a reviewer verdict; reference and reference_status remain the reviewed truth. Nullable, no CHECK constraint: the vocabulary is per task and will grow.';
 COMMENT ON COLUMN eval_items.reference IS 'Reviewer-assigned labels for this item. Null until a reviewer labels it, regardless of reference_status.';
@@ -601,13 +601,13 @@ COMMENT ON COLUMN eval_items.reference IS 'Reviewer-assigned labels for this ite
 COMMENT ON TABLE eval_runs IS 'One variant, one execution: the model and settings under test, run against one eval_sets sample. summary holds the aggregate metrics computed once every item in the set has an eval_results row.';
 COMMENT ON COLUMN eval_runs.task IS 'Copied from eval_sets.task at insert time by eval-run, the only writer today. Kept denormalized so a query can read task without a join. If a second writer of eval_runs rows is ever added, it must keep this in sync with the owning eval_sets row itself (a trigger) or this column should be dropped in favor of reading through the join.';
 COMMENT ON COLUMN eval_runs.model IS 'Copied from the resolved eval_models.slug at insert time by eval-run, the only writer today, when model_version_id is set. Kept denormalized so a query can read model without a join. If a second writer of eval_runs rows is ever added, it must keep this in sync with the referenced eval_models row (a trigger) or this column should be dropped in favor of reading through the join.';
-COMMENT ON COLUMN eval_runs.settings IS 'Call settings recorded with this variant: temperature, max_tokens, reasoning, provider pin, etc. — the same shape callLlm() accepts.';
+COMMENT ON COLUMN eval_runs.settings IS 'Call settings recorded with this variant: temperature, max_tokens, reasoning, provider pin, etc.; the same shape callLlm() accepts.';
 COMMENT ON COLUMN eval_runs.judge_prompt_hash IS 'The hash of the most recent judge run on this row. A run can be judged against several others over time; this column reflects whichever judge call last ran, not any one pairing. The per-pairing hash that produced a specific verdict lives inside eval_results.judge_verdict itself, keyed alongside it.';
 COMMENT ON COLUMN eval_runs.repeat_index IS 'Distinguishes repeated runs of the same variant on the same set, used to measure run-to-run noise for non-deterministic models.';
 COMMENT ON COLUMN eval_runs.projected_cost_usd IS 'Estimated cost (item count times mean prompt size times list price) computed before the run started; the run refuses to start if this exceeds --max-cost.';
 
 COMMENT ON TABLE eval_results IS 'One (run, item) pair: what the variant produced for that item, how it was scored, and its cost/latency/usage accounting.';
-COMMENT ON COLUMN eval_results.judge_verdict IS 'Set only for items scored by a fixed LLM judge rather than direct comparison against eval_items.reference. Shape is { [otherRunId]: { [judgePromptHash]: {outcome, reasons, judged_at, judge_model} } }: nested under the judge prompt hash that produced it, so a re-judge of the same pair under a changed prompt adds a new entry instead of overwriting the earlier one. eval-judge refuses to write a second entry under the same pair and hash unless --overwrite is passed.';
+COMMENT ON COLUMN eval_results.judge_verdict IS 'Set only for items scored by a fixed LLM judge rather than direct comparison against eval_items.reference. Shape is { [otherRunId]: { [judgePromptHash]: [entry, ...] } }: nested under the judge prompt hash that produced it, so a re-judge of the same pair under a changed prompt adds a new list instead of overwriting the earlier one. Every eval-judge run appends one entry to the list for its pair and hash, so the same pair can be judged again, by the same judge model or another, and every earlier entry is kept. An entry is {outcome, judge_model, repeat, reasons, judged_at, judge_call, calls}: repeat is 0-based, the count of entries already in that list from the same judge model; judge_call is the settings the command sent ({provider_pin, reasoning, temperature}, a null provider_pin meaning unpinned and a null temperature meaning none was set); calls is one object per position order holding that call''s response id, finish reason and served model and host (never message content). Entries written before the call settings were recorded carry only outcome, judge_model, repeat, reasons and judged_at.';
 COMMENT ON COLUMN eval_results.error IS 'Set when this item produced no usable output: parse (response didn''t parse or validate), api (the call itself failed), or empty (200 with no content). Null means the call succeeded and parsed.';
 
 -- ============================================================
@@ -798,9 +798,11 @@ CREATE INDEX idx_eval_runs_experiment ON eval_runs(experiment_id);
 
 ALTER TABLE eval_runs
   ADD COLUMN scored_at TIMESTAMPTZ,                  -- see COMMENT ON COLUMN below
-  ADD COLUMN scoring_review_round_id UUID REFERENCES eval_review_rounds(id) ON DELETE RESTRICT; -- the newest review round on the run's set at scoring time; null when the set had none
+  ADD COLUMN scoring_review_round_id UUID REFERENCES eval_review_rounds(id) ON DELETE RESTRICT;
 
 COMMENT ON COLUMN eval_runs.scored_at IS 'When this run''s summary (and its results'' scores) were last computed, at run finalisation (eval-run) or by eval-rescore. Null for a run that never reached that step at all: one still running, or one whose outer failure handler marked it failed before any variant finalised. A run finalised as failed (every result errored, or the results write itself failed) still gets stamped, since finalizeVariant reached it.';
+
+COMMENT ON COLUMN eval_runs.scoring_review_round_id IS 'The newest eval_review_rounds row on this run''s set at the time it was scored. Null when the set had no review round yet.';
 
 ALTER TABLE eval_results
   ADD COLUMN served_provider TEXT;
@@ -1143,6 +1145,8 @@ WITH run_identity AS (
     COALESCE(r.settings -> 'shuffleSeed', 'null'::jsonb)     AS norm_shuffle_seed,
     COALESCE(r.settings -> 'exclusionPass', 'null'::jsonb)   AS norm_exclusion_pass,
     COALESCE(r.settings -> 'renderDpi', '120'::jsonb)        AS norm_render_dpi,
+    COALESCE(r.settings -> 'mode', '"sync"'::jsonb)          AS norm_mode,
+    COALESCE(r.settings -> 'grouping', '"by_order"'::jsonb)  AS norm_grouping,
     (SELECT avg(cost_usd) FROM eval_results WHERE run_id = r.id) AS mean_cost_usd
   FROM eval_runs r
   WHERE r.status NOT IN ('failed', 'aborted')
@@ -1159,6 +1163,8 @@ SELECT
   norm_shuffle_seed    AS shuffle_seed,
   norm_exclusion_pass  AS exclusion_pass,
   norm_render_dpi      AS render_dpi,
+  norm_mode            AS mode,
+  norm_grouping        AS grouping,
   count(*)                                                AS run_count,
   avg(primary_metric_value)                               AS mean_primary_metric_value,
   (max(primary_metric_value) - min(primary_metric_value)) AS primary_metric_spread,
@@ -1166,14 +1172,17 @@ SELECT
   array_agg(run_id ORDER BY run_id)                       AS run_ids
 FROM run_identity
 GROUP BY experiment_id, set_id, model, prompt_hash, norm_temperature, norm_reasoning, norm_provider,
-         norm_group_size, norm_shuffle_seed, norm_exclusion_pass, norm_render_dpi;
+         norm_group_size, norm_shuffle_seed, norm_exclusion_pass, norm_render_dpi, norm_mode, norm_grouping;
 
 -- Declared-vs-run variant composition: one row per planned variant, joined to the runs that exist
--- for it today. A run matches a declared variant when its model equals the declared model_slug and,
--- for every settings key the declaration carries, the run's own settings normalize to the same
--- value (the normalization is the per-run half of the same rule eval_variant_stability groups
--- by, inlined here rather than shared, since that view also filters and groups by other columns
--- this one does not need). A declaration naming no model_slug (or '*') matches nothing.
+-- for it today. A run matches a declared variant when it belongs to the experiment whose runs the
+-- declaration draws on (the declaring experiment, or the experiment named by baseline_from), its
+-- model equals the declared model_slug and, for every settings key the declaration carries, the
+-- run's own settings normalize to the same value (the normalization is the per-run half of the same
+-- rule eval_variant_stability groups by, inlined here rather than shared, since that view also
+-- filters and groups by other columns this one does not need). A declaration naming no model_slug
+-- (or '*') matches nothing. declaredVariantMatchesRun in apps/pipeline/src/commands/eval-run.ts is
+-- the TypeScript twin of this match rule and must change with it.
 CREATE VIEW eval_experiment_variants WITH (security_invoker = true) AS
 WITH run_identity AS (
   SELECT
@@ -1200,7 +1209,9 @@ WITH run_identity AS (
       WHEN jsonb_typeof(r.settings -> 'exclusionPass') = 'object' THEN COALESCE(r.settings -> 'exclusionPass' -> 'model', 'null'::jsonb)
       ELSE r.settings -> 'exclusionPass'
     END                                                       AS norm_exclusion_pass,
-    COALESCE(r.settings -> 'renderDpi', '120'::jsonb)        AS norm_render_dpi
+    COALESCE(r.settings -> 'renderDpi', '120'::jsonb)        AS norm_render_dpi,
+    COALESCE(r.settings -> 'mode', '"sync"'::jsonb)          AS norm_mode,
+    COALESCE(r.settings -> 'grouping', '"by_order"'::jsonb)  AS norm_grouping
   FROM eval_runs r
   WHERE r.status NOT IN ('failed', 'aborted')
 ),
@@ -1212,6 +1223,11 @@ variants AS (
     v.declared ->> 'label'           AS declared_label,
     v.declared ->> 'model_slug'      AS model_slug,
     v.declared ->> 'role'            AS role,
+    v.declared ->> 'baseline_from'   AS baseline_from,
+    CASE
+      WHEN v.declared ->> 'baseline_from' IS NULL THEN e.id
+      ELSE (SELECT x.id FROM eval_experiments x WHERE x.slug = v.declared ->> 'baseline_from')
+    END                              AS candidate_experiment_id,
     COALESCE(v.declared -> 'settings', '{}'::jsonb) AS declared_settings
   FROM eval_experiments e
   CROSS JOIN LATERAL jsonb_array_elements(e.variants_declared) WITH ORDINALITY AS v(declared, ord)
@@ -1220,7 +1236,7 @@ variant_runs AS (
   SELECT va.experiment_id, va.variant_ord, ri.run_id
   FROM variants va
   JOIN run_identity ri
-    ON ri.experiment_id = va.experiment_id
+    ON ri.experiment_id = va.candidate_experiment_id
     AND ri.model = va.model_slug
     AND va.model_slug IS NOT NULL AND va.model_slug <> '*'
     AND (NOT (va.declared_settings ? 'temperature') OR ri.norm_temperature = va.declared_settings -> 'temperature')
@@ -1246,6 +1262,8 @@ variant_runs AS (
           END
         ))
     AND (NOT (va.declared_settings ? 'renderDpi') OR ri.norm_render_dpi = va.declared_settings -> 'renderDpi')
+    AND (NOT (va.declared_settings ? 'mode') OR ri.norm_mode = va.declared_settings -> 'mode')
+    AND (NOT (va.declared_settings ? 'grouping') OR ri.norm_grouping = va.declared_settings -> 'grouping')
 ),
 shared_runs AS (
   SELECT experiment_id, run_id
@@ -1268,7 +1286,8 @@ SELECT
     )
   END                                                       AS ambiguous,
   COALESCE(rr.run_count, 0)                                 AS run_count,
-  COALESCE(rr.run_ids, '{}')                                AS run_ids
+  COALESCE(rr.run_ids, '{}')                                AS run_ids,
+  va.baseline_from                                          AS runs_from_slug
 FROM variants va
 LEFT JOIN LATERAL (
   SELECT count(*) AS run_count, array_agg(vr.run_id ORDER BY vr.run_id) AS run_ids
@@ -1311,38 +1330,6 @@ SELECT
   (SELECT count(*) FROM eval_models_current)                              AS registered_models;
 
 COMMENT ON VIEW eval_overview IS 'One row of header counts for the dashboard: eval_sets, eval_items (total and with an approved reference), eval_runs by status, eval_results, eval_experiments by status, eval_findings by kind, and eval_models_current (the latest snapshot per registered model slug). Every count is a direct count(*) on its table, or that count filtered by status or kind; nothing here is derived from another view.';
-
--- One row per experiment: how much has run against it, what was concluded, and whether its
--- declared plan and its dependencies are caught up with reality. declared_variants_with_runs and
--- undecided_dependency_count read eval_experiment_variants and eval_experiment_dependencies rather
--- than re-deriving either view's own matching rule here.
-CREATE VIEW eval_experiment_summary WITH (security_invoker = true) AS
-SELECT
-  e.id                                     AS experiment_id,
-  e.slug,
-  e.status,
-  e.tasks,
-  e.question,
-  e.decision_rule,
-  (SELECT count(*) FROM eval_runs r WHERE r.experiment_id = e.id)     AS run_count,
-  (SELECT count(*) FROM eval_findings f WHERE f.experiment_id = e.id) AS finding_count,
-  lf.kind                                  AS latest_finding_kind,
-  lf.decided_at                            AS latest_finding_at,
-  jsonb_array_length(e.variants_declared)  AS declared_variant_count,
-  (SELECT count(*) FROM eval_experiment_variants v
-    WHERE v.experiment_id = e.id AND v.run_count > 0)                 AS declared_variants_with_runs,
-  (SELECT count(*) FROM eval_experiment_dependencies d
-    WHERE d.experiment_id = e.id AND d.depends_on_status <> 'decided') AS undecided_dependency_count
-FROM eval_experiments e
-LEFT JOIN LATERAL (
-  SELECT f.kind, f.decided_at
-  FROM eval_findings f
-  WHERE f.experiment_id = e.id
-  ORDER BY f.decided_at DESC
-  LIMIT 1
-) lf ON true;
-
-COMMENT ON VIEW eval_experiment_summary IS 'One row per experiment: its own columns, how many eval_runs and eval_findings cite it, the most recent finding''s kind and date, how many variants it declared (variants_declared), how many of those declared variants have matched at least one run (eval_experiment_variants.run_count > 0), and how many of its eval_experiment_dependencies entries name a dependency whose own status is not ''decided'' (proposed, running, deferred, superseded, or missing all count as undecided).';
 
 -- The findings feed with a superseded chain collapsed to its most recent link: when a finding
 -- supersedes an earlier one, and that one may itself supersede a still earlier one, only the chain
@@ -1387,9 +1374,44 @@ ORDER BY f.decided_at DESC;
 
 COMMENT ON VIEW eval_findings_current IS 'eval_findings with a superseded chain (supersedes_finding_id, possibly several links deep) collapsed to its most recent link. chain_length counts every finding in the chain including the head; superseded_finding_ids lists the earlier ones it replaces, empty for a finding nobody has superseded. Has exactly as many fewer rows than eval_findings as there are superseded (non-head) findings. Ordered newest first by decided_at, the order a reader of the feed wants.';
 
+-- One row per experiment: how much has run against it, what was concluded, and whether its
+-- declared plan and its dependencies are caught up with reality. declared_variants_with_runs and
+-- undecided_dependency_count read eval_experiment_variants and eval_experiment_dependencies rather
+-- than re-deriving either view's own matching rule here; the finding columns read
+-- eval_findings_current for the current view of what was concluded.
+CREATE VIEW eval_experiment_summary WITH (security_invoker = true) AS
+SELECT
+  e.id                                     AS experiment_id,
+  e.slug,
+  e.status,
+  e.tasks,
+  e.question,
+  e.decision_rule,
+  (SELECT count(*) FROM eval_runs r WHERE r.experiment_id = e.id)     AS run_count,
+  (SELECT count(*) FROM eval_findings f WHERE f.experiment_id = e.id) AS finding_count,
+  lf.kind                                  AS latest_finding_kind,
+  lf.decided_at                            AS latest_finding_at,
+  jsonb_array_length(e.variants_declared)  AS declared_variant_count,
+  (SELECT count(*) FROM eval_experiment_variants v
+    WHERE v.experiment_id = e.id AND v.run_count > 0)                 AS declared_variants_with_runs,
+  (SELECT count(*) FROM eval_experiment_dependencies d
+    WHERE d.experiment_id = e.id AND d.depends_on_status <> 'decided') AS undecided_dependency_count,
+  (SELECT count(*) FROM eval_findings_current c WHERE c.experiment_id = e.id) AS current_finding_count
+FROM eval_experiments e
+LEFT JOIN LATERAL (
+  SELECT c.kind, c.decided_at
+  FROM eval_findings_current c
+  WHERE c.experiment_id = e.id
+  ORDER BY c.decided_at DESC
+  LIMIT 1
+) lf ON true;
+
+COMMENT ON VIEW eval_experiment_summary IS 'One row per experiment: its own columns, how many eval_runs cite it (run_count), and its findings. finding_count is the raw count of every eval_findings row citing it, superseded ones included; current_finding_count counts eval_findings_current rows, where a superseded chain counts once as its head. latest_finding_kind and latest_finding_at come from the newest eval_findings_current row, so a superseded finding never ranks as latest. declared_variant_count is how many variants it declared (variants_declared); declared_variants_with_runs is how many of those have at least one matching run (eval_experiment_variants.run_count > 0), and a declared baseline that carries baseline_from counts the runs of the experiment it names, so a shared baseline counts as having run. undecided_dependency_count is how many of its eval_experiment_dependencies entries name a dependency whose own status is not ''decided'' (proposed, running, deferred, superseded, or missing all count as undecided).';
+
 -- Every unordered pair of completed runs on the same set: how many items both scored without
 -- error, and the share of those where they reached the same per-task verdict
--- (eval_result_verdict, the same expression eval_item_consensus uses). Generalizes the dashboard
+-- (eval_result_verdict, the same expression eval_item_consensus uses; verdict_kind names what that
+-- verdict is for the pair's task). Generalizes the dashboard
 -- snapshot's grading_pairwise_agreement dataset to every task, not only grading.
 CREATE VIEW eval_run_pair_agreement WITH (security_invoker = true) AS
 WITH completed_runs AS (
@@ -1417,14 +1439,20 @@ SELECT
   count(*)                                                       AS n,
   count(*) FILTER (WHERE va.verdict = vb.verdict)                AS agree_count,
   round(count(*) FILTER (WHERE va.verdict = vb.verdict)::numeric
-    / nullif(count(*), 0), 4)                                    AS agreement_rate
+    / nullif(count(*), 0), 4)                                    AS agreement_rate,
+  CASE a.task
+    WHEN 'grading' THEN 'is_correct'
+    WHEN 'audit' THEN 'gate_criteria'
+    WHEN 'mapping' THEN 'headings'
+    WHEN 'transcription' THEN 'no_content_marker'
+  END                                                            AS verdict_kind
 FROM completed_runs a
 JOIN completed_runs b ON b.set_id = a.set_id AND a.run_id < b.run_id
 JOIN verdicts va ON va.run_id = a.run_id
 JOIN verdicts vb ON vb.run_id = b.run_id AND vb.item_id = va.item_id
 GROUP BY a.set_id, a.task, a.run_id, a.variant_label, a.model, b.run_id, b.variant_label, b.model;
 
-COMMENT ON VIEW eval_run_pair_agreement IS 'One row per unordered pair of completed runs on the same eval_sets row (a.run_id < b.run_id so each pair appears once). n is the number of items both runs scored without error; agree_count and agreement_rate compare eval_result_verdict(task, output, deterministic_checks) between the two, the same verdict eval_item_consensus uses. For the grading task this reproduces the dashboard snapshot''s grading_pairwise_agreement numbers; unlike that dataset, this view covers every task, not only grading.';
+COMMENT ON VIEW eval_run_pair_agreement IS 'One row per unordered pair of completed runs on the same eval_sets row (a.run_id < b.run_id so each pair appears once). n is the number of items both runs scored without error; agree_count and agreement_rate compare eval_result_verdict(task, output, deterministic_checks) between the two, the same verdict eval_item_consensus uses. For the grading task this reproduces the dashboard snapshot''s grading_pairwise_agreement numbers; unlike that dataset, this view covers every task, not only grading. verdict_kind names what that verdict is, per task, using the branch names of eval_result_verdict: is_correct (grading: the is-correct decision), gate_criteria (audit: the six gate-criteria booleans together), headings (mapping: the set of heading strings returned) and no_content_marker (transcription: whether the run''s output for the slide was exactly the no-content marker). agreement_rate is therefore agreement on different things for different tasks and is only comparable within one verdict_kind; for transcription it measures agreement on the no-content marker, not on how similar the two transcripts are.';
 
 -- RLS for the experiment/model-registry/findings tables — no anon or authenticated
 -- policies, same rationale as the eval tables above
@@ -1441,10 +1469,10 @@ COMMENT ON TABLE eval_models IS 'One dated snapshot of a model''s attributes. Ap
 COMMENT ON COLUMN eval_models.slug IS 'The identity a run declares it wants. What a given call actually served is eval_results.served_model, which remains the per-call ground truth this table does not replace.';
 COMMENT ON COLUMN eval_models.family_id IS 'Groups this snapshot with other versions of the same lineage for longitudinal queries (eval_family_history), and is this row''s only route to vendor (eval_models has no vendor column of its own). NOT NULL: every snapshot gets a family row at insert time, even a one-member placeholder for a model outside the curated lineage list, rather than leaving vendor unrecoverable for that row.';
 COMMENT ON COLUMN eval_models.parameter_count_active IS 'A mixture-of-experts model''s active parameter count per token, distinct from its total. Populated for a dense model too (equal to parameter_count_total) when both are known, so a regression against "active parameters" reads uniformly across architectures without a per-row NULL/architecture branch.';
-COMMENT ON COLUMN eval_models.architecture IS 'dense or moe, where publicly known. Null, not a third value, when the architecture itself is unpublished — most closed-weight vendors don''t state this.';
+COMMENT ON COLUMN eval_models.architecture IS 'dense or moe, where publicly known. Null, not a third value, when the architecture itself is unpublished (most closed-weight vendors don''t state this).';
 COMMENT ON COLUMN eval_models.reasoning_class IS 'Generated, not independently entered: a plain column here would let a hand-entered eval_models row via the Supabase table editor set reasoning and reasoning_class inconsistently, with nothing to catch it. Pure function of reasoning: none when reasoning IS NULL; mandatory when reasoning->>''mandatory'' is true; default_on when reasoning->>''default_on'' is true and not mandatory; optional otherwise (reasoning is supported but neither default nor required). Exists so a grouped-stats query can GROUP BY reasoning_class directly instead of re-parsing the reasoning JSONB in every query that wants this cut.';
-COMMENT ON COLUMN eval_models.hosts IS 'This model version''s known serving hosts, each an object {provider_pin, quantization, notes}. A host serving a reduced-precision build (e.g. the ''nebius/fp8'' pin style) is endpoint metadata on this row, not a separate eval_models row: the underlying model version is the same, only the serving path differs. Empty array is the default and is expected until a host is actually researched or observed via eval_results.served_provider. This is the only provider-pin concept that lives on eval_models: the other two are eval_runs.provider_pin (one run''s requested pin) and eval_results.served_provider (what a specific call actually got) — three different grains: known-hosts-for-a-model-version, requested-for-a-run, and served-for-a-call.';
-COMMENT ON COLUMN eval_models.attribute_provenance IS 'Per-attribute exceptions to the row-level source column, as {attribute_name: {source, observed_date}} — used only where a specific value is an estimate, third-party figure, or was parsed/inferred rather than read directly from the primary catalog fetch (e.g. a parameter count parsed from a model id''s MoE naming convention rather than a vendor technical report). An attribute with no entry here inherits the row''s source/effective_date as its provenance; this column exists for the exceptions, not as a second copy of every attribute''s provenance.';
+COMMENT ON COLUMN eval_models.hosts IS 'This model version''s known serving hosts, each an object {provider_pin, quantization, notes}. A host serving a reduced-precision build (e.g. the ''nebius/fp8'' pin style) is endpoint metadata on this row, not a separate eval_models row: the underlying model version is the same, only the serving path differs. Empty array is the default and is expected until a host is actually researched or observed via eval_results.served_provider. This is the only provider-pin concept that lives on eval_models: the other two are eval_runs.provider_pin (one run''s requested pin) and eval_results.served_provider (what a specific call actually got), three different grains: known-hosts-for-a-model-version, requested-for-a-run, and served-for-a-call.';
+COMMENT ON COLUMN eval_models.attribute_provenance IS 'Per-attribute exceptions to the row-level source column, as {attribute_name: {source, observed_date}}, used only where a specific value is an estimate, third-party figure, or was parsed/inferred rather than read directly from the primary catalog fetch (e.g. a parameter count parsed from a model id''s MoE naming convention rather than a vendor technical report). An attribute with no entry here inherits the row''s source/effective_date as its provenance; this column exists for the exceptions, not as a second copy of every attribute''s provenance.';
 
 COMMENT ON VIEW eval_models_current IS 'Latest known snapshot per slug. eval-run resolves --models against this view when stamping model_version_id.';
 
@@ -1468,8 +1496,8 @@ COMMENT ON COLUMN eval_results.served_provider IS 'The host OpenRouter''s respon
 
 COMMENT ON VIEW eval_run_scorecard IS 'One row per run, joined out to its experiment and its model''s dated attributes, with the run''s primary metric pulled out generically. The shape a frontend renders for "compare this model across tasks and time." scored_at and scoring_review_round_id are the run''s own scoring provenance (see their column comments on eval_runs), exposed here so "which runs need a rescore" is a query against this view rather than eval_runs directly. metric_status explains a null primary_metric: ''failed run'' (the run itself did not complete), ''reference reviewed after scoring'' (a metric is present, but a reference changed, by either signal eval_run_metric_status checks, since this run was last scored), ''ok'' (a metric is present and neither of those holds), ''awaiting reviewed references'' (the run''s set has no approved reference item yet), ''scored before references existed'' (the run finished before the set''s earliest approved item was reviewed; re-running eval-rescore fills the metric in), or ''no primary metric'' (none of the above explains it, worth investigating).';
 COMMENT ON VIEW eval_model_history IS 'eval_run_scorecard reordered by model slug then start time, for "how has model X trended" across runs of that exact slug.';
-COMMENT ON VIEW eval_run_model_stats IS 'One row per run: outcome (primary_metric_value), predictors (model attributes), and covariates (mean_cost_usd, mean_latency_ms, error_count, provider_mismatch_count) in a shape suitable for a regression or grouped-statistics query, e.g. "does parameter_count_total predict primary_metric_value, controlling for task." cost_per_metric_unit is cost per unit of whatever the task''s primary metric measures — it reads literally as "cost per correct answer" only when that task''s primary metric is an accuracy-style fraction (audit, grading); for a continuous score (mapping F1, transcription''s 1-minus-edit-distance) it is cost per point of that score, not a count of correct answers. A dozen or so distinct models with runs today is not enough for a between-model attribute regression (the model, not the item or repeat count, is the unit of replication); treat any single-attribute pattern here as advisory until roughly 15-20 independent models spanning the attribute''s range exist on the same task. metric_status explains a null primary_metric_value the same way it does on eval_run_scorecard.';
-COMMENT ON VIEW eval_family_history IS 'eval_run_model_stats reordered by family and snapshot date, for "how has model X trended across versions" — the one query eval_model_history cannot answer, since it groups by slug (one version) rather than family_id (a lineage across slug changes). Requires family_id to be populated on eval_models; a model with no family row simply does not appear here (an inner join deliberately, since a LEFT JOIN would produce one all-null row per unlinked model, not useful for a trend query). metric_status explains a null primary_metric_value the same way it does on eval_run_scorecard.';
+COMMENT ON VIEW eval_run_model_stats IS 'One row per run: outcome (primary_metric_value), predictors (model attributes), and covariates (mean_cost_usd, mean_latency_ms, error_count, provider_mismatch_count) in a shape suitable for a regression or grouped-statistics query, e.g. "does parameter_count_total predict primary_metric_value, controlling for task." cost_per_metric_unit is cost per unit of whatever the task''s primary metric measures; it reads literally as "cost per correct answer" only when that task''s primary metric is an accuracy-style fraction (audit, grading); for a continuous score (mapping F1, transcription''s 1-minus-edit-distance) it is cost per point of that score, not a count of correct answers. A dozen or so distinct models with runs today is not enough for a between-model attribute regression (the model, not the item or repeat count, is the unit of replication); treat any single-attribute pattern here as advisory until roughly 15-20 independent models spanning the attribute''s range exist on the same task. metric_status explains a null primary_metric_value the same way it does on eval_run_scorecard.';
+COMMENT ON VIEW eval_family_history IS 'eval_run_model_stats reordered by family and snapshot date, for "how has model X trended across versions", the one query eval_model_history cannot answer, since it groups by slug (one version) rather than family_id (a lineage across slug changes). Requires family_id to be populated on eval_models; a model with no family row simply does not appear here (an inner join deliberately, since a LEFT JOIN would produce one all-null row per unlinked model, not useful for a trend query). metric_status explains a null primary_metric_value the same way it does on eval_run_scorecard.';
 
 COMMENT ON VIEW eval_item_consensus IS 'One row per item with at least two completed, non-error runs: how much a task''s variants agree on it, for ranking the human-review queue by disagreement. The verdict compared per result is eval_result_verdict(task, output, deterministic_checks); see that function''s comment for what each task''s case means. Transcription''s content agreement (how similar two runs'' transcripts are on a kept slide) is a similarity question, not a verdict this view can hold, and is answered instead by eval-compare''s per-slide report. Repeat runs of the same variant count once each, so a repeat that flips its own verdict is itself disagreement, not noise to average away. majority_share is the largest single-verdict group''s share of run_count; low values are the items most worth a reviewer''s attention. Differs from the grading_item_consensus dataset in .private/eval/scripts/dashboard-snapshot.sql in reporting majority_share (1 minus disagreement) rather than disagreement directly, and in covering every task instead of only grading.';
 COMMENT ON COLUMN eval_item_consensus.unit_id IS 'From the owning eval_sets row, not eval_items itself, so a reviewer can find the item''s source unit without a second lookup.';
@@ -1480,14 +1508,14 @@ COMMENT ON VIEW eval_run_behaviour IS 'One row per completed run, computed from 
 COMMENT ON COLUMN eval_run_behaviour.parse_failure_rate IS 'Results with error = ''parse'' divided by result_count, counting every result rather than only ones with output, the same denominator eval-run''s own summary uses.';
 COMMENT ON COLUMN eval_run_behaviour.task_behaviour IS 'A JSON object whose keys depend on the run''s task; see the view comment. Null for a task with no behaviour defined here.';
 
-COMMENT ON VIEW eval_variant_stability IS 'One row per distinct variant identity: experiment_id, set_id, model, prompt_hash, and the caller-chosen settings keys (temperature, reasoning, provider, groupSize, shuffleSeed, exclusionPass, renderDpi), each normalized with the same absent-means-default rule normalizeRepeatIdentitySettings applies in apps/pipeline/src/commands/eval-run.ts: temperature absent means no override was sent (distinct from an explicit value), groupSize/renderDpi absent fall back to their task defaults (1 and 120), the remaining keys absent mean null, and a provider pin''s order array is lowercased. This is the SQL twin of that normalizer and must change with it. Grouped over every run whose status is not failed or aborted (matching resolveExistingRepeatCount''s own inclusion rule, not a completed-only filter), so a running run already occupies its identity''s slot even before it has a primary_metric_value to contribute to the spread. Never grouped by variant_label, whose :r2-style suffix carries no meaning the database enforces. run_count, the metric spread (max minus min), and mean cost let a front-end rank repeat stability without re-deriving the grouping in application code; groupSize''s hardcoded default of 1 is the audit task default today (AUDIT_GROUP_SIZE) but does not branch by task the way the TypeScript does, so it silently stops matching if that constant ever changes.';
+COMMENT ON VIEW eval_variant_stability IS 'One row per distinct variant identity: experiment_id, set_id, model, prompt_hash, and the caller-chosen settings keys (temperature, reasoning, provider, groupSize, shuffleSeed, exclusionPass, renderDpi, mode, grouping), each normalized with the same absent-means-default rule normalizeRepeatIdentitySettings applies in apps/pipeline/src/commands/eval-run.ts: temperature absent means no override was sent (distinct from an explicit value), groupSize/renderDpi absent fall back to their task defaults (1 and 120), mode absent means ''sync'' (the alternative is ''batch''), grouping absent means ''by_order'' (consecutive items in the optionally seeded shuffled order; the alternative is ''by_topic''), the remaining keys absent mean null, and a provider pin''s order array is lowercased. eval-run writes neither mode nor grouping, so every run it makes carries the defaults. This is the SQL twin of that normalizer and must change with it. Grouped over every run whose status is not failed or aborted (matching resolveExistingRepeatCount''s own inclusion rule, not a completed-only filter), so a running run already occupies its identity''s slot even before it has a primary_metric_value to contribute to the spread. Never grouped by variant_label, whose :r2-style suffix carries no meaning the database enforces. run_count, the metric spread (max minus min), and mean cost let a front-end rank repeat stability without re-deriving the grouping in application code; groupSize''s hardcoded default of 1 is the audit task default today (AUDIT_GROUP_SIZE) but does not branch by task the way the TypeScript does, so it silently stops matching if that constant ever changes.';
 COMMENT ON COLUMN eval_variant_stability.primary_metric_spread IS 'max(primary_metric_value) minus min(primary_metric_value) across the group''s runs; null when fewer than two runs have a non-null primary metric.';
 
-COMMENT ON VIEW eval_experiment_variants IS 'One row per entry of eval_experiments.variants_declared, with the count and ids of eval_runs rows on that experiment that match it. A run matches when its model equals the declared model_slug and, for every key the declared settings object carries, the run''s own settings normalize (the same absent-means-default rule eval_variant_stability applies) to that declared value; a declared key absent from the run''s settings is an unconstrained match, not a mismatch. exclusionPass is the one key normalized differently from eval_variant_stability: it matches on the classifier model slug alone, ignoring the classifier''s provider and prompt hash, since a declaration names the classifier by slug (a bare string) while a run stores the full object it called ({model, provider, promptHash}): both sides reduce to their model key before comparing, and null (no exclusion pass declared or run) stays null. failed and aborted runs never match. Never joins on declared_label: a run''s own variant_label is chosen freely at eval-run time and is not reliably the same string as the plan''s label. ambiguous is true when this declared variant and another one on the same experiment match at least one run in common (typically two variants that share a model_slug and whose settings never conflict), so an overlapping run is reported under every variant it matches rather than one being picked silently; it is null, with run_count 0, for a declaration with no model_slug or ''*''.';
+COMMENT ON VIEW eval_experiment_variants IS 'One row per entry of eval_experiments.variants_declared, with the count and ids of the eval_runs rows that match it. Candidate runs are those attributed to the declaring experiment or, when the declaration carries baseline_from (the slug of another experiment, valid on a baseline), those attributed to the experiment it names: a decision may be made against a baseline run that belongs to another experiment, and runs_from_slug names that experiment (null when the runs are the declaring experiment''s own; a slug that matches no experiment leaves the variant with no runs). A run matches when its model equals the declared model_slug and, for every key the declared settings object carries, the run''s own settings normalize (the same absent-means-default rule eval_variant_stability applies, including mode absent meaning ''sync'' and grouping absent meaning ''by_order'') to that declared value; a declared key absent from the run''s settings is an unconstrained match, not a mismatch. exclusionPass is the one key normalized differently from eval_variant_stability: it matches on the classifier model slug alone, ignoring the classifier''s provider and prompt hash, since a declaration names the classifier by slug (a bare string) while a run stores the full object it called ({model, provider, promptHash}): both sides reduce to their model key before comparing, and null (no exclusion pass declared or run) stays null. failed and aborted runs never match. Never joins on declared_label: a run''s own variant_label is chosen freely at eval-run time and is not reliably the same string as the plan''s label. ambiguous is true when this declared variant and another one on the same experiment match at least one run in common (typically two variants that share a model_slug and whose settings never conflict), so an overlapping run is reported under every variant it matches rather than one being picked silently. A declaration with no model_slug or ''*'' matches nothing by design: its ambiguous is null and its run_count 0, even when runs exist for the models it was meant to cover (a baseline declared across several models, or with a wildcard model, is in this case). declaredVariantMatchesRun in apps/pipeline/src/commands/eval-run.ts is the TypeScript twin of this match rule and must change with it.';
 
 COMMENT ON VIEW eval_experiment_dependencies IS 'One row per entry of eval_experiments.depends_on, with that dependency''s current status, or ''missing'' when no experiment carries that slug (a typo, or a dependency not yet created).';
 
 ALTER TABLE eval_results
   ADD COLUMN response_meta JSONB;
 
-COMMENT ON COLUMN eval_results.response_meta IS 'OpenRouter response facts with no column of their own: the response id, created, each choice''s finish_reason and native_finish_reason, and the parts of usage that parseUsage does not already map (cached token counts, the upstream-cost breakdown). Never contains message content. One shape per task: the primary call''s fields at the top level; a transcription row whose slide went through --exclusion-pass adds a classifier key holding the same fields for the classifier call plus its served_model and served_provider, which this row''s own served_model/served_provider columns do not carry (they describe the transcription call only). A transcription row is therefore one of three shapes: top-level fields only (no exclusion pass ran), top-level plus classifier (both calls ran), or classifier only (the classifier dropped the slide, so no transcription call was made). For a grouped audit call (several questions in one call) this is the whole call''s response, written identically on every row in the group: unlike the per-row token columns, which are that group''s split, this value is not divisible and must not be summed across rows. Null when the call that would have produced it errored.';
+COMMENT ON COLUMN eval_results.response_meta IS 'OpenRouter response facts with no column of their own: the response id, created, each choice''s finish_reason and native_finish_reason, and the parts of usage that parseUsage does not already map (cached token counts, the upstream-cost breakdown). Never contains message content. Kept when a call returned content, including content that then failed to parse (error parse); null when the call failed or returned no content (error api or empty). One shape per task: the primary call''s fields at the top level; a transcription row whose slide went through --exclusion-pass adds a classifier key holding the same fields for the classifier call plus its served_model and served_provider, which this row''s own served_model/served_provider columns do not carry (they describe the transcription call only). A transcription row is therefore one of four shapes: null (no call returned a response); top-level fields only (no exclusion pass ran); top-level plus classifier (both calls returned a response); or classifier only, meaning the transcription call returned nothing to record, told apart by the row''s error and deterministic_checks.exclusion_decision: the classifier dropped the slide (no error, decision drop, no transcription call made), the transcription call failed after the classifier kept the slide (error api or empty, decision keep), or the classifier''s own response did not parse (error parse, decision null). For a grouped audit call (several questions in one call) this is the whole call''s response, written identically on every row in the group: unlike the per-row token columns, which are that group''s split, this value is not divisible and must not be summed across rows. Nothing reads this column yet; it exists so a question asked later about one specific call, such as which host served it or why it stopped, can be answered from the row.';

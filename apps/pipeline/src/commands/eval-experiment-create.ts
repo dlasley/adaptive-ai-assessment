@@ -9,9 +9,13 @@
  * an existing experiment, after the same validation a create runs. `--slug` cannot be combined with
  * `--update` (the slug is the public identifier and is never edited); `--tasks` and `--status`
  * cannot be changed this way either: `status` moves only through `eval-compare --decide`, and an
- * experiment's task list is fixed at creation. An update that would drop a declared variant (by its
- * `label`) that already has matching `eval_runs` rows is refused: `eval_experiment_variants` is read
- * to check, using the same match rule that view applies.
+ * experiment's task list is fixed at creation. An update that would orphan runs is refused: one that
+ * drops a declared variant (by its `label`) that has matching `eval_runs` rows, or keeps a label whose
+ * new declaration no longer matches a run it matches today. The runs a label matches today are read
+ * from `eval_experiment_variants`, and `declaredVariantMatchesRun` (the twin of that view's rule)
+ * decides whether each still matches. A variant may carry `baseline_from`, the slug of another
+ * experiment whose runs it draws on (a baseline decided against a run that belongs elsewhere); the
+ * slug must name an existing experiment other than this one.
  */
 
 import { readFileSync } from 'fs';
@@ -26,7 +30,16 @@ import {
 } from '../lib/eval/db';
 import { EVAL_TASKS, type EvalTask } from '../lib/eval/types';
 import { DECISION_RULE_KNOWN_KEYS } from '../lib/eval/tolerances';
-import { REPEAT_IDENTITY_SETTINGS_KEYS, RENDER_DPI_MIN, RENDER_DPI_MAX, type RepeatIdentityKey } from './eval-run';
+import {
+  REPEAT_IDENTITY_SETTINGS_KEYS,
+  RENDER_DPI_MIN,
+  RENDER_DPI_MAX,
+  RUN_MODES,
+  RUN_GROUPINGS,
+  declaredVariantMatchesRun,
+  type DeclaredVariant,
+  type RepeatIdentityKey,
+} from './eval-run';
 import { defineCli } from '../lib/options/define-cli';
 import { dbTargetFlags, loggingFlags } from '../lib/options/groups';
 import { createLogger, levelFromFlags, setLogLevel } from '../lib/logger';
@@ -41,10 +54,10 @@ const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
  * declared before its runner exists), but warned about, since no command can attribute a run to it. */
 const TASKS_WITH_NO_RUNNER = new Set<EvalTask>(['generation', 'validation']);
 
-/** The roles `eval_experiments.variants_declared` rows use, confirmed against the test database on
- * 2026-10-01: `baseline`, `candidate`, and `exclusion_pass` plus five more in live use (`step_down`,
- * `cross_vendor`, `specialist`, `prompt_variant`, `successor`). A short descriptive word naming what
- * kind of variant this is relative to the experiment's baseline, not a free-text field. */
+/** The roles `eval_experiments.variants_declared` rows use: `baseline`, `candidate`, `exclusion_pass`,
+ * `step_down`, `cross_vendor`, `specialist`, `prompt_variant` and `successor`. A short descriptive
+ * word naming what kind of variant this is relative to the experiment's baseline, not a free-text
+ * field. */
 const KNOWN_VARIANT_ROLES = new Set([
   'baseline',
   'candidate',
@@ -72,7 +85,7 @@ export const cli = defineCli(
       type: 'string',
       help: `Comma-separated task(s) this experiment covers, from: ${EVAL_TASKS.join(', ')} (required to create; fixed after creation)`,
     },
-    variants: { type: 'string', help: 'Path to a JSON array of {label, model_slug, role, settings?} (required to create)' },
+    variants: { type: 'string', help: 'Path to a JSON array of {label, model_slug, role, settings?, baseline_from?} (required to create)' },
     'decision-rule': {
       type: 'string',
       help: `Path to a JSON object of decision-rule overrides (${DECISION_RULE_KNOWN_KEYS.join(', ')})`,
@@ -110,13 +123,6 @@ export const cli = defineCli(
 );
 
 type Options = ReturnType<typeof cli.parse>;
-
-interface DeclaredVariant {
-  label: string;
-  model_slug: string;
-  role: string;
-  settings?: Record<string, unknown>;
-}
 
 function parseCommaList(raw: string | undefined): string[] {
   return raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
@@ -156,6 +162,10 @@ function isValidProviderValue(value: unknown): boolean {
 function validateSettingsShape(settings: Record<string, unknown>, context: string): string[] {
   const problems: string[] = [];
   for (const key of Object.keys(settings)) {
+    if (key === 'repeats') {
+      problems.push(`${context}: settings.repeats describes how many runs to make, not what a run is, so it is not part of a variant's identity; set the number of repeats with eval-run's --repeat flag instead`);
+      continue;
+    }
     if (!(REPEAT_IDENTITY_SETTINGS_KEYS as readonly string[]).includes(key)) {
       problems.push(`${context}: settings key '${key}' is not in the repeat-identity vocabulary (${REPEAT_IDENTITY_SETTINGS_KEYS.join(', ')})`);
       continue;
@@ -193,14 +203,26 @@ function validateSettingsShape(settings: Record<string, unknown>, context: strin
           problems.push(`${context}: settings.renderDpi must be a whole number between ${RENDER_DPI_MIN} and ${RENDER_DPI_MAX}`);
         }
         break;
+      case 'mode':
+        if (!(RUN_MODES as readonly unknown[]).includes(value)) {
+          problems.push(`${context}: settings.mode must be one of ${RUN_MODES.join(', ')}`);
+        }
+        break;
+      case 'grouping':
+        if (!(RUN_GROUPINGS as readonly unknown[]).includes(value)) {
+          problems.push(`${context}: settings.grouping must be one of ${RUN_GROUPINGS.join(', ')}`);
+        }
+        break;
     }
   }
   return problems;
 }
 
 /** Validates one entry of a `--variants` file: `label` (non-empty; uniqueness across the file is
- * checked by the caller), `model_slug` (non-empty; resolved against the registry by the caller),
- * `role` (the known vocabulary), and `settings` (optional; see `validateSettingsShape`). */
+ * checked by the caller), `model_slug` (non-empty, `'*'` or null; a real slug is resolved against
+ * the registry by the caller), `role` (the known vocabulary), `settings` (optional; see
+ * `validateSettingsShape`) and `baseline_from` (optional; the name of another experiment, on a
+ * baseline only; that the experiment exists is checked by the caller). */
 function validateVariantShape(variant: unknown, index: number): string[] {
   const context = `variant ${index}`;
   if (typeof variant !== 'object' || variant === null || Array.isArray(variant)) {
@@ -211,8 +233,8 @@ function validateVariantShape(variant: unknown, index: number): string[] {
   if (typeof v.label !== 'string' || v.label.trim().length === 0) {
     problems.push(`${context}: label must be a non-empty string`);
   }
-  if (typeof v.model_slug !== 'string' || v.model_slug.trim().length === 0) {
-    problems.push(`${context}: model_slug must be a non-empty string ('*' for any model)`);
+  if (v.model_slug !== null && (typeof v.model_slug !== 'string' || v.model_slug.trim().length === 0)) {
+    problems.push(`${context}: model_slug must be a non-empty string, or '*' or null for a declaration that spans models (it then matches no run by design)`);
   }
   if (typeof v.role !== 'string' || !KNOWN_VARIANT_ROLES.has(v.role)) {
     problems.push(`${context}: role must be one of ${[...KNOWN_VARIANT_ROLES].join(', ')} (got ${JSON.stringify(v.role)})`);
@@ -222,6 +244,13 @@ function validateVariantShape(variant: unknown, index: number): string[] {
       problems.push(`${context}: settings must be an object`);
     } else {
       problems.push(...validateSettingsShape(v.settings as Record<string, unknown>, context));
+    }
+  }
+  if (v.baseline_from !== undefined && v.baseline_from !== null) {
+    if (typeof v.baseline_from !== 'string' || v.baseline_from.trim().length === 0) {
+      problems.push(`${context}: baseline_from must be the slug of another experiment`);
+    } else if (v.role !== 'baseline') {
+      problems.push(`${context}: baseline_from is only valid on a variant whose role is baseline (got ${JSON.stringify(v.role)})`);
     }
   }
   return problems;
@@ -258,15 +287,15 @@ function parseVariantsFile(path: string): DeclaredVariant[] {
   return variants;
 }
 
-/** Resolves every declared variant's `model_slug` against `eval_models_current`, except `'*'`
- * (matches any model, so there is nothing to resolve). Fetched once per distinct slug. */
+/** Resolves every declared variant's `model_slug` against `eval_models_current`, except `'*'` and null
+ * (they name no model, so there is nothing to resolve). Fetched once per distinct slug. */
 async function resolveVariantModels(
   store: EvalStore,
   variants: DeclaredVariant[],
 ): Promise<{ bySlug: Map<string, EvalModelCurrentRow>; missing: string[] }> {
   const bySlug = new Map<string, EvalModelCurrentRow>();
   const missing: string[] = [];
-  const distinctSlugs = [...new Set(variants.map((v) => v.model_slug).filter((slug) => slug !== '*'))];
+  const distinctSlugs = [...new Set(variants.map((v) => v.model_slug).filter((slug): slug is string => slug !== null && slug !== '*'))];
   for (const slug of distinctSlugs) {
     const row = await store.getModelBySlug(slug);
     if (row) bySlug.set(slug, row);
@@ -276,8 +305,8 @@ async function resolveVariantModels(
 }
 
 function printVariantResolution(variant: DeclaredVariant, bySlug: Map<string, EvalModelCurrentRow>): void {
-  if (variant.model_slug === '*') {
-    console.log(`  ${variant.label}: model_slug '*' (matches any model)`);
+  if (variant.model_slug === null || variant.model_slug === '*') {
+    console.log(`  ${variant.label}: model_slug ${variant.model_slug === null ? 'null' : "'*'"} (spans models; matches no run by design)`);
     return;
   }
   const row = bySlug.get(variant.model_slug);
@@ -346,24 +375,86 @@ function parseDecisionRuleFile(path: string): Record<string, unknown> {
   return raw as Record<string, unknown>;
 }
 
-/** Refuses an update that would drop a declared variant (one present in `experiment`'s current
- * `variants_declared` by `label`, absent from `newVariants`) which already has matching `eval_runs`
- * rows, read through `eval_experiment_variants` (the same view, the same match rule) rather than
- * reimplemented here. Dropping a variant with no runs is fine: it never ran, so nothing is orphaned. */
-async function refuseDroppingVariantsWithRuns(store: EvalStore, experiment: EvalExperimentRow, newVariants: DeclaredVariant[]): Promise<void> {
+/** Refuses a `baseline_from` naming an experiment that does not exist on this project or the
+ * declaring experiment itself, and returns the id of each named experiment by slug so the
+ * declaration's match rule can be evaluated. */
+async function resolveBaselineFromExperiments(
+  store: EvalStore,
+  variants: DeclaredVariant[],
+  declaringSlug: string,
+): Promise<Map<string, string>> {
+  const idBySlug = new Map<string, string>();
+  const problems: string[] = [];
+  for (const variant of variants) {
+    if (variant.baseline_from == null || idBySlug.has(variant.baseline_from)) continue;
+    if (variant.baseline_from === declaringSlug) {
+      problems.push(`variant '${variant.label}': baseline_from names this experiment itself ('${declaringSlug}'); a variant's own experiment is already where its runs are looked up`);
+      continue;
+    }
+    const source = await store.getExperiment(variant.baseline_from);
+    if (!source) problems.push(`variant '${variant.label}': baseline_from names experiment '${variant.baseline_from}', which does not exist`);
+    else if (source.slug !== variant.baseline_from) problems.push(`variant '${variant.label}': baseline_from must be the experiment's slug ('${source.slug}'), not its id`);
+    else idBySlug.set(variant.baseline_from, source.id);
+  }
+  if (problems.length > 0) {
+    logger.error('--variants failed validation:');
+    for (const problem of problems) logger.error(`  ${problem}`);
+    process.exit(1);
+  }
+  return idBySlug;
+}
+
+/**
+ * Refuses an update that would orphan runs already attributed to a declared variant: one that drops
+ * a variant (present in `experiment`'s current `variants_declared` by `label`, absent from
+ * `newVariants`) which has matching `eval_runs` rows, or keeps a label but changes its declaration
+ * so that a run it matches today stops matching (a different model, a settings key the run does not
+ * carry or carries with another value, a `baseline_from` that moves the candidate runs elsewhere).
+ * The runs a label matches today are read through `eval_experiment_variants`; whether each still
+ * matches the new declaration is decided by `declaredVariantMatchesRun`, the twin of that view's
+ * rule. Dropping a variant with no runs, dropping a settings key, and giving a variant with no runs
+ * a new declaration are all fine: nothing is orphaned.
+ */
+async function refuseOrphaningVariantUpdate(
+  store: EvalStore,
+  experiment: EvalExperimentRow,
+  newVariants: DeclaredVariant[],
+  experimentIdBySlug: ReadonlyMap<string, string>,
+): Promise<void> {
   const oldLabels = (experiment.variants_declared as Array<{ label?: unknown }>)
     .map((v) => v?.label)
     .filter((label): label is string => typeof label === 'string');
-  const newLabels = new Set(newVariants.map((v) => v.label));
-  const droppedLabels = oldLabels.filter((label) => !newLabels.has(label));
-  if (droppedLabels.length === 0) return;
-
+  const newByLabel = new Map(newVariants.map((v) => [v.label, v]));
   const counts = await store.listDeclaredVariantRunCounts(experiment.id);
-  const runCountByLabel = new Map(counts.map((c) => [c.declared_label, c.run_count]));
-  const blocked = droppedLabels.filter((label) => (runCountByLabel.get(label) ?? 0) > 0);
-  if (blocked.length > 0) {
+  const runIdsByLabel = new Map(counts.map((c) => [c.declared_label, c.run_ids]));
+
+  const droppedWithRuns = oldLabels.filter((label) => !newByLabel.has(label) && (runIdsByLabel.get(label)?.length ?? 0) > 0);
+  if (droppedWithRuns.length > 0) {
     logger.error(
-      `--update would drop declared variant(s) that already have matching eval_runs rows: ${blocked.join(', ')}. Keep the label (its settings may still change) or leave --variants unset.`,
+      `--update would drop declared variant(s) that already have matching eval_runs rows: ${droppedWithRuns.join(', ')}. Keep the label (its settings may still change) or leave --variants unset.`,
+    );
+    process.exit(1);
+  }
+
+  const context = { declaringExperimentId: experiment.id, experimentIdBySlug };
+  const orphaned: string[] = [];
+  for (const label of oldLabels) {
+    const newVariant = newByLabel.get(label);
+    if (!newVariant) continue;
+    const unmatched: string[] = [];
+    for (const runId of runIdsByLabel.get(label) ?? []) {
+      const run = await store.getRun(runId);
+      if (!run) {
+        logger.warn(`Run ${runId} is attributed to variant '${label}' but has no eval_runs row; it is not checked against the new declaration.`);
+        continue;
+      }
+      if (!declaredVariantMatchesRun(newVariant, run, context)) unmatched.push(runId);
+    }
+    if (unmatched.length > 0) orphaned.push(`'${label}' (run(s) ${unmatched.join(', ')})`);
+  }
+  if (orphaned.length > 0) {
+    logger.error(
+      `--update would leave runs that match a declared variant today matching nothing under its new declaration: ${orphaned.join('; ')}. Keep the declaration those runs match, or add a new variant for the changed one.`,
     );
     process.exit(1);
   }
@@ -403,6 +494,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
 
   let variants: DeclaredVariant[] | undefined;
   let modelBySlug: Map<string, EvalModelCurrentRow> | undefined;
+  let experimentIdBySlug: Map<string, string> = new Map();
   if (options.variants) {
     variants = parseVariantsFile(options.variants);
     const resolved = await resolveVariantModels(store, variants);
@@ -411,13 +503,14 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
       process.exit(1);
     }
     modelBySlug = resolved.bySlug;
+    experimentIdBySlug = await resolveBaselineFromExperiments(store, variants, isUpdate ? existing!.slug : options.slug!);
   }
 
   const decisionRule = options.decisionRule ? parseDecisionRuleFile(options.decisionRule) : undefined;
   const dependsOn = options.dependsOn !== undefined ? await resolveDependsOn(store, options.dependsOn) : undefined;
 
   if (isUpdate && variants) {
-    await refuseDroppingVariantsWithRuns(store, existing!, variants);
+    await refuseOrphaningVariantUpdate(store, existing!, variants, experimentIdBySlug);
   }
 
   if (isUpdate) {
