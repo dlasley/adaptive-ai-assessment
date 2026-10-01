@@ -16,6 +16,40 @@ describe('supabase/schema.sql declares the evaluation framework cross-cutting vi
     expect(schema).toMatch(/CREATE (OR REPLACE )?FUNCTION eval_normalize_provider\(/);
   });
 
+  it('eval_run_metric_status takes five arguments, including p_scored_at', () => {
+    expect(schema).toMatch(
+      /CREATE (OR REPLACE )?FUNCTION eval_run_metric_status\(p_status text, p_summary jsonb, p_set_id uuid, p_finished_at timestamptz, p_scored_at timestamptz\)/,
+    );
+  });
+
+  it("eval_run_metric_status's comment documents the 'reference reviewed after scoring' state", () => {
+    const fnStart = schema.indexOf('CREATE OR REPLACE FUNCTION eval_run_metric_status(');
+    expect(fnStart).toBeGreaterThan(-1);
+    const fnEnd = schema.indexOf('$$ LANGUAGE sql STABLE', fnStart);
+    expect(fnEnd).toBeGreaterThan(fnStart);
+    expect(schema.slice(fnStart, fnEnd)).toContain('reference reviewed after scoring');
+  });
+
+  it('eval_runs declares scored_at and scoring_review_round_id', () => {
+    expect(schema).toMatch(/ADD COLUMN scored_at TIMESTAMPTZ/);
+    expect(schema).toMatch(
+      /ADD COLUMN scoring_review_round_id UUID REFERENCES eval_review_rounds\(id\) ON DELETE RESTRICT/,
+    );
+  });
+
+  it.each(['eval_run_scorecard', 'eval_run_model_stats', 'eval_run_behaviour'])(
+    '%s calls eval_run_metric_status with r.scored_at as the fifth argument',
+    (viewName) => {
+      const viewStart = schema.indexOf(`CREATE VIEW ${viewName} `);
+      expect(viewStart).toBeGreaterThan(-1);
+      const viewEnd = schema.indexOf(';', viewStart);
+      expect(viewEnd).toBeGreaterThan(viewStart);
+      expect(schema.slice(viewStart, viewEnd)).toContain(
+        'eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at)',
+      );
+    },
+  );
+
   it.each([
     'eval_item_consensus',
     'eval_run_behaviour',

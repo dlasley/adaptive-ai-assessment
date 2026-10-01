@@ -586,7 +586,10 @@ Four tables, service-role only, no anon policies:
   `rejected`) tracks review state independently of whether `reference` is populated yet.
 - **`eval_runs`**: one variant, one execution against a set. Records the model, the call settings,
   the experiment it's attributed to (if any), and a `summary` JSONB computed once every item has a
-  result.
+  result. `scored_at` and `scoring_review_round_id` are the scoring provenance for that summary: when
+  it was last computed (at finalisation or by a later `eval-rescore`) and the newest
+  `eval_review_rounds` row on the set at that time, or null when the set had none. Both are columns,
+  not keys inside `summary`, so a query for "runs needing a rescore" is a plain `WHERE`.
 - **`eval_results`**: one row per (run, item) pair: the variant's output, its deterministic checks,
   score, latency, cost, token usage, and an `error` (`parse` / `api` / `empty`) when the call
   produced nothing usable.
@@ -745,11 +748,15 @@ and `eval_experiment_dependencies` (one row per `depends_on` entry with that dep
 status, or `missing` when no experiment carries the slug).
 
 Every view also carries `metric_status`, which explains a null `primary_metric`/`primary_metric_value`
-rather than leaving it to guesswork: `failed run` (the run itself didn't complete), `ok` (a metric is
-present), `awaiting reviewed references` (the run's set has no approved reference item yet), `scored
-before references existed` (the run finished before the set's earliest approved item was reviewed;
-re-running `eval-compare` fills the metric in), or `no primary metric` (none of the above explains it,
-worth investigating).
+rather than leaving it to guesswork, checked in this order: `failed run` (the run itself didn't
+complete); `reference reviewed after scoring` (a metric is present, but the run's `scored_at` predates
+the newest `reviewed_at` among the set's approved items, so a reviewer changed a reference since this
+summary was computed and `eval-rescore` would likely change it); `ok` (a metric is present and nothing
+newer has been reviewed since); `awaiting reviewed references` (the run's set has no approved
+reference item yet); `scored before references existed` (the run's `scored_at`, or its `finished_at`
+for a run from before that column existed, is earlier than the set's earliest approved item's
+`reviewed_at`; re-running `eval-rescore` fills the metric in); or `no primary metric` (none of the
+above explains it, worth investigating).
 
 With as few repeats as most of these evaluations run, treat any apparent link between a score and a
 specific model attribute (parameter count, architecture, reasoning support) as a hypothesis worth

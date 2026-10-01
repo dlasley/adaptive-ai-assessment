@@ -143,6 +143,8 @@ export function makeEvalRunRow(overrides: Partial<EvalRunRow> = {}): EvalRunRow 
     started_at: DEFAULT_TIMESTAMP,
     finished_at: null,
     summary: null,
+    scored_at: null,
+    scoring_review_round_id: null,
     experiment_id: null,
     model_version_id: null,
     created_at: DEFAULT_TIMESTAMP,

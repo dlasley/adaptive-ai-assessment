@@ -102,7 +102,7 @@ describe('eval-rescore round trip', () => {
     return { store, runs, results };
   }
 
-  it('grading: rescoring a just-completed run reproduces its own summary exactly, apart from scoredAt', async () => {
+  it('grading: rescoring a just-completed run reproduces its own summary exactly and refreshes scored_at, never writing the retired summary keys', async () => {
     const set = makeEvalSetRow({ id: 'set-1', task: 'grading' });
     const item = makeEvalItemRow({
       id: 'item-1',
@@ -137,12 +137,19 @@ describe('eval-rescore round trip', () => {
     expect(runs).toHaveLength(1);
     const run = runs[0];
     expect(run.status).toBe('completed');
-    const { scoredAt: _runScoredAt, ...summaryAfterRun } = run.summary as Record<string, unknown>;
+    const summaryAfterRun = run.summary as Record<string, unknown>;
+    expect(summaryAfterRun).not.toHaveProperty('scoredAt');
+    expect(summaryAfterRun).not.toHaveProperty('scoringReviewRoundId');
+    const scoredAtAfterRun = run.scored_at;
+    expect(scoredAtAfterRun).toBeTruthy();
+    expect(run.scoring_review_round_id).toBeNull();
 
     await rescoreMain({ argv: ['--run', run.id, '--write-db'], store });
 
-    const { scoredAt: _rescoreScoredAt, ...summaryAfterRescore } = run.summary as Record<string, unknown>;
-    expect(summaryAfterRescore).toEqual(summaryAfterRun);
+    expect(run.summary).toEqual(summaryAfterRun);
+    expect(run.scored_at).toBeTruthy();
+    expect(run.summary).not.toHaveProperty('scoredAt');
+    expect(run.summary).not.toHaveProperty('scoringReviewRoundId');
   });
 
   it('transcription: a run with no reference yet has meanScore undefined; rescoring after the reference is approved fills in every item score and the summary', async () => {

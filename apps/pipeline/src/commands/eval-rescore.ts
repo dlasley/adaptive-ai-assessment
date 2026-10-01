@@ -130,7 +130,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
     const builtSummary = taskDef.buildSummary(outcomes);
 
     const reviewRound = await reviewRoundFor(run.set_id);
-    const stampedSummary = stampSummary(run.task, builtSummary, {
+    const { summary: stampedSummary, scoredAt, scoringReviewRoundId } = stampSummary(run.task, builtSummary, {
       scoredAt: new Date().toISOString(),
       scoringReviewRoundId: reviewRound?.id ?? null,
     });
@@ -161,7 +161,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
       for (const update of scoreUpdates) {
         await store.updateResult(update.resultId, { score: update.score });
       }
-      await store.updateRun(run.id, { summary: stampedSummary });
+      await store.updateRun(run.id, { summary: stampedSummary, scored_at: scoredAt, scoring_review_round_id: scoringReviewRoundId });
     }
   }
 

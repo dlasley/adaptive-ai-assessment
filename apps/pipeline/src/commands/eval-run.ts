@@ -713,14 +713,20 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
         }
 
         const builtSummary = taskDef.buildSummary(outcomesByVariant.get(key)!);
-        const stampedSummary = stampSummary(options.task, builtSummary, {
+        const { summary: stampedSummary, scoredAt, scoringReviewRoundId } = stampSummary(options.task, builtSummary, {
           scoredAt: new Date().toISOString(),
           scoringReviewRoundId: reviewRound?.id ?? null,
         });
         const summary = errorMessage !== undefined ? { ...stampedSummary, error: errorMessage } : stampedSummary;
 
         try {
-          await store.updateRun(run.id, { status, finished_at: new Date().toISOString(), summary });
+          await store.updateRun(run.id, {
+            status,
+            finished_at: new Date().toISOString(),
+            summary,
+            scored_at: scoredAt,
+            scoring_review_round_id: scoringReviewRoundId,
+          });
           finalizedVariantKeys.add(key);
         } catch (err) {
           logger.error(`Failed to finalize run ${run.id} for variant ${key}: ${err instanceof Error ? err.message : String(err)}`);

@@ -638,7 +638,12 @@ A resolved run stamps `experiment_id` and `model_version_id` on its `eval_runs` 
 `served_provider` on its `eval_results` rows alongside the existing `served_model` (what OpenRouter
 actually served, as distinct from `--provider`'s request). Every finished run's `summary` also gets a
 top-level `primary_metric: {name, value, direction}`, the value the comparison views select
-generically across tasks.
+generically across tasks. Alongside `summary`, the same write stamps `eval_runs.scored_at` (when this
+summary was computed) and `eval_runs.scoring_review_round_id` (the newest `eval_review_rounds` row on
+the set at that time, or null when the set has none) through `stampSummary`
+(`apps/pipeline/src/lib/eval/summary-stamp.ts`), the one helper `eval-run.ts` and `eval-rescore.ts`
+both call so the two never diverge on where scoring provenance lives; it is columns, not keys inside
+`summary`.
 
 Every variant's `eval_runs` row reaches a terminal status before the process exits: `completed` on a
 normal finish, `failed` (with the error message in `summary.error`) either when something outside
@@ -706,9 +711,11 @@ already carries. Targets exactly one of `--run`, `--set` (every completed run ag
 `completed`, whose set has no items, or that has no `eval_results` rows is skipped with a message
 rather than failing the rest. Per-item `score` is only ever touched for transcription and mapping,
 the two tasks whose score is computed against a reference; grading's is the model's own self-score
-and audit has none. `status` and `finished_at` are never touched. Dry run by default, printing each
-run's task, variant label, old and new `primary_metric`, and how many item scores would change;
-`--write-db` performs the writes.
+and audit has none. `status` and `finished_at` are never touched, but `scored_at` and
+`scoring_review_round_id` are refreshed to the rescore's own time and the set's current newest
+review round, through the same `stampSummary` helper `eval-run.ts` uses. Dry run by default,
+printing each run's task, variant label, old and new `primary_metric`, and how many item scores
+would change; `--write-db` performs the writes.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-rescore.ts (--run <id> | --set <id> | --experiment <id|slug>) [options]

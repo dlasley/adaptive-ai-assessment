@@ -338,6 +338,12 @@ describe('eval-run CLI wiring', () => {
     expect(runs[0].summary?.primary_metric).toBeDefined();
     // renderDpi is only meaningful for the transcription task.
     expect(runs[0].settings.renderDpi).toBeNull();
+
+    // Scoring provenance is written as columns, never folded back into summary.
+    expect(runs[0].scored_at).toBeTruthy();
+    expect(runs[0].scoring_review_round_id).toBeNull();
+    expect(runs[0].summary).not.toHaveProperty('scoredAt');
+    expect(runs[0].summary).not.toHaveProperty('scoringReviewRoundId');
   });
 
   it('resolves --experiment by its row id, not only its slug', async () => {

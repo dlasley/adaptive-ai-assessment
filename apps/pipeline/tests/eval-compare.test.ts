@@ -76,6 +76,8 @@ function makeRun(overrides: Partial<EvalRunRow> = {}): EvalRunRow {
     started_at: '2026-09-26T00:00:00Z',
     finished_at: '2026-09-26T00:01:00Z',
     summary: null,
+    scored_at: null,
+    scoring_review_round_id: null,
     experiment_id: null,
     model_version_id: null,
     created_at: '2026-09-26T00:00:00Z',

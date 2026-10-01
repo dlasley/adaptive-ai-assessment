@@ -795,19 +795,30 @@ ALTER TABLE eval_runs
 
 CREATE INDEX idx_eval_runs_experiment ON eval_runs(experiment_id);
 
+ALTER TABLE eval_runs
+  ADD COLUMN scored_at TIMESTAMPTZ,                  -- when summary (and the results' scores) were last computed, at run finalisation or by eval-rescore; null only for a run that never finalised
+  ADD COLUMN scoring_review_round_id UUID REFERENCES eval_review_rounds(id) ON DELETE RESTRICT; -- the newest review round on the run's set at scoring time; null when the set had none
+
 ALTER TABLE eval_results
   ADD COLUMN served_provider TEXT;
 
--- Shared by eval_run_scorecard and eval_run_model_stats so the five-way precedence lives in one
--- place. STABLE, not IMMUTABLE: it reads eval_items, which changes as items get reviewed.
-CREATE OR REPLACE FUNCTION eval_run_metric_status(p_status text, p_summary jsonb, p_set_id uuid, p_finished_at timestamptz) RETURNS text AS $$
+-- Shared by eval_run_scorecard, eval_run_model_stats and eval_run_behaviour so the six-way
+-- precedence lives in one place. STABLE, not IMMUTABLE: it reads eval_items, which changes as
+-- items get reviewed. p_scored_at is the run's own eval_runs.scored_at (null for a run that never
+-- finalised); COALESCE'd against p_finished_at so a pre-D3 run without a stamped scored_at still
+-- resolves "scored before references existed" the way it always did.
+CREATE OR REPLACE FUNCTION eval_run_metric_status(p_status text, p_summary jsonb, p_set_id uuid, p_finished_at timestamptz, p_scored_at timestamptz) RETURNS text AS $$
   SELECT CASE
     WHEN p_status <> 'completed' THEN 'failed run'
+    WHEN p_summary -> 'primary_metric' ->> 'value' IS NOT NULL
+      AND p_scored_at < (
+        SELECT MAX(ei.reviewed_at) FROM eval_items ei WHERE ei.set_id = p_set_id AND ei.reference_status = 'approved'
+      ) THEN 'reference reviewed after scoring'
     WHEN p_summary -> 'primary_metric' ->> 'value' IS NOT NULL THEN 'ok'
     WHEN NOT EXISTS (
       SELECT 1 FROM eval_items ei WHERE ei.set_id = p_set_id AND ei.reference_status = 'approved'
     ) THEN 'awaiting reviewed references'
-    WHEN p_finished_at < (
+    WHEN COALESCE(p_scored_at, p_finished_at) < (
       SELECT MIN(ei.reviewed_at) FROM eval_items ei WHERE ei.set_id = p_set_id AND ei.reference_status = 'approved'
     ) THEN 'scored before references existed'
     ELSE 'no primary metric'
@@ -853,7 +864,7 @@ SELECT
   r.finished_at,
   r.summary -> 'primary_metric' AS primary_metric,
   r.summary,
-  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at) AS metric_status
+  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at) AS metric_status
 FROM eval_runs r
 LEFT JOIN eval_experiments x ON x.id = r.experiment_id
 LEFT JOIN eval_models m ON m.id = r.model_version_id
@@ -902,7 +913,7 @@ SELECT
   m.release_date,
   m.knowledge_cutoff,
   m.reasoning_class,
-  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at) AS metric_status
+  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at) AS metric_status
 FROM eval_runs r
 LEFT JOIN eval_models m ON m.id = r.model_version_id
 LEFT JOIN eval_model_families fam ON fam.id = m.family_id
@@ -1021,7 +1032,7 @@ SELECT
   agg.latency_ms_p50,
   agg.latency_ms_p95,
   agg.task_behaviour,
-  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at) AS metric_status
+  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at) AS metric_status
 FROM eval_runs r
 CROSS JOIN LATERAL (
   SELECT

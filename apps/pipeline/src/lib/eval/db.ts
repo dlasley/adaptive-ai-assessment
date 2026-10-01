@@ -63,6 +63,12 @@ export interface EvalRunRow {
   started_at: string;
   finished_at: string | null;
   summary: Record<string, unknown> | null;
+  /** When this run's summary (and its results' scores) were last computed, at run finalisation or
+   * by eval-rescore. Null only for a run that never finalised. */
+  scored_at: string | null;
+  /** The newest eval_review_rounds row on this run's set at the time it was scored. Null when the
+   * set had no review round yet. */
+  scoring_review_round_id: string | null;
   /** The eval_experiments row this run belongs to, if any (--experiment). */
   experiment_id: string | null;
   /** The eval_models row --models resolved against eval_models_current at run time. */
