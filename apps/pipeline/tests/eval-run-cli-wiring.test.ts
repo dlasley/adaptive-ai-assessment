@@ -1463,6 +1463,32 @@ describe('eval-run CLI wiring: task transcription', () => {
       }
     });
 
+    it('counts the classifier call\'s usage on the row when its response does not parse', async () => {
+      const { store, results } = makeExclusionPassFakeStore();
+      const callLlmFn = vi.fn(async (opts: LlmCallOptions) => ({
+        text: 'not json',
+        model: opts.model,
+        servedModel: opts.model,
+        servedProvider: 'Anthropic',
+        raw: { id: 'gen-classify-bad', choices: [{ finish_reason: 'stop' }] },
+        usage: { promptTokens: 200, completionTokens: 10, reasoningTokens: 4, costUsd: 0.0001 },
+      } satisfies LlmResult));
+
+      await main({
+        argv: ['--set', 'set-1', '--task', 'transcription', '--models', TRANSCRIPTION_MODEL, '--exclusion-pass', CLASSIFIER_MODEL, '--write-db'],
+        store,
+        callLlmFn,
+      });
+
+      for (const row of results) {
+        expect(row.error).toBe('parse');
+        expect(row.cost_usd).toBeCloseTo(0.0001);
+        expect(row.prompt_tokens).toBe(200);
+        expect(row.completion_tokens).toBe(10);
+        expect(row.reasoning_tokens).toBe(4);
+      }
+    });
+
     it('leaves response_meta null when no call returned a response', async () => {
       const { store, results } = makeExclusionPassFakeStore();
       const callLlmFn = vi.fn(async (_opts: LlmCallOptions) => { throw new Error('connection reset'); });

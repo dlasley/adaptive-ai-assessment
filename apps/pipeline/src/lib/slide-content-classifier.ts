@@ -22,11 +22,16 @@ export const CLASSIFY_PROMPT = renderCoursePrompt(
 export const CLASSIFY_PROMPT_HASH = hashText(CLASSIFY_PROMPT);
 
 /** A classifier answer that did not parse. When the call itself returned a response, the host,
- * model and response facts it carried are kept on `response`, so a caller can still record them. */
+ * model, usage and response facts it carried are kept on `response`, so a caller can still record them. */
 export class SlideClassificationParseError extends Error {
   constructor(
     message: string,
-    readonly response?: { servedModel?: string; servedProvider?: string; responseMeta?: Record<string, unknown> },
+    readonly response?: {
+      servedModel?: string;
+      servedProvider?: string;
+      responseMeta?: Record<string, unknown>;
+      usage?: LlmUsage;
+    },
   ) {
     super(message);
   }
@@ -114,7 +119,7 @@ export async function classifySlideContent(params: ClassifySlideContentParams): 
     classification = parseSlideClassification(result.text);
   } catch (err) {
     if (err instanceof SlideClassificationParseError) {
-      throw new SlideClassificationParseError(err.message, { servedModel: result.servedModel, servedProvider: result.servedProvider, responseMeta });
+      throw new SlideClassificationParseError(err.message, { servedModel: result.servedModel, servedProvider: result.servedProvider, responseMeta, usage: result.usage });
     }
     throw err;
   }

@@ -443,6 +443,33 @@ describe('eval-judge main()', () => {
     expect(runUpdates).toHaveLength(0);
   });
 
+  it('names the items skipped after their judge calls failed and the repeat they are missing', async () => {
+    const item2 = makeEvalItemRow({
+      id: 'item-2', set_id: 'set-1', item_key: 'unit-1.pdf:6',
+      payload: { slide: 6, text_layer: 'Salut', category: 'text' },
+    });
+    const resultA2 = makeEvalResultRow({ id: 'result-a2', run_id: 'run-a', item_id: 'item-2', output: { markdown: 'Transcript A2' } });
+    const resultB2 = makeEvalResultRow({ id: 'result-b2', run_id: 'run-b', item_id: 'item-2', output: { markdown: 'Transcript B2' } });
+    const { store } = makeFakeStore({
+      runs: [runA, runB], set, items: [item, item2],
+      resultsByRun: { 'run-a': [resultA, resultA2], 'run-b': [resultB, resultB2] },
+    });
+    let calls = 0;
+    const callLlmFn = vi.fn(async (_options: LlmCallOptions) => {
+      calls++;
+      if (calls > 2) throw new Error('upstream failure');
+      return jsonResult({ winner: 'A', reason: 'more complete' });
+    });
+
+    await main({ argv: ['--runs', 'run-a,run-b', '--judge-model', MODEL.slug, '--write-db'], store, callLlmFn });
+
+    const printed = (console.log as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((args) => args.join(' ')).join('\n');
+    expect(printed).toContain('Skipped 1 item(s)');
+    expect(printed).toContain('unit-1.pdf:6 (missing repeat 0)');
+    expect(printed).not.toContain('unit-1.pdf:5 (missing');
+    expect(printed).toContain(`hold one fewer entry than the rest for judge model ${MODEL.slug}`);
+  });
+
   it('records the provider pin in lowercase', async () => {
     const { store, judgeVerdictUpdates } = makeFakeStore({
       runs: [runA, runB],

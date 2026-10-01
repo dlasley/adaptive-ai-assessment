@@ -265,6 +265,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   const wins = { a: 0, b: 0, tie: 0 };
   const nonTieItems: Array<{ itemKey: string; winnerRunId: string }> = [];
   let actualCostUsd = 0;
+  const skipped: Array<{ itemKey: string; missingRepeat: number }> = [];
 
   try {
     for (const { item, markdownA, markdownB } of sharedItems) {
@@ -302,6 +303,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
       } catch (err) {
         const reason = isEmptyContentError(err) ? 'empty content' : err instanceof Error ? err.message : String(err);
         logger.error(`Item ${item.item_key} failed to judge (${reason}), skipped.`);
+        skipped.push({ itemKey: item.item_key, missingRepeat: nextJudgeRepeat(existingByItem.get(item.id)!.forA, options.judgeModel) });
         continue;
       }
 
@@ -362,6 +364,10 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   console.log(`Non-tie items: ${nonTieItems.length > 0 ? nonTieItems.map((i) => `${i.itemKey} (${i.winnerRunId})`).join(', ') : 'none'}`);
   console.log(`Projected judge cost: ${projectedLabel}`);
   console.log(`Actual judge cost: $${actualCostUsd.toFixed(4)}`);
+  if (skipped.length > 0) {
+    console.log(`Skipped ${skipped.length} item(s) after their judge calls failed: ${skipped.map((s) => `${s.itemKey} (missing repeat ${s.missingRepeat})`).join(', ')}.`);
+    console.log(`These items hold one fewer entry than the rest for judge model ${options.judgeModel}.`);
+  }
 }
 
 runIfMain(import.meta.url, main);

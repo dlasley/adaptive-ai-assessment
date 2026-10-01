@@ -215,6 +215,7 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
         } catch (err) {
           error = err instanceof SlideClassificationParseError ? 'parse' : isEmptyContentError(err) ? 'empty' : 'api';
           if (err instanceof SlideClassificationParseError && err.response) {
+            usage = addResultUsage(usage, resultUsageFromLlmUsage(err.response.usage));
             classifierResponseMeta = err.response.responseMeta;
             classifierServedModel = err.response.servedModel;
             classifierServedProvider = err.response.servedProvider;

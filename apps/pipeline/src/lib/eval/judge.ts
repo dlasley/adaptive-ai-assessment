@@ -106,7 +106,9 @@ export function nextJudgeRepeat(existing: readonly JudgeVerdictEntry[] | undefin
  * list under `runJudgePromptHash` (the reading run's own `judge_prompt_hash`) when one exists, and
  * otherwise the list whose newest entry has the latest `judged_at`: the fallback for a pairing
  * judged only under a prompt other than the run's current one. Returns the hash actually used with
- * every entry under it, so a reader can compare repeats and judge models. No call site reads
+ * every entry under it, so a reader can compare repeats and judge models. Lists for the same pair and
+ * hash can differ in length across items when a run failed on some of them, so a reader comparing
+ * repeats must pair entries by `repeat` and `judge_model`, not by position. No call site reads
  * `judge_verdict` back today (`eval-judge.ts` only ever writes it); this exists for the first one
  * that does, and is exercised directly by its own tests.
  */

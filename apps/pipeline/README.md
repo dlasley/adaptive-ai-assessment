@@ -974,7 +974,7 @@ holds one object per position order with the response facts of that call: the re
 creation time, each choice's finish reason, the usage fields beyond token counts that OpenRouter
 reports, and the model and host OpenRouter says served the call. No message content is stored. A
 stored entry that is not a list (a single object from an earlier storage shape, to be converted to a
-one-element list) makes the command stop. Stamps `judge_model`/`judge_prompt_hash` on both `eval_runs` rows; those two
+one-element list) makes the command stop. When a run fails on some items, those items are skipped and listed at the end of the run, and they hold one fewer entry than the rest for that judge model; a reader comparing repeats pairs entries by `repeat` and `judge_model`, not by position. Stamps `judge_model`/`judge_prompt_hash` on both `eval_runs` rows; those two
 columns describe the latest judge call on the run, not any one pairing. Prints items judged, wins for
 each run, ties, the item keys of every non-tie, and projected versus actual judge cost.
 
