@@ -158,6 +158,20 @@ describe('eval-compare: decision_rule tolerance resolution', () => {
     expect(report).toContain("experiment override: tolerance 1 (from experiment 'exp-a')");
   });
 
+  it('warns when an ad hoc candidate with no experiment_id is mixed with one that has one, naming the rule it will be judged by', async () => {
+    const { store } = makeFakeStore({
+      includeSecondCandidate: true,
+      runOverrides: { 'run-candidate': { experiment_id: 'exp-a' } }, // run-candidate-2 keeps the default null experiment_id
+      experiments: { 'exp-a': makeEvalExperimentRow({ id: 'exp-a', slug: 'exp-a', decision_rule: {} }) },
+    });
+    await main({
+      argv: ['--runs', 'run-baseline,run-candidate,run-candidate-2', '--baseline', 'run-baseline', '--out', path.join(outDir, 'report.md')],
+      store,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('run-candidate-2'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("exp-a"));
+  });
+
   it('reports the task default and refuses --decide adopt when no experiment overrides the tolerance', async () => {
     const { store } = makeFakeStore({
       runOverrides: { 'run-candidate': { experiment_id: 'exp-1' } },

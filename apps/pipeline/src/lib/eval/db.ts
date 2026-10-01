@@ -195,8 +195,10 @@ export interface EvalStore {
   listResults(runId: string): Promise<EvalResultRow[]>;
   updateResult(id: string, patch: Partial<Pick<EvalResultRow, 'score'>>): Promise<void>;
   /** Replaces one eval_results row's judge_verdict column wholesale — `eval-judge` reads the row's
-   * current value first and passes the merged object, so a run judged against several others
-   * accumulates one keyed entry per comparison instead of the column being overwritten each time. */
+   * current value first and passes the merged object, keyed by the other run's id and then by the
+   * judge prompt hash that produced the entry, so a run judged against several others, or re-judged
+   * under a changed prompt, accumulates one entry per (pairing, prompt) instead of the column being
+   * overwritten each time. */
   updateResultJudgeVerdict(id: string, verdict: Record<string, unknown>): Promise<void>;
   /** Resolves `idOrSlug` against `eval_experiments.id` first, then `.slug` — --experiment accepts either. */
   getExperiment(idOrSlug: string): Promise<EvalExperimentRow | null>;

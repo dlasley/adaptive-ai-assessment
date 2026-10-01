@@ -636,8 +636,9 @@ settings under test injected, rather than a copy that could drift from what prod
 sends. One call covers every topic in a mapping set at once, matching how the production prompt
 works, so a mapping run is one call per variant per repeat rather than one call per item;
 transcription stays one call per slide, but renders each slide's image only once per invocation and
-reuses it across every variant and repeat, and reads (never writes) the production slide cache so a
-baseline run whose model matches production's own reuses an already-transcribed slide for free.
+reuses it across every variant and repeat. It never reads the production slide cache: every kept
+slide is sent to the model on every call, since a cached transcript would record zero cost and make
+repeats of a baseline identical by construction, which is not the noise floor being measured.
 Transcription also accepts `--exclusion-pass <model>` to gate each slide through a separate
 teaching-content classifier before the transcription call, skipping that call and recording the
 no-content marker when the classifier judges the slide doesn't teach the course language, with the
@@ -682,10 +683,13 @@ scoring against a checked transcript (itself seeded from production's own model 
 compared through it is partly scored against that model's choices), a third model looks directly at
 the slide image and the two runs' transcripts and picks the more complete and faithful one. Every
 shared item is judged twice with the two runs' positions swapped, and a run wins the item only when
-it wins in both orders, cancelling the judge's position bias. `--write-db` merges a keyed entry into
-each judged item's `eval_results.judge_verdict` (so a run can be judged against several others without
-clobbering earlier comparisons) and stamps `judge_model`/`judge_prompt_hash` on both `eval_runs` rows.
-Dry run by default, projecting the judge cost from the model registry's list price.
+it wins in both orders, cancelling the judge's position bias. `--write-db` merges an entry into each
+judged item's `eval_results.judge_verdict`, keyed first by the other run's id and then by the judge
+prompt hash that produced it, so a run can be judged against several others, or re-judged against
+the same one under a changed prompt, without clobbering an earlier entry; re-judging the same pair
+under the same hash refuses unless `--overwrite` is passed. Stamps `judge_model`/`judge_prompt_hash`
+on both `eval_runs` rows. Dry run by default, projecting the judge cost from the model registry's
+list price.
 
 ### The durable layer: experiments, model registry, findings
 
@@ -719,44 +723,47 @@ that outlive any single run, all service-role only with no anon policies:
   `eval_items.reviewed_by`/`reviewed_at`, which are per item. A re-review under a revised rubric adds
   a new round rather than overwriting the claim about what confidence applied under the old one.
 
-Nine views compute across these tables so a comparison doesn't need a hand-written join each time:
-`eval_run_scorecard` (one row per run, with its model's registry attributes and experiment slug
-joined in), `eval_model_history` (the same information reordered by model identifier and time, for
-tracking one model across runs), `eval_run_model_stats` (one row per run with mean cost, mean
-latency, error count, and provider-pin mismatch count computed from that run's own results, plus a
-cost-per-metric-unit ratio, joined to the model's registry attributes), and `eval_family_history`
+Ten views compute across these tables so a comparison doesn't need a hand-written join each time:
+`eval_models_current` (latest known snapshot per slug, which `eval-run` resolves `--models` against
+when stamping `model_version_id`), `eval_run_scorecard` (one row per run, with its model's registry
+attributes and experiment slug joined in, plus its own `scored_at`/`scoring_review_round_id`),
+`eval_model_history` (the same information reordered by model identifier and time, for tracking one
+model across runs), `eval_run_model_stats` (one row per run with mean cost, mean latency, error
+count, and provider-pin mismatch count computed from that run's own results, plus a
+cost-per-metric-unit ratio, joined to the model's registry attributes), `eval_family_history`
 (`eval_run_model_stats` reordered by model family and effective date, for tracking a lineage across
-version changes rather than one identifier). Provider-pin mismatch is compared through
+version changes rather than one identifier), `eval_item_consensus` (one row per item with at least
+two completed, non-error runs, with how many runs agree on a task-specific verdict: the human-review
+worklist, ordered by the reader's own `ORDER BY majority_share`), `eval_run_behaviour` (one row per
+completed run, reference-free: result and error counts, parse-failure rate, mean cost, latency
+p50/p95, and a task-specific behaviour column that needs no reference, which is what ranks audit and
+grading variants while their references are still pending), `eval_variant_stability` (one row per
+variant identity, grouped on `experiment_id`, `set_id`, `model`, `prompt_hash`, and the
+caller-chosen settings keys, normalized the same way `normalizeRepeatIdentitySettings` in
+`apps/pipeline/src/commands/eval-run.ts` does, never on `variant_label`, with run count, the
+metric's mean and spread, mean cost, and the run ids), `eval_experiment_variants` (one row per
+declared variant, joined to the runs that exist for it by matching model slug and, for every
+settings key the declaration carries, the run's own normalized settings; `ambiguous` is true when
+another declared variant on the same experiment matches at least one of the same runs, so an
+overlap is reported under both rather than one being picked silently), and
+`eval_experiment_dependencies` (one row per `depends_on` entry with that dependency's current
+status, or `missing` when no experiment carries the slug). Provider-pin mismatch is compared through
 `eval_normalize_provider(name, is_pin)`, a SQL mirror of `normalizeProviderName`/`normalizePin` in
 `apps/pipeline/src/lib/eval/compare/shared.ts` (lowercase, strip non-alphanumerics, and for a pin
 drop everything after the first `/`), so a hand-typed `--provider anthropic` isn't flagged against
 OpenRouter's own `Anthropic`.
 
-Five more views answer the questions a front-end most needs without re-deriving them in application
-code: `eval_item_consensus` (one row per item with at least two completed, non-error runs, with how
-many runs agree on a task-specific verdict: the human-review worklist, ordered by the reader's own
-`ORDER BY majority_share`); `eval_run_behaviour` (one row per completed run, reference-free: result
-and error counts, parse-failure rate, mean cost, latency p50/p95, and a task-specific behaviour
-column that needs no reference, which is what ranks audit and grading variants while their
-references are still pending); `eval_variant_stability` (one row per variant identity, grouped on
-`experiment_id`, `set_id`, `model`, `prompt_hash`, and the caller-chosen settings keys, normalized
-the same way `normalizeRepeatIdentitySettings` in `apps/pipeline/src/commands/eval-run.ts` does,
-never on `variant_label`, with run count, the metric's mean and spread, mean cost, and the run
-ids); `eval_experiment_variants` (one row per declared variant, joined to the runs that exist for it
-by matching model slug, not label, since a run's own label isn't reliably the plan's label string);
-and `eval_experiment_dependencies` (one row per `depends_on` entry with that dependency's current
-status, or `missing` when no experiment carries the slug).
-
 Every view also carries `metric_status`, which explains a null `primary_metric`/`primary_metric_value`
 rather than leaving it to guesswork, checked in this order: `failed run` (the run itself didn't
-complete); `reference reviewed after scoring` (a metric is present, but the run's `scored_at` predates
-the newest `reviewed_at` among the set's approved items, so a reviewer changed a reference since this
-summary was computed and `eval-rescore` would likely change it); `ok` (a metric is present and nothing
-newer has been reviewed since); `awaiting reviewed references` (the run's set has no approved
-reference item yet); `scored before references existed` (the run's `scored_at`, or its `finished_at`
-for a run from before that column existed, is earlier than the set's earliest approved item's
-`reviewed_at`; re-running `eval-rescore` fills the metric in); or `no primary metric` (none of the
-above explains it, worth investigating).
+complete); `reference reviewed after scoring` (a metric is present, but either the run's `scored_at`
+predates the newest `reviewed_at` among the set's approved items, or an `eval_review_rounds` row on
+the set is newer than the one the run was scored against (including any round at all when the run
+was scored against none), so a reviewer changed a reference since this summary was computed and
+`eval-rescore` would likely change it); `ok` (a metric is present and neither of those holds);
+`awaiting reviewed references` (the run's set has no approved reference item yet); `scored before
+references existed` (the run's `scored_at`, or its `finished_at` for a run from before that column
+existed, is earlier than the set's earliest approved item's `reviewed_at`; re-running `eval-rescore`
+fills the metric in); or `no primary metric` (none of the above explains it, worth investigating).
 
 With as few repeats as most of these evaluations run, treat any apparent link between a score and a
 specific model attribute (parameter count, architecture, reasoning support) as a hypothesis worth

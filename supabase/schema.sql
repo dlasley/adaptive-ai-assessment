@@ -602,11 +602,12 @@ COMMENT ON TABLE eval_runs IS 'One variant, one execution: the model and setting
 COMMENT ON COLUMN eval_runs.task IS 'Copied from eval_sets.task at insert time by eval-run, the only writer today. Kept denormalized so a query can read task without a join. If a second writer of eval_runs rows is ever added, it must keep this in sync with the owning eval_sets row itself (a trigger) or this column should be dropped in favor of reading through the join.';
 COMMENT ON COLUMN eval_runs.model IS 'Copied from the resolved eval_models.slug at insert time by eval-run, the only writer today, when model_version_id is set. Kept denormalized so a query can read model without a join. If a second writer of eval_runs rows is ever added, it must keep this in sync with the referenced eval_models row (a trigger) or this column should be dropped in favor of reading through the join.';
 COMMENT ON COLUMN eval_runs.settings IS 'Call settings recorded with this variant: temperature, max_tokens, reasoning, provider pin, etc. — the same shape callLlm() accepts.';
+COMMENT ON COLUMN eval_runs.judge_prompt_hash IS 'The hash of the most recent judge run on this row. A run can be judged against several others over time; this column reflects whichever judge call last ran, not any one pairing. The per-pairing hash that produced a specific verdict lives inside eval_results.judge_verdict itself, keyed alongside it.';
 COMMENT ON COLUMN eval_runs.repeat_index IS 'Distinguishes repeated runs of the same variant on the same set, used to measure run-to-run noise for non-deterministic models.';
 COMMENT ON COLUMN eval_runs.projected_cost_usd IS 'Estimated cost (item count times mean prompt size times list price) computed before the run started; the run refuses to start if this exceeds --max-cost.';
 
 COMMENT ON TABLE eval_results IS 'One (run, item) pair: what the variant produced for that item, how it was scored, and its cost/latency/usage accounting.';
-COMMENT ON COLUMN eval_results.judge_verdict IS 'Set only for items scored by a fixed LLM judge rather than direct comparison against eval_items.reference.';
+COMMENT ON COLUMN eval_results.judge_verdict IS 'Set only for items scored by a fixed LLM judge rather than direct comparison against eval_items.reference. Shape is { [otherRunId]: { [judgePromptHash]: {outcome, reasons, judged_at, judge_model} } }: nested under the judge prompt hash that produced it, so a re-judge of the same pair under a changed prompt adds a new entry instead of overwriting the earlier one. eval-judge refuses to write a second entry under the same pair and hash unless --overwrite is passed.';
 COMMENT ON COLUMN eval_results.error IS 'Set when this item produced no usable output: parse (response didn''t parse or validate), api (the call itself failed), or empty (200 with no content). Null means the call succeeded and parsed.';
 
 -- ============================================================
@@ -796,23 +797,41 @@ ALTER TABLE eval_runs
 CREATE INDEX idx_eval_runs_experiment ON eval_runs(experiment_id);
 
 ALTER TABLE eval_runs
-  ADD COLUMN scored_at TIMESTAMPTZ,                  -- when summary (and the results' scores) were last computed, at run finalisation or by eval-rescore; null only for a run that never finalised
+  ADD COLUMN scored_at TIMESTAMPTZ,                  -- see COMMENT ON COLUMN below
   ADD COLUMN scoring_review_round_id UUID REFERENCES eval_review_rounds(id) ON DELETE RESTRICT; -- the newest review round on the run's set at scoring time; null when the set had none
+
+COMMENT ON COLUMN eval_runs.scored_at IS 'When this run''s summary (and its results'' scores) were last computed, at run finalisation (eval-run) or by eval-rescore. Null for a run that never reached that step at all: one still running, or one whose outer failure handler marked it failed before any variant finalised. A run finalised as failed (every result errored, or the results write itself failed) still gets stamped, since finalizeVariant reached it.';
 
 ALTER TABLE eval_results
   ADD COLUMN served_provider TEXT;
 
 -- Shared by eval_run_scorecard, eval_run_model_stats and eval_run_behaviour so the six-way
--- precedence lives in one place. STABLE, not IMMUTABLE: it reads eval_items, which changes as
--- items get reviewed. p_scored_at is the run's own eval_runs.scored_at (null for a run that never
--- finalised); COALESCE'd against p_finished_at so a pre-D3 run without a stamped scored_at still
--- resolves "scored before references existed" the way it always did.
-CREATE OR REPLACE FUNCTION eval_run_metric_status(p_status text, p_summary jsonb, p_set_id uuid, p_finished_at timestamptz, p_scored_at timestamptz) RETURNS text AS $$
+-- precedence lives in one place. STABLE, not IMMUTABLE: it reads eval_items and eval_review_rounds,
+-- both of which change as items get reviewed. p_scored_at is the run's own eval_runs.scored_at
+-- (null for a run that never reached that step); COALESCE'd against p_finished_at so a run with no
+-- stamped scored_at still resolves "scored before references existed" the way it always did.
+-- p_scoring_review_round_id is the run's own eval_runs.scoring_review_round_id (the round the
+-- run was scored against, null when its set had none yet); a newer round on the set than that one,
+-- or any round at all when the run's is null, also counts as "reference reviewed after scoring".
+-- This is a second, independent signal alongside the reviewed_at comparison: a review round can be
+-- recorded for a labeling campaign without every touched item's reviewed_at landing after
+-- p_scored_at, so either signal catches a case the other misses.
+CREATE OR REPLACE FUNCTION eval_run_metric_status(p_status text, p_summary jsonb, p_set_id uuid, p_finished_at timestamptz, p_scored_at timestamptz, p_scoring_review_round_id uuid) RETURNS text AS $$
   SELECT CASE
     WHEN p_status <> 'completed' THEN 'failed run'
     WHEN p_summary -> 'primary_metric' ->> 'value' IS NOT NULL
-      AND p_scored_at < (
-        SELECT MAX(ei.reviewed_at) FROM eval_items ei WHERE ei.set_id = p_set_id AND ei.reference_status = 'approved'
+      AND (
+        p_scored_at < (
+          SELECT MAX(ei.reviewed_at) FROM eval_items ei WHERE ei.set_id = p_set_id AND ei.reference_status = 'approved'
+        )
+        OR EXISTS (
+          SELECT 1 FROM eval_review_rounds rr
+          WHERE rr.set_id = p_set_id
+            AND (
+              p_scoring_review_round_id IS NULL
+              OR rr.created_at > (SELECT created_at FROM eval_review_rounds WHERE id = p_scoring_review_round_id)
+            )
+        )
       ) THEN 'reference reviewed after scoring'
     WHEN p_summary -> 'primary_metric' ->> 'value' IS NOT NULL THEN 'ok'
     WHEN NOT EXISTS (
@@ -826,6 +845,8 @@ CREATE OR REPLACE FUNCTION eval_run_metric_status(p_status text, p_summary jsonb
 $$ LANGUAGE sql STABLE
 SET search_path = public;
 
+COMMENT ON FUNCTION eval_run_metric_status(text, jsonb, uuid, timestamptz, timestamptz, uuid) IS 'Shared by eval_run_scorecard, eval_run_model_stats and eval_run_behaviour so the precedence that explains a null primary_metric lives in one place: failed run (p_status is not completed); reference reviewed after scoring (a metric is present, but either the set''s newest approved-item reviewed_at is later than p_scored_at, or an eval_review_rounds row on the set is newer than the one the run was scored against, including any round at all when the run was scored against none); ok (a metric is present and neither of those holds); awaiting reviewed references (the set has no approved reference item yet); scored before references existed (the run''s scored_at, or finished_at for a row with no stamped scored_at, predates the set''s earliest approved item''s reviewed_at); no primary metric (none of the above, worth investigating).';
+
 -- Mirrors normalizeProviderName/normalizePin in apps/pipeline/src/lib/eval/compare/shared.ts:
 -- lowercases, strips every character outside a-z0-9, and for a pin drops everything after the
 -- first '/' (a host-routing suffix like 'mistral/zdr' that served_provider never echoes back)
@@ -835,6 +856,8 @@ CREATE OR REPLACE FUNCTION eval_normalize_provider(name text, is_pin boolean) RE
   SELECT regexp_replace(lower(CASE WHEN is_pin THEN split_part(name, '/', 1) ELSE name END), '[^a-z0-9]', '', 'g');
 $$ LANGUAGE sql IMMUTABLE
 SET search_path = public;
+
+COMMENT ON FUNCTION eval_normalize_provider(text, boolean) IS 'Mirrors normalizeProviderName/normalizePin in apps/pipeline/src/lib/eval/compare/shared.ts: lowercases, strips every character outside a-z0-9, and for a pin (is_pin true) drops everything after the first ''/'' before normalizing. Used by eval_run_model_stats.provider_mismatch_count so a hand-typed --provider anthropic is not flagged against OpenRouter''s own ''Anthropic''.';
 
 CREATE VIEW eval_run_scorecard WITH (security_invoker = true) AS
 SELECT
@@ -864,7 +887,9 @@ SELECT
   r.finished_at,
   r.summary -> 'primary_metric' AS primary_metric,
   r.summary,
-  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at) AS metric_status
+  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at, r.scoring_review_round_id) AS metric_status,
+  r.scored_at,
+  r.scoring_review_round_id
 FROM eval_runs r
 LEFT JOIN eval_experiments x ON x.id = r.experiment_id
 LEFT JOIN eval_models m ON m.id = r.model_version_id
@@ -913,7 +938,7 @@ SELECT
   m.release_date,
   m.knowledge_cutoff,
   m.reasoning_class,
-  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at) AS metric_status
+  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at, r.scoring_review_round_id) AS metric_status
 FROM eval_runs r
 LEFT JOIN eval_models m ON m.id = r.model_version_id
 LEFT JOIN eval_model_families fam ON fam.id = m.family_id
@@ -970,8 +995,7 @@ WITH result_verdicts AS (
         ) distinct_headings
       ))
       WHEN 'transcription' THEN jsonb_build_object(
-        'no_content_marker', er.deterministic_checks ->> 'no_content_marker',
-        'score_band', round(er.score, 1)
+        'no_content_marker', er.deterministic_checks ->> 'no_content_marker'
       )
     END AS verdict
   FROM eval_results er
@@ -1032,7 +1056,7 @@ SELECT
   agg.latency_ms_p50,
   agg.latency_ms_p95,
   agg.task_behaviour,
-  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at) AS metric_status
+  eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at, r.scoring_review_round_id) AS metric_status
 FROM eval_runs r
 CROSS JOIN LATERAL (
   SELECT
@@ -1111,7 +1135,7 @@ WITH run_identity AS (
     COALESCE(r.settings -> 'renderDpi', '120'::jsonb)        AS norm_render_dpi,
     (SELECT avg(cost_usd) FROM eval_results WHERE run_id = r.id) AS mean_cost_usd
   FROM eval_runs r
-  WHERE r.status = 'completed'
+  WHERE r.status NOT IN ('failed', 'aborted')
 )
 SELECT
   experiment_id,
@@ -1135,22 +1159,111 @@ GROUP BY experiment_id, set_id, model, prompt_hash, norm_temperature, norm_reaso
          norm_group_size, norm_shuffle_seed, norm_exclusion_pass, norm_render_dpi;
 
 -- Declared-vs-run variant composition: one row per planned variant, joined to the runs that exist
--- for it today.
+-- for it today. A run matches a declared variant when its model equals the declared model_slug and,
+-- for every settings key the declaration carries, the run's own settings normalize to the same
+-- value (the normalization is the per-run half of the same rule eval_variant_stability groups
+-- by, inlined here rather than shared, since that view also filters and groups by other columns
+-- this one does not need). A declaration naming no model_slug (or '*') matches nothing.
 CREATE VIEW eval_experiment_variants WITH (security_invoker = true) AS
-SELECT
-  e.id                        AS experiment_id,
-  e.slug                      AS experiment_slug,
-  v.declared ->> 'label'      AS declared_label,
-  v.declared ->> 'model_slug' AS model_slug,
-  v.declared ->> 'role'       AS role,
-  COALESCE(rr.run_count, 0)   AS run_count,
-  COALESCE(rr.run_ids, '{}')  AS run_ids
-FROM eval_experiments e
-CROSS JOIN LATERAL jsonb_array_elements(e.variants_declared) AS v(declared)
-LEFT JOIN LATERAL (
-  SELECT count(*) AS run_count, array_agg(r.id ORDER BY r.id) AS run_ids
+WITH run_identity AS (
+  SELECT
+    r.id                                                    AS run_id,
+    r.experiment_id,
+    r.model,
+    CASE WHEN r.settings ? 'temperature' THEN r.settings -> 'temperature'
+         ELSE '"__temperature_not_sent__"'::jsonb END        AS norm_temperature,
+    COALESCE(r.settings -> 'reasoning', 'null'::jsonb)       AS norm_reasoning,
+    CASE
+      WHEN r.settings -> 'provider' IS NULL OR jsonb_typeof(r.settings -> 'provider') = 'null' THEN 'null'::jsonb
+      WHEN r.settings -> 'provider' -> 'order' IS NULL THEN r.settings -> 'provider'
+      ELSE (r.settings -> 'provider') || jsonb_build_object(
+        'order', (
+          SELECT COALESCE(jsonb_agg(lower(o)), '[]'::jsonb)
+          FROM jsonb_array_elements_text(r.settings -> 'provider' -> 'order') o
+        )
+      )
+    END                                                       AS norm_provider,
+    COALESCE(r.settings -> 'groupSize', '1'::jsonb)          AS norm_group_size,
+    COALESCE(r.settings -> 'shuffleSeed', 'null'::jsonb)     AS norm_shuffle_seed,
+    CASE
+      WHEN r.settings -> 'exclusionPass' IS NULL OR jsonb_typeof(r.settings -> 'exclusionPass') = 'null' THEN 'null'::jsonb
+      WHEN jsonb_typeof(r.settings -> 'exclusionPass') = 'object' THEN COALESCE(r.settings -> 'exclusionPass' -> 'model', 'null'::jsonb)
+      ELSE r.settings -> 'exclusionPass'
+    END                                                       AS norm_exclusion_pass,
+    COALESCE(r.settings -> 'renderDpi', '120'::jsonb)        AS norm_render_dpi
   FROM eval_runs r
-  WHERE r.experiment_id = e.id AND r.model = v.declared ->> 'model_slug'
+  WHERE r.status NOT IN ('failed', 'aborted')
+),
+variants AS (
+  SELECT
+    e.id                             AS experiment_id,
+    e.slug                           AS experiment_slug,
+    v.ord                            AS variant_ord,
+    v.declared ->> 'label'           AS declared_label,
+    v.declared ->> 'model_slug'      AS model_slug,
+    v.declared ->> 'role'            AS role,
+    COALESCE(v.declared -> 'settings', '{}'::jsonb) AS declared_settings
+  FROM eval_experiments e
+  CROSS JOIN LATERAL jsonb_array_elements(e.variants_declared) WITH ORDINALITY AS v(declared, ord)
+),
+variant_runs AS (
+  SELECT va.experiment_id, va.variant_ord, ri.run_id
+  FROM variants va
+  JOIN run_identity ri
+    ON ri.experiment_id = va.experiment_id
+    AND ri.model = va.model_slug
+    AND va.model_slug IS NOT NULL AND va.model_slug <> '*'
+    AND (NOT (va.declared_settings ? 'temperature') OR ri.norm_temperature = va.declared_settings -> 'temperature')
+    AND (NOT (va.declared_settings ? 'reasoning') OR ri.norm_reasoning = va.declared_settings -> 'reasoning')
+    AND (NOT (va.declared_settings ? 'provider') OR ri.norm_provider = (
+          CASE
+            WHEN va.declared_settings -> 'provider' -> 'order' IS NULL THEN va.declared_settings -> 'provider'
+            ELSE (va.declared_settings -> 'provider') || jsonb_build_object(
+              'order', (
+                SELECT COALESCE(jsonb_agg(lower(o)), '[]'::jsonb)
+                FROM jsonb_array_elements_text(va.declared_settings -> 'provider' -> 'order') o
+              )
+            )
+          END
+        ))
+    AND (NOT (va.declared_settings ? 'groupSize') OR ri.norm_group_size = va.declared_settings -> 'groupSize')
+    AND (NOT (va.declared_settings ? 'shuffleSeed') OR ri.norm_shuffle_seed = va.declared_settings -> 'shuffleSeed')
+    AND (NOT (va.declared_settings ? 'exclusionPass') OR ri.norm_exclusion_pass = (
+          CASE
+            WHEN va.declared_settings -> 'exclusionPass' IS NULL OR jsonb_typeof(va.declared_settings -> 'exclusionPass') = 'null' THEN 'null'::jsonb
+            WHEN jsonb_typeof(va.declared_settings -> 'exclusionPass') = 'object' THEN COALESCE(va.declared_settings -> 'exclusionPass' -> 'model', 'null'::jsonb)
+            ELSE va.declared_settings -> 'exclusionPass'
+          END
+        ))
+    AND (NOT (va.declared_settings ? 'renderDpi') OR ri.norm_render_dpi = va.declared_settings -> 'renderDpi')
+),
+shared_runs AS (
+  SELECT experiment_id, run_id
+  FROM variant_runs
+  GROUP BY experiment_id, run_id
+  HAVING count(DISTINCT variant_ord) > 1
+)
+SELECT
+  va.experiment_id,
+  va.experiment_slug,
+  va.declared_label,
+  va.model_slug,
+  va.role,
+  CASE
+    WHEN va.model_slug IS NULL OR va.model_slug = '*' THEN NULL
+    ELSE EXISTS (
+      SELECT 1 FROM variant_runs vr
+      JOIN shared_runs sr ON sr.experiment_id = vr.experiment_id AND sr.run_id = vr.run_id
+      WHERE vr.experiment_id = va.experiment_id AND vr.variant_ord = va.variant_ord
+    )
+  END                                                       AS ambiguous,
+  COALESCE(rr.run_count, 0)                                 AS run_count,
+  COALESCE(rr.run_ids, '{}')                                AS run_ids
+FROM variants va
+LEFT JOIN LATERAL (
+  SELECT count(*) AS run_count, array_agg(vr.run_id ORDER BY vr.run_id) AS run_ids
+  FROM variant_runs vr
+  WHERE vr.experiment_id = va.experiment_id AND vr.variant_ord = va.variant_ord
 ) rr ON true;
 
 -- Dependency status: one row per depends_on entry, with the named experiment's current status.
@@ -1204,12 +1317,12 @@ COMMENT ON COLUMN eval_runs.provider_pin IS 'The host a run asked for with fallb
 
 COMMENT ON COLUMN eval_results.served_provider IS 'The host OpenRouter''s response named as having actually served this call (the response''s provider field), alongside the existing served_model. Compared against the owning eval_runs.provider_pin by eval-compare, which flags any run whose results name a provider other than the run''s pin: this turns the pin from an assumption into a verified fact per call.';
 
-COMMENT ON VIEW eval_run_scorecard IS 'One row per run, joined out to its experiment and its model''s dated attributes, with the run''s primary metric pulled out generically. The shape a frontend renders for "compare this model across tasks and time." metric_status explains a null primary_metric: ''failed run'' (the run itself did not complete), ''ok'' (a metric is present), ''awaiting reviewed references'' (the run''s set has no approved reference item yet), ''scored before references existed'' (the run finished before the set''s earliest approved item was reviewed — re-running eval-compare fills the metric in), or ''no primary metric'' (none of the above explains it, worth investigating).';
+COMMENT ON VIEW eval_run_scorecard IS 'One row per run, joined out to its experiment and its model''s dated attributes, with the run''s primary metric pulled out generically. The shape a frontend renders for "compare this model across tasks and time." scored_at and scoring_review_round_id are the run''s own scoring provenance (see their column comments on eval_runs), exposed here so "which runs need a rescore" is a query against this view rather than eval_runs directly. metric_status explains a null primary_metric: ''failed run'' (the run itself did not complete), ''reference reviewed after scoring'' (a metric is present, but a reference changed, by either signal eval_run_metric_status checks, since this run was last scored), ''ok'' (a metric is present and neither of those holds), ''awaiting reviewed references'' (the run''s set has no approved reference item yet), ''scored before references existed'' (the run finished before the set''s earliest approved item was reviewed; re-running eval-rescore fills the metric in), or ''no primary metric'' (none of the above explains it, worth investigating).';
 COMMENT ON VIEW eval_model_history IS 'eval_run_scorecard reordered by model slug then start time, for "how has model X trended" across runs of that exact slug.';
 COMMENT ON VIEW eval_run_model_stats IS 'One row per run: outcome (primary_metric_value), predictors (model attributes), and covariates (mean_cost_usd, mean_latency_ms, error_count, provider_mismatch_count) in a shape suitable for a regression or grouped-statistics query, e.g. "does parameter_count_total predict primary_metric_value, controlling for task." cost_per_metric_unit is cost per unit of whatever the task''s primary metric measures — it reads literally as "cost per correct answer" only when that task''s primary metric is an accuracy-style fraction (audit, grading); for a continuous score (mapping F1, transcription''s 1-minus-edit-distance) it is cost per point of that score, not a count of correct answers. A dozen or so distinct models with runs today is not enough for a between-model attribute regression (the model, not the item or repeat count, is the unit of replication); treat any single-attribute pattern here as advisory until roughly 15-20 independent models spanning the attribute''s range exist on the same task. metric_status explains a null primary_metric_value the same way it does on eval_run_scorecard.';
 COMMENT ON VIEW eval_family_history IS 'eval_run_model_stats reordered by family and snapshot date, for "how has model X trended across versions" — the one query eval_model_history cannot answer, since it groups by slug (one version) rather than family_id (a lineage across slug changes). Requires family_id to be populated on eval_models; a model with no family row simply does not appear here (an inner join deliberately, since a LEFT JOIN would produce one all-null row per unlinked model, not useful for a trend query). metric_status explains a null primary_metric_value the same way it does on eval_run_scorecard.';
 
-COMMENT ON VIEW eval_item_consensus IS 'One row per item with at least two completed, non-error runs: how much a task''s variants agree on it, for ranking the human-review queue by disagreement. The verdict compared per result is task-specific: grading is output->>''isCorrect''; audit is the six gate-criteria booleans together; mapping is the sorted, de-duplicated set of heading strings returned; transcription is the no-content-marker decision paired with the score rounded to one decimal place (a coarse band, not the raw continuous score). Repeat runs of the same variant count once each, so a repeat that flips its own verdict is itself disagreement, not noise to average away. majority_share is the largest single-verdict group''s share of run_count; low values are the items most worth a reviewer''s attention. Differs from the grading_item_consensus dataset in .private/eval/scripts/dashboard-snapshot.sql in reporting majority_share (1 minus disagreement) rather than disagreement directly, and in covering every task instead of only grading.';
+COMMENT ON VIEW eval_item_consensus IS 'One row per item with at least two completed, non-error runs: how much a task''s variants agree on it, for ranking the human-review queue by disagreement. The verdict compared per result is task-specific: grading is output->>''isCorrect''; audit is the six gate-criteria booleans together; mapping is the sorted, de-duplicated set of heading strings returned; transcription is the no-content-marker decision alone, the one reference-free call runs can disagree on. Transcription''s content agreement (how similar two runs'' transcripts are on a kept slide) is a similarity question, not a verdict this view can hold, and is answered instead by eval-compare''s per-slide report. Repeat runs of the same variant count once each, so a repeat that flips its own verdict is itself disagreement, not noise to average away. majority_share is the largest single-verdict group''s share of run_count; low values are the items most worth a reviewer''s attention. Differs from the grading_item_consensus dataset in .private/eval/scripts/dashboard-snapshot.sql in reporting majority_share (1 minus disagreement) rather than disagreement directly, and in covering every task instead of only grading.';
 COMMENT ON COLUMN eval_item_consensus.unit_id IS 'From the owning eval_sets row, not eval_items itself, so a reviewer can find the item''s source unit without a second lookup.';
 COMMENT ON COLUMN eval_item_consensus.majority_share IS 'The largest single-verdict group''s run count divided by run_count. 1.0 means every run agreed; lower means more disagreement. For a two-verdict task (grading) this equals 1 minus the dashboard snapshot''s disagreement score.';
 COMMENT ON COLUMN eval_item_consensus.seeded_class IS 'Copied from eval_items.seeded_class, so the review worklist can be filtered by design class without a join. Null for an item built before the column existed or for a task that does not seed one.';
@@ -1218,9 +1331,9 @@ COMMENT ON VIEW eval_run_behaviour IS 'One row per completed run, computed from 
 COMMENT ON COLUMN eval_run_behaviour.parse_failure_rate IS 'Results with error = ''parse'' divided by result_count, counting every result rather than only ones with output, the same denominator eval-run''s own summary uses.';
 COMMENT ON COLUMN eval_run_behaviour.task_behaviour IS 'A JSON object whose keys depend on the run''s task; see the view comment. Null for a task with no behaviour defined here.';
 
-COMMENT ON VIEW eval_variant_stability IS 'One row per distinct variant identity: experiment_id, set_id, model, prompt_hash, and the caller-chosen settings keys (temperature, reasoning, provider, groupSize, shuffleSeed, exclusionPass, renderDpi), each normalized with the same absent-means-default rule normalizeRepeatIdentitySettings applies in apps/pipeline/src/commands/eval-run.ts: temperature absent means no override was sent (distinct from an explicit value), groupSize/renderDpi absent fall back to their task defaults (1 and 120), the remaining keys absent mean null, and a provider pin''s order array is lowercased. This is the SQL twin of that normalizer and must change with it. Never grouped by variant_label, whose :r2-style suffix carries no meaning the database enforces. run_count, the metric spread (max minus min), and mean cost let a front-end rank repeat stability without re-deriving the grouping in application code.';
+COMMENT ON VIEW eval_variant_stability IS 'One row per distinct variant identity: experiment_id, set_id, model, prompt_hash, and the caller-chosen settings keys (temperature, reasoning, provider, groupSize, shuffleSeed, exclusionPass, renderDpi), each normalized with the same absent-means-default rule normalizeRepeatIdentitySettings applies in apps/pipeline/src/commands/eval-run.ts: temperature absent means no override was sent (distinct from an explicit value), groupSize/renderDpi absent fall back to their task defaults (1 and 120), the remaining keys absent mean null, and a provider pin''s order array is lowercased. This is the SQL twin of that normalizer and must change with it. Grouped over every run whose status is not failed or aborted (matching resolveExistingRepeatCount''s own inclusion rule, not a completed-only filter), so a running run already occupies its identity''s slot even before it has a primary_metric_value to contribute to the spread. Never grouped by variant_label, whose :r2-style suffix carries no meaning the database enforces. run_count, the metric spread (max minus min), and mean cost let a front-end rank repeat stability without re-deriving the grouping in application code; groupSize''s hardcoded default of 1 is the audit task default today (AUDIT_GROUP_SIZE) but does not branch by task the way the TypeScript does, so it silently stops matching if that constant ever changes.';
 COMMENT ON COLUMN eval_variant_stability.primary_metric_spread IS 'max(primary_metric_value) minus min(primary_metric_value) across the group''s runs; null when fewer than two runs have a non-null primary metric.';
 
-COMMENT ON VIEW eval_experiment_variants IS 'One row per entry of eval_experiments.variants_declared, with the count and ids of eval_runs rows on that experiment whose model matches the declared model_slug. Matches on model_slug only, not declared_label: a run''s own variant_label is chosen freely at eval-run time and is not reliably the same string as the plan''s label, so joining on it would silently undercount.';
+COMMENT ON VIEW eval_experiment_variants IS 'One row per entry of eval_experiments.variants_declared, with the count and ids of eval_runs rows on that experiment that match it. A run matches when its model equals the declared model_slug and, for every key the declared settings object carries, the run''s own settings normalize (the same absent-means-default rule eval_variant_stability applies) to that declared value; a declared key absent from the run''s settings is an unconstrained match, not a mismatch. exclusionPass is the one key normalized differently from eval_variant_stability: it matches on the classifier model slug alone, ignoring the classifier''s provider and prompt hash, since a declaration names the classifier by slug (a bare string) while a run stores the full object it called ({model, provider, promptHash}): both sides reduce to their model key before comparing, and null (no exclusion pass declared or run) stays null. failed and aborted runs never match. Never joins on declared_label: a run''s own variant_label is chosen freely at eval-run time and is not reliably the same string as the plan''s label. ambiguous is true when this declared variant and another one on the same experiment match at least one run in common (typically two variants that share a model_slug and whose settings never conflict), so an overlapping run is reported under every variant it matches rather than one being picked silently; it is null, with run_count 0, for a declaration with no model_slug or ''*''.';
 
 COMMENT ON VIEW eval_experiment_dependencies IS 'One row per entry of eval_experiments.depends_on, with that dependency''s current status, or ''missing'' when no experiment carries that slug (a typo, or a dependency not yet created).';

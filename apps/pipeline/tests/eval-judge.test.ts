@@ -15,7 +15,7 @@ vi.mock('../src/lib/pdf-conversion', async (importOriginal) => {
 import { renderSlideImage } from '../src/lib/pdf-conversion';
 
 import { main } from '../src/commands/eval-judge';
-import { combineJudgeOrders, parseJudgeVerdict, JudgeParseError, JUDGE_PROMPT, type JudgeVerdict } from '../src/lib/eval/judge';
+import { combineJudgeOrders, parseJudgeVerdict, JudgeParseError, JUDGE_PROMPT, JUDGE_PROMPT_HASH, selectJudgeVerdictEntry, type JudgeVerdict, type JudgeVerdictEntry } from '../src/lib/eval/judge';
 import type { EvalStore, EvalRunRow, EvalItemRow, EvalResultRow, EvalModelCurrentRow, EvalSetRow } from '../src/lib/eval/db';
 import type { LlmCallOptions, LlmResult } from '@adaptive/shared/llm';
 import { baseFakeEvalStore, makeEvalSetRow, makeEvalItemRow, makeEvalRunRow, makeEvalResultRow } from './helpers/eval-store';
@@ -77,6 +77,36 @@ describe('combineJudgeOrders', () => {
     const order1: JudgeVerdict = { winner: 'tie', reason: 'equally complete' };
     const order2: JudgeVerdict = { winner: 'B', reason: 'more complete' };
     expect(combineJudgeOrders(order1, order2)).toBe('tie');
+  });
+});
+
+describe('selectJudgeVerdictEntry', () => {
+  const entryUnder = (hash: string, judgedAt: string): JudgeVerdictEntry => ({
+    outcome: 'win', judge_model: 'm', reasons: ['x', 'y'], judged_at: judgedAt,
+  });
+
+  it('returns undefined for a null or empty verdicts object', () => {
+    expect(selectJudgeVerdictEntry(null, 'hash-a')).toBeUndefined();
+    expect(selectJudgeVerdictEntry(undefined, 'hash-a')).toBeUndefined();
+    expect(selectJudgeVerdictEntry({}, 'hash-a')).toBeUndefined();
+  });
+
+  it("prefers the entry under the run's own hash even when a newer entry exists under a different one", () => {
+    const verdicts = {
+      'hash-old': entryUnder('hash-old', '2026-01-01T00:00:00Z'),
+      'hash-new': entryUnder('hash-new', '2026-02-01T00:00:00Z'),
+    };
+    expect(selectJudgeVerdictEntry(verdicts, 'hash-old')).toEqual({ hash: 'hash-old', entry: verdicts['hash-old'] });
+  });
+
+  it('falls back to the newest entry by judged_at when the hash is absent', () => {
+    const verdicts = {
+      'hash-a': entryUnder('hash-a', '2026-01-01T00:00:00Z'),
+      'hash-b': entryUnder('hash-b', '2026-03-01T00:00:00Z'),
+      'hash-c': entryUnder('hash-c', '2026-02-01T00:00:00Z'),
+    };
+    expect(selectJudgeVerdictEntry(verdicts, 'hash-missing')).toEqual({ hash: 'hash-b', entry: verdicts['hash-b'] });
+    expect(selectJudgeVerdictEntry(verdicts, null)).toEqual({ hash: 'hash-b', entry: verdicts['hash-b'] });
   });
 });
 
@@ -235,13 +265,13 @@ describe('eval-judge main()', () => {
     expect(runUpdates).toHaveLength(0);
   });
 
-  it('--write-db merges the verdict without clobbering an existing key for another run', async () => {
+  it('--write-db nests the verdict under the judge prompt hash, without clobbering an existing key for another run', async () => {
     const resultAWithExisting = makeEvalResultRow({
       id: 'result-a',
       run_id: 'run-a',
       item_id: 'item-1',
       output: { markdown: 'Transcript A' },
-      judge_verdict: { 'run-other': { outcome: 'win', judge_model: 'some/other-model', reasons: ['x', 'y'], judged_at: '2026-01-01T00:00:00Z' } },
+      judge_verdict: { 'run-other': { 'some-other-hash': { outcome: 'win', judge_model: 'some/other-model', reasons: ['x', 'y'], judged_at: '2026-01-01T00:00:00Z' } } },
     });
     const { store, judgeVerdictUpdates, runUpdates } = makeFakeStore({
       runs: [runA, runB],
@@ -264,15 +294,98 @@ describe('eval-judge main()', () => {
     expect(renderSlideImage).toHaveBeenCalledWith('unit-1.pdf', 5, expect.any(String));
 
     const updateForA = judgeVerdictUpdates.find((u) => u.id === 'result-a')!;
-    expect(updateForA.verdict['run-other']).toEqual({ outcome: 'win', judge_model: 'some/other-model', reasons: ['x', 'y'], judged_at: '2026-01-01T00:00:00Z' });
-    expect(updateForA.verdict['run-b']).toMatchObject({ outcome: 'win', judge_model: MODEL.slug, reasons: ['more complete', 'more faithful'] });
+    expect(updateForA.verdict['run-other']).toEqual({ 'some-other-hash': { outcome: 'win', judge_model: 'some/other-model', reasons: ['x', 'y'], judged_at: '2026-01-01T00:00:00Z' } });
+    expect(updateForA.verdict['run-b']).toMatchObject({ [JUDGE_PROMPT_HASH]: { outcome: 'win', judge_model: MODEL.slug, reasons: ['more complete', 'more faithful'] } });
 
     const updateForB = judgeVerdictUpdates.find((u) => u.id === 'result-b')!;
-    expect(updateForB.verdict['run-a']).toMatchObject({ outcome: 'loss', judge_model: MODEL.slug });
+    expect(updateForB.verdict['run-a']).toMatchObject({ [JUDGE_PROMPT_HASH]: { outcome: 'loss', judge_model: MODEL.slug } });
 
     expect(runUpdates).toHaveLength(2);
     expect(runUpdates.find((u) => u.id === 'run-a')?.patch).toMatchObject({ judge_model: MODEL.slug });
     expect(runUpdates.find((u) => u.id === 'run-b')?.patch).toMatchObject({ judge_model: MODEL.slug });
+  });
+
+  it('a re-judge of the same pair under a different judge prompt hash appends rather than overwrites', async () => {
+    const resultAWithExisting = makeEvalResultRow({
+      id: 'result-a',
+      run_id: 'run-a',
+      item_id: 'item-1',
+      output: { markdown: 'Transcript A' },
+      judge_verdict: { 'run-b': { 'an-older-hash': { outcome: 'tie', judge_model: MODEL.slug, reasons: ['a', 'b'], judged_at: '2026-01-01T00:00:00Z' } } },
+    });
+    const resultBWithExisting = makeEvalResultRow({
+      id: 'result-b',
+      run_id: 'run-b',
+      item_id: 'item-1',
+      output: { markdown: 'Transcript B' },
+      judge_verdict: { 'run-a': { 'an-older-hash': { outcome: 'tie', judge_model: MODEL.slug, reasons: ['a', 'b'], judged_at: '2026-01-01T00:00:00Z' } } },
+    });
+    const { store, judgeVerdictUpdates } = makeFakeStore({
+      runs: [runA, runB],
+      set,
+      items: [item],
+      resultsByRun: { 'run-a': [resultAWithExisting], 'run-b': [resultBWithExisting] },
+    });
+    const callLlmFn = vi.fn(async (_options: LlmCallOptions) => jsonResult({ winner: 'tie', reason: 'equal' }));
+
+    await main({ argv: ['--runs', 'run-a,run-b', '--judge-model', MODEL.slug, '--write-db'], store, callLlmFn });
+
+    const updateForA = judgeVerdictUpdates.find((u) => u.id === 'result-a')!;
+    expect(updateForA.verdict['run-b']).toMatchObject({
+      'an-older-hash': { outcome: 'tie', judge_model: MODEL.slug, judged_at: '2026-01-01T00:00:00Z' },
+      [JUDGE_PROMPT_HASH]: { outcome: 'tie', judge_model: MODEL.slug },
+    });
+  });
+
+  it('refuses to re-judge the same pair under the same judge prompt hash without --overwrite', async () => {
+    const resultAWithExisting = makeEvalResultRow({
+      id: 'result-a',
+      run_id: 'run-a',
+      item_id: 'item-1',
+      output: { markdown: 'Transcript A' },
+      judge_verdict: { 'run-b': { [JUDGE_PROMPT_HASH]: { outcome: 'tie', judge_model: MODEL.slug, reasons: ['a', 'b'], judged_at: '2026-01-01T00:00:00Z' } } },
+    });
+    const { store, judgeVerdictUpdates } = makeFakeStore({
+      runs: [runA, runB],
+      set,
+      items: [item],
+      resultsByRun: { 'run-a': [resultAWithExisting], 'run-b': [resultB] },
+    });
+    const callLlmFn = vi.fn(async (_options: LlmCallOptions) => jsonResult({ winner: 'tie', reason: 'equal' }));
+
+    await expect(
+      main({ argv: ['--runs', 'run-a,run-b', '--judge-model', MODEL.slug, '--write-db'], store, callLlmFn }),
+    ).rejects.toThrow(ProcessExitError);
+    expect(callLlmFn).not.toHaveBeenCalled();
+    expect(judgeVerdictUpdates).toHaveLength(0);
+    expect(errorText()).toContain('--overwrite');
+  });
+
+  it('--overwrite re-judges a pair already carrying an entry under the current hash', async () => {
+    const resultAWithExisting = makeEvalResultRow({
+      id: 'result-a',
+      run_id: 'run-a',
+      item_id: 'item-1',
+      output: { markdown: 'Transcript A' },
+      judge_verdict: { 'run-b': { [JUDGE_PROMPT_HASH]: { outcome: 'tie', judge_model: MODEL.slug, reasons: ['old', 'old'], judged_at: '2026-01-01T00:00:00Z' } } },
+    });
+    const { store, judgeVerdictUpdates } = makeFakeStore({
+      runs: [runA, runB],
+      set,
+      items: [item],
+      resultsByRun: { 'run-a': [resultAWithExisting], 'run-b': [resultB] },
+    });
+    let call = 0;
+    const callLlmFn = vi.fn(async (_options: LlmCallOptions) => {
+      call += 1;
+      return jsonResult(call === 1 ? { winner: 'A', reason: 'more complete' } : { winner: 'B', reason: 'more faithful' });
+    });
+
+    await main({ argv: ['--runs', 'run-a,run-b', '--judge-model', MODEL.slug, '--write-db', '--overwrite'], store, callLlmFn });
+
+    expect(callLlmFn).toHaveBeenCalledTimes(2);
+    const updateForA = judgeVerdictUpdates.find((u) => u.id === 'result-a')!;
+    expect(updateForA.verdict['run-b']).toMatchObject({ [JUDGE_PROMPT_HASH]: { outcome: 'win' } });
   });
 
   it('refuses --write-db against an unpriced judge model without --allow-unpriced', async () => {

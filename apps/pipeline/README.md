@@ -599,10 +599,11 @@ more of the shared material per item; mapping always projects a single call rega
 count, since that's how many the runner actually sends.
 
 Transcription renders each slide's image once per invocation (shared across every variant and
-repeat, since the image doesn't depend on which model transcribes it) and checks the production slide
-cache before calling a model. A baseline run whose model matches production's own reuses an
-already-transcribed slide for free, but never writes to it, so an eval run never mutates production's
-cache. `--render-dpi <n>` (72 to 400, default 120) overrides the resolution slides are rendered at
+repeat, since the image doesn't depend on which model transcribes it), but never reads the
+production slide cache: every kept slide is sent to the model on every call. A cached transcript
+would record zero cost and disk latency and make repeats of a baseline identical by construction,
+which is not the noise floor being measured. `--render-dpi <n>` (72 to 400, default 120) overrides
+the resolution slides are rendered at
 before being sent to the model; production and `eval-judge` always render at 120, so a `--render-dpi`
 run measures the transcription model's sensitivity to image resolution rather than production
 behaviour. The resolved value is recorded as `settings.renderDpi` on the run (`null` for every other
@@ -675,6 +676,13 @@ distinct model before any run in the invocation is inserted, so several repeats 
 one invocation get consecutive numbers; a repeat launched by hand in a later invocation continues the
 count instead of restarting at 1, and a changed setting (`--render-dpi`, a different `--temperature`,
 ...) starts its own count from 1.
+
+The identity is keyed on what was requested, not on what was actually sent to the model: on a task
+where a setting already defaults to the value a flag would set, passing the flag anyway and omitting
+it are different identities even though the call itself is identical. `--reasoning off` and no
+`--reasoning` flag at all are different identities on a transcription run, for example, since
+transcription never sends reasoning by default either way but the two are recorded as
+`settings.reasoning` `{enabled: false}` versus `null`.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-run.ts --set <id> --task <audit|grading|mapping|transcription> --models <slug>[,<slug>...] [options]
@@ -885,11 +893,14 @@ This cancels a judge's tendency to favor whichever transcript it sees first.
 Dry run by default, printing the projected judge cost from the model registry's list price against
 the same candidate budget cap `eval-run` uses; an unpriced judge model is refused unless
 `--allow-unpriced`. `--write-db` calls the judge and, on each shared item's result row for both runs,
-merges an entry into `eval_results.judge_verdict` keyed by the other run's id
-(`{"<other_run_id>": {"outcome", "judge_model", "reasons", "judged_at"}}`), merged rather than
-replaced, so a run judged against several others accumulates one entry per comparison, and stamps
-`judge_model`/`judge_prompt_hash` on both `eval_runs` rows. Prints items judged, wins for each run,
-ties, the item keys of every non-tie, and projected versus actual judge cost.
+merges an entry into `eval_results.judge_verdict` keyed by the other run's id and then by the judge
+prompt hash that produced it (`{"<other_run_id>": {"<judge_prompt_hash>": {"outcome", "judge_model",
+"reasons", "judged_at"}}}`), merged rather than replaced, so a run judged against several others, or
+re-judged against the same one under a changed prompt, accumulates one entry per (pairing, prompt).
+Refuses to write over an existing entry for the same pairing and the current judge prompt hash
+unless `--overwrite` is passed. Stamps `judge_model`/`judge_prompt_hash` on both `eval_runs` rows.
+Prints items judged, wins for each run, ties, the item keys of every non-tie, and projected versus
+actual judge cost.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-judge.ts --runs <run_a,run_b> --judge-model <slug> [options]
@@ -899,6 +910,7 @@ Options:
   --judge-model <slug>     OpenRouter model slug for the judge (required)
   --provider <pin>         Provider tag to pin the judge call to (single upstream, fallbacks disabled)
   --allow-unpriced         Call the judge model even when it has no listed price, so its cost cannot be projected or capped
+  --overwrite              Re-judge even when a shared item already carries a judge_verdict entry for this pairing under the current judge prompt hash
 ```
 
 Plus the shared Database target and Logging flags above.
@@ -959,6 +971,12 @@ without a sheet row for it. An item already `reference_status: 'approved'` is le
 `--overwrite` is given. Dry run by default; `--write-db` performs the writes, then records one
 `eval_review_rounds` row for the set with `reviewed_item_count` set to however many items this run
 actually wrote.
+
+A reference corrected outside this command (by hand, e.g. through the table editor) must still get
+an `eval_review_rounds` row recorded for its set, not just an updated `eval_items.reference` and
+`reviewed_at`: `eval_run_metric_status` treats a review round newer than the one a run was scored
+against as its own "reference changed" signal, independent of `reviewed_at`, and a hand correction
+that skips it is invisible to that check.
 
 For grading, the key verdict is read once per `question_group` group rather than once per row:
 `key_incorrect` checked (`TRUE`) on any row of the group means the key is wrong; blank/`FALSE`

@@ -16,10 +16,10 @@
  * in the set in a single call per variant per repeat, since that's how the production prompt works
  * (one call, the whole topic list and unit markdown). Transcription renders each slide's image once
  * per invocation (shared across every variant and repeat, since the image doesn't depend on the
- * model) and reads the production slide cache to skip a call whose exact (image, text layer, prompt,
- * model) key was already transcribed — but never writes to it, so a baseline run never mutates
- * production's own cache. A Mistral-family model is throttled to one request per second regardless
- * of interleaving.
+ * model) but sends every kept slide to the model on every call, never served from the production
+ * slide cache: a cached transcript would record zero cost and disk latency and make repeats of a
+ * baseline identical by construction, which is not the noise floor being measured. A Mistral-family
+ * model is throttled to one request per second regardless of interleaving.
  *
  * Every run's `variant_label` is always `<label>:<model slug>`, whether this invocation runs one
  * variant or several; `--label` defaults to the experiment slug when `--experiment` is given, else

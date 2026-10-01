@@ -96,4 +96,8 @@ describe('eval-judge-transcription.md conventions track content-transcribe-pdf-s
     expect(conventions.toLowerCase()).toContain('grammar');
     expect(conventions.toLowerCase()).toContain('markdown table');
   });
+
+  it('states that formatting is never the deciding factor', () => {
+    expect(judgePrompt).toContain('Formatting is never the deciding factor');
+  });
 });

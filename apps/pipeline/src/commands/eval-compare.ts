@@ -477,6 +477,15 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
     logger.error(`No eval_experiments row found for id ${ruleExperimentId}, cited by a candidate run.`);
     process.exit(1);
   }
+  if (ruleExperiment) {
+    // candidateRuns with no experiment_id were dropped from candidateExperimentIds above (there's
+    // nothing there to disambiguate on), so they're silently judged by whichever experiment the
+    // other candidate(s) resolved the rule from unless this says so.
+    const unattributedCandidates = candidateRuns.filter((r) => r.experiment_id === null);
+    if (unattributedCandidates.length > 0) {
+      logger.warn(`Candidate run(s) ${unattributedCandidates.map((r) => r.id).join(', ')} cite no experiment and will be judged by ${ruleExperiment.slug}'s decision_rule.`);
+    }
+  }
   const resolvedTolerance = resolveTolerance(task, ruleExperiment?.decision_rule);
   if (resolvedTolerance.unknownKeys.length > 0) {
     logger.warn(`Experiment ${ruleExperiment!.slug}'s decision_rule has unrecognized key(s), ignored: ${resolvedTolerance.unknownKeys.join(', ')}.`);

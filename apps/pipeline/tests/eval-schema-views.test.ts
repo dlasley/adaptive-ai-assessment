@@ -8,6 +8,8 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { REPO_ROOT } from '../src/lib/paths';
+import { DEFAULT_RENDER_DPI } from '../src/lib/pdf-conversion';
+import { AUDIT_GROUP_SIZE } from '../src/lib/pipeline-config';
 
 const schema = fs.readFileSync(path.join(REPO_ROOT, 'supabase', 'schema.sql'), 'utf-8');
 
@@ -16,9 +18,9 @@ describe('supabase/schema.sql declares the evaluation framework cross-cutting vi
     expect(schema).toMatch(/CREATE (OR REPLACE )?FUNCTION eval_normalize_provider\(/);
   });
 
-  it('eval_run_metric_status takes five arguments, including p_scored_at', () => {
+  it('eval_run_metric_status takes six arguments, including p_scored_at and p_scoring_review_round_id', () => {
     expect(schema).toMatch(
-      /CREATE (OR REPLACE )?FUNCTION eval_run_metric_status\(p_status text, p_summary jsonb, p_set_id uuid, p_finished_at timestamptz, p_scored_at timestamptz\)/,
+      /CREATE (OR REPLACE )?FUNCTION eval_run_metric_status\(p_status text, p_summary jsonb, p_set_id uuid, p_finished_at timestamptz, p_scored_at timestamptz, p_scoring_review_round_id uuid\)/,
     );
   });
 
@@ -38,17 +40,34 @@ describe('supabase/schema.sql declares the evaluation framework cross-cutting vi
   });
 
   it.each(['eval_run_scorecard', 'eval_run_model_stats', 'eval_run_behaviour'])(
-    '%s calls eval_run_metric_status with r.scored_at as the fifth argument',
+    '%s calls eval_run_metric_status with r.scored_at and r.scoring_review_round_id',
     (viewName) => {
       const viewStart = schema.indexOf(`CREATE VIEW ${viewName} `);
       expect(viewStart).toBeGreaterThan(-1);
       const viewEnd = schema.indexOf(';', viewStart);
       expect(viewEnd).toBeGreaterThan(viewStart);
       expect(schema.slice(viewStart, viewEnd)).toContain(
-        'eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at)',
+        'eval_run_metric_status(r.status, r.summary, r.set_id, r.finished_at, r.scored_at, r.scoring_review_round_id)',
       );
     },
   );
+
+  it('eval_run_scorecard exposes scored_at and scoring_review_round_id as columns', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_run_scorecard ');
+    expect(viewStart).toBeGreaterThan(-1);
+    const viewEnd = schema.indexOf(';', viewStart);
+    expect(viewEnd).toBeGreaterThan(viewStart);
+    const viewBody = schema.slice(viewStart, viewEnd);
+    // r.scored_at/r.scoring_review_round_id also appear as function arguments earlier in the
+    // SELECT list; this checks they are additionally selected as their own output columns, appended
+    // after metric_status so CREATE OR REPLACE VIEW can add them without reordering existing ones.
+    expect(viewBody).toMatch(/AS metric_status,\s*\n\s*r\.scored_at,\s*\n\s*r\.scoring_review_round_id/);
+  });
+
+  it('both eval_run_metric_status and eval_normalize_provider carry a COMMENT ON FUNCTION', () => {
+    expect(schema).toContain("COMMENT ON FUNCTION eval_run_metric_status(text, jsonb, uuid, timestamptz, timestamptz, uuid) IS");
+    expect(schema).toContain('COMMENT ON FUNCTION eval_normalize_provider(text, boolean) IS');
+  });
 
   it.each([
     'eval_item_consensus',
@@ -58,6 +77,72 @@ describe('supabase/schema.sql declares the evaluation framework cross-cutting vi
     'eval_experiment_dependencies',
   ])('%s view is declared', (viewName) => {
     expect(schema).toMatch(new RegExp(`CREATE (OR REPLACE )?VIEW ${viewName} `));
+  });
+
+  it('eval_item_consensus compares transcription on the no-content marker alone, not a score band', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_item_consensus');
+    expect(viewStart).toBeGreaterThan(-1);
+    const transcriptionBranchStart = schema.indexOf("WHEN 'transcription' THEN", viewStart);
+    expect(transcriptionBranchStart).toBeGreaterThan(viewStart);
+    const transcriptionBranchEnd = schema.indexOf('END AS verdict', transcriptionBranchStart);
+    expect(transcriptionBranchEnd).toBeGreaterThan(transcriptionBranchStart);
+    const branch = schema.slice(transcriptionBranchStart, transcriptionBranchEnd);
+    expect(branch).toContain('no_content_marker');
+    expect(branch).not.toContain('score_band');
+    expect(branch).not.toMatch(/round\(er\.score/);
+  });
+
+  it('eval_experiment_variants declares an ambiguous column and matches on declared settings, not model alone', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_experiment_variants');
+    expect(viewStart).toBeGreaterThan(-1);
+    const viewEnd = schema.indexOf('CREATE VIEW eval_experiment_dependencies');
+    expect(viewEnd).toBeGreaterThan(viewStart);
+    const viewBody = schema.slice(viewStart, viewEnd);
+    expect(viewBody).toMatch(/AS\s+ambiguous/);
+    expect(viewBody).toContain("va.declared_settings ? 'groupSize'");
+    expect(viewBody).toContain("r.status NOT IN ('failed', 'aborted')");
+  });
+
+  it('eval_experiment_variants compares exclusionPass by classifier model slug only, on both the run and the declared side', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_experiment_variants');
+    const viewEnd = schema.indexOf('CREATE VIEW eval_experiment_dependencies');
+    const viewBody = schema.slice(viewStart, viewEnd);
+    // Reduced on the run's own stored settings (an object: {model, provider, promptHash})...
+    expect(viewBody).toContain("r.settings -> 'exclusionPass' -> 'model'");
+    // ...and on the declared value (a bare model-slug string), the same way.
+    expect(viewBody).toContain("va.declared_settings -> 'exclusionPass' -> 'model'");
+    // eval_variant_stability stays the untouched twin of the TypeScript normalizer.
+    const stabilityStart = schema.indexOf('CREATE VIEW eval_variant_stability');
+    const stabilityBody = schema.slice(stabilityStart, viewStart);
+    expect(stabilityBody).toContain("COALESCE(r.settings -> 'exclusionPass', 'null'::jsonb)");
+    expect(stabilityBody).not.toContain("'exclusionPass' -> 'model'");
+  });
+
+  it("eval_variant_stability's status filter excludes only failed/aborted runs, matching resolveExistingRepeatCount", () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_variant_stability');
+    expect(viewStart).toBeGreaterThan(-1);
+    const viewEnd = schema.indexOf('CREATE VIEW eval_experiment_variants');
+    expect(viewEnd).toBeGreaterThan(viewStart);
+    const viewBody = schema.slice(viewStart, viewEnd);
+    expect(viewBody).toContain("r.status NOT IN ('failed', 'aborted')");
+  });
+
+  it("eval_variant_stability's renderDpi default matches DEFAULT_RENDER_DPI", () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_variant_stability');
+    const viewEnd = schema.indexOf('CREATE VIEW eval_experiment_variants');
+    const viewBody = schema.slice(viewStart, viewEnd);
+    const match = viewBody.match(/COALESCE\(r\.settings -> 'renderDpi', '(\d+)'::jsonb\)/);
+    expect(match).not.toBeNull();
+    expect(Number(match![1])).toBe(DEFAULT_RENDER_DPI);
+  });
+
+  it("eval_variant_stability's groupSize default matches the audit task's default (AUDIT_GROUP_SIZE); the view does not branch by task, so this only catches a drift in the shared numeric literal, not a per-task divergence", () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_variant_stability');
+    const viewEnd = schema.indexOf('CREATE VIEW eval_experiment_variants');
+    const viewBody = schema.slice(viewStart, viewEnd);
+    const match = viewBody.match(/COALESCE\(r\.settings -> 'groupSize', '(\d+)'::jsonb\)/);
+    expect(match).not.toBeNull();
+    expect(Number(match![1])).toBe(AUDIT_GROUP_SIZE);
   });
 
   it('eval_run_model_stats.provider_mismatch_count is normalized through eval_normalize_provider', () => {

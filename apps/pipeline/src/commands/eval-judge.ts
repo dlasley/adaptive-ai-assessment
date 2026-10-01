@@ -12,9 +12,12 @@
  * judge only ever sees the slide and the two transcripts.
  *
  * Dry run by default, printing the projected judge cost; `--write-db` calls the judge and writes the
- * verdict onto both runs' `eval_results.judge_verdict` (merged, keyed by the other run's id, so a run
- * judged against several others accumulates one entry per comparison) and both runs' `judge_model`/
- * `judge_prompt_hash`.
+ * verdict onto both runs' `eval_results.judge_verdict`, keyed first by the other run's id and then by
+ * the judge prompt hash that produced it ({ [otherRunId]: { [judgePromptHash]: {...} } }), so a run
+ * judged against several others, or re-judged against the same one under a changed prompt,
+ * accumulates one entry per (pairing, prompt) rather than the column being overwritten. Refuses to
+ * write over an existing entry for the same pairing and the current prompt hash unless `--overwrite`
+ * is passed. Also stamps both runs' `judge_model`/`judge_prompt_hash` with the hash used this time.
  */
 
 import fs from 'fs';
@@ -59,6 +62,7 @@ export const cli = defineCli(
     'judge-model': { type: 'string', required: true, help: 'OpenRouter model slug for the judge' },
     provider: { type: 'string', help: 'Provider tag to pin the judge call to (single upstream, fallbacks disabled)' },
     'allow-unpriced': { type: 'boolean', default: false, help: 'Call the judge model even when it has no listed price, so its cost cannot be projected or capped' },
+    overwrite: { type: 'boolean', default: false, help: 'Re-judge even when a shared item already carries a judge_verdict entry for this pairing under the current judge prompt hash' },
   },
   {
     name: 'eval-judge',
@@ -190,6 +194,17 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
     process.exit(1);
   }
 
+  if (!options.overwrite) {
+    const alreadyJudged = sharedItems.filter(({ item }) => {
+      const existing = byItemA.get(item.id)!.judge_verdict as Record<string, Record<string, unknown>> | null;
+      return existing?.[runB.id]?.[JUDGE_PROMPT_HASH] !== undefined;
+    });
+    if (alreadyJudged.length > 0) {
+      logger.error(`${alreadyJudged.length} of ${sharedItems.length} shared item(s) already carry a judge_verdict entry for run ${runA.id} vs run ${runB.id} under the current judge prompt hash (${JUDGE_PROMPT_HASH}). Pass --overwrite to re-judge and replace them.`);
+      process.exit(1);
+    }
+  }
+
   const providerPin: LlmCallOptions['provider'] = options.provider ? { order: [options.provider], allowFallbacks: false } : undefined;
   const judgedAt = new Date().toISOString();
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-judge-slides-'));
@@ -245,14 +260,22 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
       const reasons = [order1.reason, order2.reason];
       const resultA = byItemA.get(item.id)!;
       const resultB = byItemB.get(item.id)!;
+      const existingForA = (resultA.judge_verdict as Record<string, Record<string, unknown>> | null) ?? {};
+      const existingForB = (resultB.judge_verdict as Record<string, Record<string, unknown>> | null) ?? {};
 
       await store.updateResultJudgeVerdict(resultA.id, {
-        ...(resultA.judge_verdict ?? {}),
-        [runB.id]: { outcome: outcomeForA, judge_model: options.judgeModel, reasons, judged_at: judgedAt },
+        ...existingForA,
+        [runB.id]: {
+          ...(existingForA[runB.id] ?? {}),
+          [JUDGE_PROMPT_HASH]: { outcome: outcomeForA, judge_model: options.judgeModel, reasons, judged_at: judgedAt },
+        },
       });
       await store.updateResultJudgeVerdict(resultB.id, {
-        ...(resultB.judge_verdict ?? {}),
-        [runA.id]: { outcome: outcomeForB, judge_model: options.judgeModel, reasons, judged_at: judgedAt },
+        ...existingForB,
+        [runA.id]: {
+          ...(existingForB[runA.id] ?? {}),
+          [JUDGE_PROMPT_HASH]: { outcome: outcomeForB, judge_model: options.judgeModel, reasons, judged_at: judgedAt },
+        },
       });
     }
   } finally {

@@ -68,6 +68,40 @@ export function combineJudgeOrders(order1: JudgeVerdict, order2: JudgeVerdict): 
   return 'tie';
 }
 
+/** One pairing's stored verdict, nested under its judge prompt hash inside
+ * `eval_results.judge_verdict` ({ [otherRunId]: { [judgePromptHash]: JudgeVerdictEntry } }). */
+export interface JudgeVerdictEntry {
+  outcome: 'win' | 'loss' | 'tie';
+  judge_model: string;
+  reasons: string[];
+  judged_at: string;
+}
+
+/**
+ * Picks the verdict entry for one pairing out of the hash-keyed object stored for it, preferring
+ * the entry under `runJudgePromptHash` (the reading run's own `judge_prompt_hash`) when one exists,
+ * and otherwise the newest by `judged_at`: the fallback for a pairing judged only under a prompt
+ * other than the run's current one, or a row that predates this nesting. Returns the hash actually
+ * used alongside the entry, so a caller can name it. No call site reads `judge_verdict` back today
+ * (`eval-judge.ts` only ever writes it); this exists for the first one that does, and is exercised
+ * directly by its own tests.
+ */
+export function selectJudgeVerdictEntry(
+  verdictsByHash: Record<string, JudgeVerdictEntry> | null | undefined,
+  runJudgePromptHash: string | null | undefined,
+): { hash: string; entry: JudgeVerdictEntry } | undefined {
+  if (!verdictsByHash) return undefined;
+  const entries = Object.entries(verdictsByHash);
+  if (entries.length === 0) return undefined;
+  if (runJudgePromptHash && verdictsByHash[runJudgePromptHash]) {
+    return { hash: runJudgePromptHash, entry: verdictsByHash[runJudgePromptHash] };
+  }
+  const [newestHash, newestEntry] = entries.reduce((latest, current) =>
+    new Date(current[1].judged_at).getTime() > new Date(latest[1].judged_at).getTime() ? current : latest,
+  );
+  return { hash: newestHash, entry: newestEntry };
+}
+
 /** The exact per-call message content: the judge prompt plus a text-layer hint, the two transcripts
  * under comparison, and the rendered slide image. */
 export function buildJudgeMessageContent(slideText: string, transcriptA: string, transcriptB: string, imageBytes: Buffer): LlmContentPart[] {
