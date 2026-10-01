@@ -742,7 +742,7 @@ CREATE TABLE eval_experiments (
   question            TEXT NOT NULL,               -- the falsifiable question this experiment answers
   tasks               TEXT[] NOT NULL,             -- usually one; a baseline sweep lists several
   variants_declared   JSONB NOT NULL DEFAULT '[]', -- [{label, model_slug, role, settings}, ...] planned before running
-  decision_rule       JSONB NOT NULL DEFAULT '{}', -- tolerance override for this experiment; empty means "use tolerances.ts's task default"
+  decision_rule       JSONB NOT NULL DEFAULT '{}', -- numeric overrides (tolerance, precisionTolerance, maxSlideDrop) eval-compare resolves against the task default, plus description prose; empty means "use the task default"
   depends_on          TEXT[] NOT NULL DEFAULT '{}', -- experiment slugs this one depends on; informational, not FK-enforced
   status              TEXT NOT NULL DEFAULT 'proposed'
                         CHECK (status IN ('proposed', 'running', 'decided', 'deferred', 'superseded')),
@@ -976,7 +976,7 @@ COMMENT ON TABLE eval_experiments IS 'One named question under test, identified 
 COMMENT ON COLUMN eval_experiments.slug IS 'Descriptive, public identifier for this experiment (e.g. audit-single-vs-grouped), derived from its question. What eval-run --experiment and any report or doc display.';
 COMMENT ON COLUMN eval_experiments.legacy_code IS 'The historical E-number (E0..E13) this experiment was first defined under, kept only so an existing private catalog document can still cross-reference it. Nothing public shows this code.';
 COMMENT ON COLUMN eval_experiments.variants_declared IS 'Planned variants, recorded before execution. What actually ran is the set of eval_runs rows with this experiment_id, which may be a subset (a variant was dropped) or differ in settings (a declared plan changed): variants_declared is intent, eval_runs is fact.';
-COMMENT ON COLUMN eval_experiments.decision_rule IS 'The rule this experiment is judged by, recorded here in plain language for a human reading the experiment record. It does not drive eval-compare''s actual verdict: the tolerances applied at comparison time come from TASK_TOLERANCES (apps/pipeline/src/lib/eval/tolerances.ts), keyed by task, not from this column.';
+COMMENT ON COLUMN eval_experiments.decision_rule IS 'The rule this experiment is judged by. May carry any of tolerance, precisionTolerance, maxSlideDrop (numeric, each overriding the matching part of the task default from TASK_TOLERANCES in apps/pipeline/src/lib/eval/tolerances.ts) plus description (plain-language prose for a human reading the experiment record). eval-compare resolves this experiment''s runs against the override via tolerances.ts''s resolveTolerance() and states which rule applied in its report; an unrecognized key is ignored and logged as a warning. Empty (the default) means every run on this experiment is judged by the task default with no override.';
 
 COMMENT ON TABLE eval_experiment_hypotheses IS 'Which hypothesis classes an experiment tests — a join table rather than an array column, since a hypothesis class is now a real row in eval_hypothesis_classes and this relation should refuse a dangling reference rather than let one drift silently the way an unenforced array or text code could. Small and fixed cardinality (on the order of ten classes, a few dozen experiments), so a join table costs nothing here in a way it would for eval_findings.run_ids, which cites from a large, growing id space instead.';
 

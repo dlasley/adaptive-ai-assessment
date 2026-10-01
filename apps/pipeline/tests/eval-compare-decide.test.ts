@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { main } from '../src/commands/eval-compare';
 import type { EvalStore, EvalRunRow, EvalResultRow, EvalFindingRow, NewEvalFindingRow } from '../src/lib/eval/db';
-import { baseFakeEvalStore, makeEvalSetRow, makeEvalItemRow, makeEvalRunRow, makeEvalResultRow } from './helpers/eval-store';
+import { baseFakeEvalStore, makeEvalSetRow, makeEvalItemRow, makeEvalRunRow, makeEvalResultRow, makeEvalExperimentRow } from './helpers/eval-store';
 
 class ProcessExitError extends Error {
   constructor(public code: number) {
@@ -65,6 +65,7 @@ function makeFakeStore(params: {
     },
     async getRun(id) { return runsById[id] ?? null; },
     async listResults(runId) { return resultsByRunId[runId] ?? []; },
+    async getExperiment(idOrSlug) { return idOrSlug === candidateExperimentId ? makeEvalExperimentRow({ id: candidateExperimentId!, slug: candidateExperimentId! }) : null; },
     async updateExperiment(id, patch) {
       updateExperimentCalls.push({ id, patch });
     },

@@ -13,7 +13,7 @@
 
 import { meanAndCi95, signTestPValue } from '../scoring';
 import { scoreTranscription, scoreTranscriptionWords, countMarkdownTable, NO_CONTENT_MARKER } from '../transcription-scoring';
-import { TASK_TOLERANCES, TRANSCRIPTION_MAX_SLIDE_DROP } from '../tolerances';
+import { resolveTolerance, type ResolvedTolerance } from '../tolerances';
 import type { EvalResultRow } from '../db';
 import { resultByItem, runCostLatency, formatOrNA, buildNoiseFloorSection, type RunCostLatency } from './shared';
 
@@ -206,25 +206,28 @@ export interface TranscriptionNonInferiorityVerdict {
  * The transcription task's non-inferiority verdict. When every paired outcome carries the word
  * measures (the pairing was given the reference transcripts), the checks run on words captured,
  * which is blind to whether a model chose a table or a list: the candidate's mean word recall over
- * the paired slides must be within `TASK_TOLERANCES.transcription.tolerance` of the baseline's, and
- * on no slide may the candidate fall more than `TRANSCRIPTION_MAX_SLIDE_DROP` below the baseline's
- * word recall (content lost) or the baseline's word precision (content added that is not on the
- * slide) on that same slide. Both per-slide checks are relative to the baseline, so a habit the
- * baseline shares (a bilingual heading the prompt asks for) is not held against a candidate, while
- * padding a slide the baseline transcribed cleanly is. Without the word measures the same mean and
- * recall-drop shapes run on the edit-distance score, with no precision check. In
- * both modes the per-slide checks only consider `pairedOutcomes` (slides scored in both runs), a
- * slide missing from either run is excluded rather than counted as a drop, and empty
- * `pairedOutcomes` fails outright: no overlap is no evidence of non-inferiority. No-content
- * agreement must be perfect whenever there is at least one reference item to check it against.
+ * the paired slides must be within `tolerance.tolerance` of the baseline's, and on no slide may the
+ * candidate fall more than `tolerance.maxSlideDrop` below the baseline's word recall (content lost)
+ * or the baseline's word precision (content added that is not on the slide) on that same slide.
+ * Both per-slide checks are relative to the baseline, so a habit the baseline shares (a bilingual
+ * heading the prompt asks for) is not held against a candidate, while padding a slide the baseline
+ * transcribed cleanly is. Without the word measures the same mean and recall-drop shapes run on the
+ * edit-distance score, with no precision check. In both modes the per-slide checks only consider
+ * `pairedOutcomes` (slides scored in both runs), a slide missing from either run is excluded rather
+ * than counted as a drop, and empty `pairedOutcomes` fails outright: no overlap is no evidence of
+ * non-inferiority. No-content agreement must be perfect whenever there is at least one reference
+ * item to check it against. `tolerance` defaults to the transcription task's own default (no
+ * experiment override) when the caller has none to pass; `eval-compare` always resolves and passes
+ * one explicitly, since an experiment's `decision_rule` may override it.
  */
 export function transcriptionNonInferiorityVerdict(
   baselineStats: TranscriptionRunStats,
   candidateStats: TranscriptionRunStats,
   pairedOutcomes: PairedTranscriptionOutcome[],
   noContentAgreement: AgreementRate,
+  tolerance: ResolvedTolerance = resolveTolerance('transcription'),
 ): TranscriptionNonInferiorityVerdict {
-  const tolerance = TASK_TOLERANCES.transcription;
+  const maxSlideDrop = tolerance.maxSlideDrop;
   const onWords = pairedOutcomes.length > 0 && pairedOutcomes.every(
     (o) => o.baselineWordRecall !== undefined && o.candidateWordRecall !== undefined
       && o.baselineWordPrecision !== undefined && o.candidateWordPrecision !== undefined,
@@ -260,8 +263,8 @@ export function transcriptionNonInferiorityVerdict(
       }
     }
   }
-  const worstOk = pairedOutcomes.length > 0 && worstDrop <= TRANSCRIPTION_MAX_SLIDE_DROP;
-  const precisionOk = !onWords || worstPrecisionDrop <= TRANSCRIPTION_MAX_SLIDE_DROP;
+  const worstOk = pairedOutcomes.length > 0 && worstDrop <= maxSlideDrop;
+  const precisionOk = !onWords || worstPrecisionDrop <= maxSlideDrop;
 
   const noContentOk = noContentAgreement.n === 0 || noContentAgreement.agreementRate === 1;
   const noContentAgreeCount = Math.round(noContentAgreement.agreementRate * noContentAgreement.n);
@@ -272,10 +275,10 @@ export function transcriptionNonInferiorityVerdict(
       + `(baseline ${baselineMean.toFixed(4)}, tolerance ${tolerance.tolerance}); `
       + (pairedOutcomes.length === 0
         ? 'no slides scored in both runs'
-        : `largest ${onWords ? 'word recall drop' : 'drop'} ${worstDrop.toFixed(4)} on item ${worstDropItemId} (limit ${TRANSCRIPTION_MAX_SLIDE_DROP}), `
+        : `largest ${onWords ? 'word recall drop' : 'drop'} ${worstDrop.toFixed(4)} on item ${worstDropItemId} (limit ${maxSlideDrop}), `
           + `${pairedOutcomes.length} slide${pairedOutcomes.length === 1 ? '' : 's'} compared`)
       + (onWords
-        ? `; largest word precision drop ${worstPrecisionDrop.toFixed(4)} on item ${worstPrecisionDropItemId} (limit ${TRANSCRIPTION_MAX_SLIDE_DROP})`
+        ? `; largest word precision drop ${worstPrecisionDrop.toFixed(4)} on item ${worstPrecisionDropItemId} (limit ${maxSlideDrop})`
         : '')
       + '; '
       + (noContentAgreement.n === 0
@@ -317,12 +320,16 @@ export function buildTranscriptionCompareMarkdown(params: {
   variants: TranscriptionVariantComparison[];
   noiseFloors: TranscriptionNoiseFloorEntry[];
   generatedAt: string;
+  /** Which tolerance rule the verdicts below were judged against: `describeToleranceSource`'s
+   * output. Defaults to "task default" for a caller that hasn't resolved one. */
+  toleranceNote?: string;
 }): string {
   const lines: string[] = [];
   lines.push(`# Eval compare — transcription — set ${params.setId}`);
   lines.push('');
   lines.push(`Generated: ${params.generatedAt}`);
   lines.push(`Baseline: run ${params.baselineRunId} (${params.baselineModel})`);
+  lines.push(`Tolerance: ${params.toleranceNote ?? 'task default'}`);
   lines.push('');
   lines.push('## Per-run stats (against reference)');
   lines.push('');

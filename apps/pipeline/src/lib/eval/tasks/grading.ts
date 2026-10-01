@@ -12,7 +12,7 @@ import { planInterleavedCalls, buildGradingRunSummary, GRADING_PASS_SCORE_THRESH
 import { withRateLimitRetry } from '../run-loop';
 import type { GradingLabelClass } from '../set-builder';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
-import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, hashText } from './shared';
+import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, hashText, resolveEffectiveSamplingSettings } from './shared';
 import { variantKey, type EvalTaskDefinition } from './types';
 
 const logger = createLogger('eval-run');
@@ -93,10 +93,14 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome, Grad
       let error: 'parse' | 'api' | 'empty' | undefined;
       let usage: ResultUsage = {};
 
+      // Grading never disables reasoning by default (unlike mapping/transcription), so only the
+      // temperature can need adjusting for a model MODEL_CONSTRAINTS flags.
+      const { temperature: effectiveTemperature } = resolveEffectiveSamplingSettings(call.variant.model, callSettings.temperature, reasoning, reasoning !== undefined);
+
       try {
         const result = await withRateLimitRetry(() => callLlmFn({
           model: call.variant.model,
-          temperature: callSettings.temperature,
+          temperature: effectiveTemperature,
           maxTokens: GRADING_CALL_SETTINGS.maxTokens,
           jsonMode: callSettings.jsonMode,
           reasoning,

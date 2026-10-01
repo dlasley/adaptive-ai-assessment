@@ -174,6 +174,10 @@ export interface EvalStore {
   /** Every eval_runs row attributed to one experiment, in no particular order — eval-rescore's
    * `--experiment` target. */
   listRunsByExperiment(experimentId: string): Promise<EvalRunRow[]>;
+  /** Every eval_runs row for one experiment and model, in no particular order. Serves eval-run's
+   * repeat_index resolution when --experiment is given: narrower than listRunsByExperiment so a
+   * long-running experiment across many models doesn't fetch rows this computation never looks at. */
+  listRunsByExperimentAndModel(experimentId: string, model: string): Promise<EvalRunRow[]>;
   insertResults(rows: NewEvalResultRow[]): Promise<void>;
   listResults(runId: string): Promise<EvalResultRow[]>;
   updateResult(id: string, patch: Partial<Pick<EvalResultRow, 'score'>>): Promise<void>;
@@ -262,6 +266,11 @@ export function createSupabaseEvalStore(supabase: SupabaseClient): EvalStore {
     async listRunsByExperiment(experimentId) {
       const { data, error } = await supabase.from('eval_runs').select().eq('experiment_id', experimentId);
       if (error) fail(`list eval_runs for experiment ${experimentId}`, error);
+      return (data as EvalRunRow[]) ?? [];
+    },
+    async listRunsByExperimentAndModel(experimentId, model) {
+      const { data, error } = await supabase.from('eval_runs').select().eq('experiment_id', experimentId).eq('model', model);
+      if (error) fail(`list eval_runs for experiment ${experimentId} and model ${model}`, error);
       return (data as EvalRunRow[]) ?? [];
     },
     async insertResults(rows) {

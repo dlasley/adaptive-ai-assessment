@@ -10,7 +10,7 @@ import { callMistralAuditGroup, auditGroupWithRetry, renderedMistralAuditSystemP
 import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { planAuditGroupCalls, buildAuditRunSummary, AUDIT_GATE_CRITERIA, type AuditItemOutcome, type AuditGateCriterion, type AuditRunSummary } from '../runner';
 import { createLogger } from '../../logger';
-import { MODEL_CALL_RETRY, wholeTokens, hashText } from './shared';
+import { MODEL_CALL_RETRY, wholeTokens, hashText, resolveEffectiveSamplingSettings } from './shared';
 import { variantKey, type EvalTaskDefinition } from './types';
 
 const logger = createLogger('eval-run');
@@ -94,6 +94,9 @@ export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome, Audit
     const group = call.items;
     await throttleIfMistral(call.variant.model);
     const startedAt = Date.now();
+    // Audit never disables reasoning by default (unlike mapping/transcription), so only the
+    // temperature can need adjusting for a model MODEL_CONSTRAINTS flags.
+    const { temperature: effectiveTemperature } = resolveEffectiveSamplingSettings(call.variant.model, callSettings.temperature, reasoning, reasoning !== undefined);
     let groupResults: MistralAuditResult[] | undefined;
     let groupError: 'api' | undefined;
     let groupErrorMessage: string | undefined;
@@ -103,7 +106,7 @@ export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome, Audit
       groupResults = await auditGroupWithRetry(
         (rows) => callMistralAuditGroup(rows, context.units, {
           model: call.variant.model,
-          temperature: callSettings.temperature,
+          temperature: effectiveTemperature,
           reasoning,
           provider: callSettings.provider,
           sessionId: run.id,

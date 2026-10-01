@@ -24,7 +24,7 @@ import { computeTranscriptionDeterministicChecks, scoreTranscription, buildTrans
 import type { TranscriptionCategory } from '../set-builder';
 import { withRateLimitRetry } from '../run-loop';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
-import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError } from './shared';
+import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, resolveEffectiveSamplingSettings } from './shared';
 import { variantKey, type EvalTaskDefinition } from './types';
 
 const logger = createLogger('eval-run');
@@ -197,13 +197,17 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
         output = NO_CONTENT_MARKER;
       } else if (error === undefined) {
         const content = buildTranscriptionMessageContent(slideText, imageBytes);
+        // Production always disables reasoning for this call; --reasoning overrides that default,
+        // same as every task. resolveEffectiveSamplingSettings further adjusts both settings for a
+        // model MODEL_CONSTRAINTS flags as unable to accept them as given.
+        const effective = resolveEffectiveSamplingSettings(call.variant.model, callSettings.temperature, reasoning ?? { enabled: false }, reasoning !== undefined);
         try {
           const result = await withRateLimitRetry(() => callLlmFn({
             model: call.variant.model,
-            temperature: callSettings.temperature,
+            temperature: effective.temperature,
             maxTokens: SLIDE_TRANSCRIPTION_MAX_TOKENS,
             jsonMode: callSettings.jsonMode,
-            reasoning: reasoning ?? { enabled: false },
+            reasoning: effective.reasoning,
             provider: callSettings.provider,
             sessionId: run.id,
             messages: [{ role: 'user', content }],

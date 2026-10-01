@@ -13,7 +13,7 @@ import { planInterleavedCalls } from '../runner';
 import { headingSetF1, computeMappingDeterministicChecks, buildMappingRunSummary, type MappingDeterministicChecks, type MappingItemOutcome, type MappingRunSummary } from '../mapping-scoring';
 import { withRateLimitRetry } from '../run-loop';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
-import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, hashText } from './shared';
+import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, hashText, resolveEffectiveSamplingSettings } from './shared';
 import { variantKey, type EvalTaskDefinition } from './types';
 
 const logger = createLogger('eval-run');
@@ -110,15 +110,19 @@ export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome,
     let error: 'parse' | 'api' | 'empty' | undefined;
     let usage: ResultUsage = {};
 
+    // Production always disables reasoning for this call (mapExistingHeadings's
+    // disableReasoning: true); --reasoning overrides that default, same as every task.
+    // resolveEffectiveSamplingSettings further adjusts both settings for a model
+    // MODEL_CONSTRAINTS flags as unable to accept them as given.
+    const effective = resolveEffectiveSamplingSettings(call.variant.model, callSettings.temperature, reasoning ?? { enabled: false }, reasoning !== undefined);
+
     try {
       const result = await withRateLimitRetry(() => callLlmFn({
         model: call.variant.model,
-        temperature: callSettings.temperature,
+        temperature: effective.temperature,
         maxTokens: MAPPING_MAX_TOKENS,
         jsonMode: callSettings.jsonMode,
-        // Production always disables reasoning for this call (mapExistingHeadings's
-        // disableReasoning: true); --reasoning overrides that default, same as every task.
-        reasoning: reasoning ?? { enabled: false },
+        reasoning: effective.reasoning,
         provider: callSettings.provider,
         sessionId: run.id,
         messages: [{ role: 'user', content: prompt }],

@@ -5,6 +5,7 @@ exports[`eval-compare markdown golden snapshots > audit, reference-backed, with 
 
 Generated: 2026-09-26T00:00:00Z
 Baseline: run run-baseline (mistralai/mistral-large-2512)
+Tolerance: task default
 
 ## Variants
 
@@ -117,6 +118,7 @@ exports[`eval-compare markdown golden snapshots > grading, reference-backed, wit
 
 Generated: 2026-09-26T00:00:00Z
 Baseline: run run-baseline (anthropic/claude-opus-5.5)
+Tolerance: task default
 
 Rejected-key questions: 1 (2 item(s) excluded from the accuracy figures below) — pass --include-rejected-keys to include them.
 
@@ -199,6 +201,7 @@ exports[`eval-compare markdown golden snapshots > transcription, reference-backe
 
 Generated: 2026-09-27T00:00:00Z
 Baseline: run run-baseline (anthropic/claude-sonnet-5)
+Tolerance: task default
 
 ## Per-run stats (against reference)
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { variantKey, buildVariants, buildVariantLabel, parseReasoningFlag, buildEffectiveCallSettings, orderItemsForRun, projectExclusionPassCostUsd, cli, type Variant } from '../src/commands/eval-run';
+import { variantKey, buildVariants, buildVariantLabel, resolveLabel, parseReasoningFlag, buildEffectiveCallSettings, orderItemsForRun, projectExclusionPassCostUsd, cli } from '../src/commands/eval-run';
 import { GRADING_CALL_SETTINGS } from '@adaptive/shared/grading-prompt';
 import { AUDIT_GROUP_SIZE } from '../src/lib/pipeline-config';
 
@@ -58,24 +58,28 @@ describe('variantKey', () => {
 });
 
 describe('buildVariantLabel', () => {
-  const variants: Variant[] = [{ model: 'a', repeatIndex: 1 }, { model: 'b', repeatIndex: 1 }];
-
-  it('returns null when no label is given', () => {
-    expect(buildVariantLabel(undefined, variants[0], variants)).toBeNull();
+  it('always suffixes the model slug, whether this is the only variant or one of several', () => {
+    expect(buildVariantLabel('baseline', { model: 'a', repeatIndex: 1 })).toBe('baseline:a');
+    expect(buildVariantLabel('candidate', { model: 'b', repeatIndex: 1 })).toBe('candidate:b');
   });
 
-  it('returns the label unchanged for a single-variant run', () => {
-    expect(buildVariantLabel('baseline', variants[0], [variants[0]])).toBe('baseline');
+  it('never carries a :r<n> repeat suffix, however high repeatIndex is', () => {
+    expect(buildVariantLabel('candidate', { model: 'a', repeatIndex: 2 })).toBe('candidate:a');
+    expect(buildVariantLabel('candidate', { model: 'a', repeatIndex: 7 })).toBe('candidate:a');
+  });
+});
+
+describe('resolveLabel', () => {
+  it('uses the explicit --label when given, regardless of experiment or task', () => {
+    expect(resolveLabel('my-label', 'some-experiment', 'grading')).toBe('my-label');
   });
 
-  it('suffixes the model slug for a multi-variant run', () => {
-    expect(buildVariantLabel('candidate', variants[0], variants)).toBe('candidate:a');
-    expect(buildVariantLabel('candidate', variants[1], variants)).toBe('candidate:b');
+  it('falls back to the experiment slug when --label is omitted but --experiment was given', () => {
+    expect(resolveLabel(undefined, 'audit-single-vs-grouped', 'audit')).toBe('audit-single-vs-grouped');
   });
 
-  it('also suffixes the repeat index when repeatIndex > 1', () => {
-    const repeated: Variant = { model: 'a', repeatIndex: 2 };
-    expect(buildVariantLabel('candidate', repeated, [variants[0], repeated])).toBe('candidate:a:r2');
+  it('falls back to the task name when neither --label nor --experiment was given', () => {
+    expect(resolveLabel(undefined, undefined, 'mapping')).toBe('mapping');
   });
 });
 

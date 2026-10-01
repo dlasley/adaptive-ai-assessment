@@ -7,7 +7,7 @@
  * per field through a partial argument.
  */
 
-import type { EvalStore, EvalSetRow, EvalItemRow, EvalRunRow, EvalResultRow, EvalFindingRow } from '../../src/lib/eval/db';
+import type { EvalStore, EvalSetRow, EvalItemRow, EvalRunRow, EvalResultRow, EvalFindingRow, EvalExperimentRow } from '../../src/lib/eval/db';
 
 const DEFAULT_TIMESTAMP = '2026-09-29T00:00:00Z';
 
@@ -41,6 +41,9 @@ export function baseFakeEvalStore(): EvalStore {
       throw new Error('not used by this test');
     },
     async listRunsByExperiment() {
+      throw new Error('not used by this test');
+    },
+    async listRunsByExperimentAndModel() {
       throw new Error('not used by this test');
     },
     async insertResults() {
@@ -141,6 +144,25 @@ export function makeEvalRunRow(overrides: Partial<EvalRunRow> = {}): EvalRunRow 
     summary: null,
     experiment_id: null,
     model_version_id: null,
+    created_at: DEFAULT_TIMESTAMP,
+    updated_at: DEFAULT_TIMESTAMP,
+    ...overrides,
+  };
+}
+
+export function makeEvalExperimentRow(overrides: Partial<EvalExperimentRow> = {}): EvalExperimentRow {
+  return {
+    id: 'exp-1',
+    slug: 'exp-1',
+    legacy_code: null,
+    question: 'question',
+    tasks: ['grading'],
+    variants_declared: [],
+    decision_rule: {},
+    depends_on: [],
+    status: 'running',
+    decided_at: null,
+    notes: null,
     created_at: DEFAULT_TIMESTAMP,
     updated_at: DEFAULT_TIMESTAMP,
     ...overrides,

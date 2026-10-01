@@ -11,7 +11,7 @@ import type { EvalTask } from './types';
 /** Whether a task's primary metric is better when higher (recall, pass rate, F1) or lower
  * (false-negative rate, edit distance) — the direction a non-inferior candidate must not regress
  * past its tolerance. */
-type ToleranceDirection = 'higher-is-better' | 'lower-is-better';
+export type ToleranceDirection = 'higher-is-better' | 'lower-is-better';
 
 export interface TaskTolerance {
   /** The metric this task's non-inferiority verdict is judged on. */
@@ -75,6 +75,85 @@ export const TASK_TOLERANCES: Record<EvalTask, TaskTolerance> = {
     description: 'Mean per-topic heading-set F1 >= baseline - 0.03; zero unresolvable headings after one retry.',
   },
 };
+
+/** The numeric keys an `eval_experiments.decision_rule` row may carry, each overriding the
+ * matching part of the task default above. `maxSlideDrop` has no task-default field of its own
+ * (every task resolves it against `TRANSCRIPTION_MAX_SLIDE_DROP`, only meaningful for
+ * transcription), but is carried on `ResolvedTolerance` regardless of task so one resolved object
+ * always has every field a caller might need. */
+const DECISION_RULE_NUMERIC_KEYS = ['tolerance', 'precisionTolerance', 'maxSlideDrop'] as const;
+type DecisionRuleNumericKey = (typeof DECISION_RULE_NUMERIC_KEYS)[number];
+const DECISION_RULE_KNOWN_KEYS = new Set<string>([...DECISION_RULE_NUMERIC_KEYS, 'description']);
+
+export interface ResolvedTolerance {
+  task: EvalTask;
+  primaryMetric: string;
+  direction: ToleranceDirection;
+  tolerance: number;
+  precisionTolerance?: number;
+  maxSlideDrop: number;
+  description: string;
+  /** Which `decision_rule` keys were actually applied, with the resolved value: empty when every
+   * value came from the task default (no experiment, or an experiment whose `decision_rule`
+   * carries none of these keys). */
+  appliedOverrides: Partial<Record<DecisionRuleNumericKey, number>>;
+  /** `decision_rule` keys that are not `tolerance`/`precisionTolerance`/`maxSlideDrop`/
+   * `description`, reported so a caller can warn rather than silently ignore a typo or a retired
+   * key. */
+  unknownKeys: string[];
+}
+
+/**
+ * Resolves the tolerance a comparison is judged against: the task's own default
+ * (`TASK_TOLERANCES`), with any numeric key an experiment's `decision_rule` carries
+ * (`tolerance`, `precisionTolerance`, `maxSlideDrop`) overriding the matching field.
+ * `decisionRule` is undefined for an ad hoc run with no `--experiment`, or when the owning
+ * experiment's `decision_rule` carries none of these keys; both resolve to the task default with
+ * no overrides applied.
+ */
+export function resolveTolerance(task: EvalTask, decisionRule?: Record<string, unknown> | null): ResolvedTolerance {
+  const base = TASK_TOLERANCES[task];
+  const rule = decisionRule ?? {};
+  const unknownKeys = Object.keys(rule).filter((key) => !DECISION_RULE_KNOWN_KEYS.has(key));
+  const appliedOverrides: Partial<Record<DecisionRuleNumericKey, number>> = {};
+
+  let tolerance = base.tolerance;
+  if (typeof rule.tolerance === 'number') {
+    tolerance = rule.tolerance;
+    appliedOverrides.tolerance = tolerance;
+  }
+  let precisionTolerance = base.precisionTolerance;
+  if (typeof rule.precisionTolerance === 'number') {
+    precisionTolerance = rule.precisionTolerance;
+    appliedOverrides.precisionTolerance = precisionTolerance;
+  }
+  let maxSlideDrop = TRANSCRIPTION_MAX_SLIDE_DROP;
+  if (typeof rule.maxSlideDrop === 'number') {
+    maxSlideDrop = rule.maxSlideDrop;
+    appliedOverrides.maxSlideDrop = maxSlideDrop;
+  }
+
+  return {
+    task,
+    primaryMetric: base.primaryMetric,
+    direction: base.direction,
+    tolerance,
+    precisionTolerance,
+    maxSlideDrop,
+    description: base.description,
+    appliedOverrides,
+    unknownKeys,
+  };
+}
+
+/** Names which rule a resolved tolerance applied, for a comparison report to state plainly:
+ * "task default" when `decision_rule` carried no recognized override, otherwise which key(s) and
+ * value(s) were overridden. */
+export function describeToleranceSource(resolved: ResolvedTolerance): string {
+  const keys = Object.keys(resolved.appliedOverrides) as DecisionRuleNumericKey[];
+  if (keys.length === 0) return 'task default';
+  return `experiment override: ${keys.map((key) => `${key} ${resolved.appliedOverrides[key]}`).join(', ')}`;
+}
 
 /** Per-run budget caps (USD). A run refuses to start if its projected cost
  * exceeds the relevant cap; `--max-cost` on `eval-run` overrides `candidateRun` for that run. */

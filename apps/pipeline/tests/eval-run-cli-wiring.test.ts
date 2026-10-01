@@ -13,6 +13,7 @@ import type {
   NewEvalFindingRow,
 } from '../src/lib/eval/db';
 import type { LlmCallOptions, LlmResult } from '@adaptive/shared/llm';
+import { GRADING_CALL_SETTINGS } from '@adaptive/shared/grading-prompt';
 import type { MistralAuditResult } from '../src/lib/mistral-audit';
 import { baseFakeEvalStore, makeEvalSetRow, makeEvalItemRow, makeEvalRunRow, makeEvalResultRow } from './helpers/eval-store';
 
@@ -132,6 +133,9 @@ function makeFakeStore(overrides: Partial<EvalStore> = {}): { store: EvalStore; 
     },
     async listResults(runId) {
       return results.filter((r) => r.run_id === runId);
+    },
+    async listRunsByExperimentAndModel(experimentId, model) {
+      return runs.filter((r) => r.experiment_id === experimentId && r.model === model);
     },
     async getExperiment(idOrSlug) {
       return idOrSlug === experiment.id || idOrSlug === experiment.slug ? experiment : null;
@@ -412,6 +416,163 @@ describe('eval-run CLI wiring', () => {
 
     expect(runs).toHaveLength(1);
     expect(runs[0].summary).not.toHaveProperty('primary_metric');
+  });
+});
+
+describe('eval-run: run label and repeat_index convention', () => {
+  beforeEach(() => {
+    vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new ProcessExitError(code ?? 0);
+    }) as unknown as typeof process.exit);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const stubCallLlmFn = () => vi.fn(async (opts: LlmCallOptions) => ({
+    text: JSON.stringify({ isCorrect: true, score: 95, hasCorrectAccents: true, feedback: 'Correct.', corrections: {} }),
+    model: opts.model,
+    raw: {},
+  } satisfies LlmResult));
+
+  it('labels a run <label>:<model slug> with no :r<n> suffix, defaulting to the experiment slug, then the task name', async () => {
+    const { store, runs } = makeFakeStore();
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--write-db'],
+      store, callLlmFn: stubCallLlmFn(),
+    });
+    expect(runs[0].variant_label).toBe('test-experiment:openai/gpt-4.1-nano');
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--write-db'],
+      store, callLlmFn: stubCallLlmFn(),
+    });
+    expect(runs[1].variant_label).toBe('grading:openai/gpt-4.1-nano');
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--label', 'hand-picked', '--repeat', '2', '--write-db'],
+      store, callLlmFn: stubCallLlmFn(),
+    });
+    expect(runs[2].variant_label).toBe('hand-picked:openai/gpt-4.1-nano');
+    expect(runs[3].variant_label).toBe('hand-picked:openai/gpt-4.1-nano');
+    expect(runs[3].repeat_index).toBe(2);
+  });
+
+  it('continues repeat_index across separate invocations of the same experiment, model, prompt hash, and settings', async () => {
+    const { store, runs } = makeFakeStore();
+    const argv = ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--write-db'];
+
+    await main({ argv, store, callLlmFn: stubCallLlmFn() });
+    expect(runs[0].repeat_index).toBe(1);
+
+    await main({ argv, store, callLlmFn: stubCallLlmFn() });
+    expect(runs[1].repeat_index).toBe(2);
+
+    await main({ argv, store, callLlmFn: stubCallLlmFn() });
+    expect(runs[2].repeat_index).toBe(3);
+  });
+
+  it('gives consecutive repeat_index values within a single --repeat 3 invocation, not gaps', async () => {
+    const { store, runs } = makeFakeStore();
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--repeat', '3', '--write-db'],
+      store, callLlmFn: stubCallLlmFn(),
+    });
+
+    expect(runs.map((r) => r.repeat_index)).toEqual([1, 2, 3]);
+  });
+
+  it('continues a single --repeat 3 invocation from two runs already on record', async () => {
+    const { store, runs } = makeFakeStore();
+    const argv = ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--write-db'];
+
+    await main({ argv: [...argv, '--repeat', '2'], store, callLlmFn: stubCallLlmFn() });
+    expect(runs.map((r) => r.repeat_index)).toEqual([1, 2]);
+
+    await main({ argv: [...argv, '--repeat', '3'], store, callLlmFn: stubCallLlmFn() });
+    expect(runs.slice(2).map((r) => r.repeat_index)).toEqual([3, 4, 5]);
+  });
+
+  it('counts an existing run toward the repeat count even when its settings lack the newer effectiveTemperature/effectiveReasoning keys', async () => {
+    const { store, runs } = makeFakeStore();
+    const argv = ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--write-db'];
+
+    await main({ argv, store, callLlmFn: stubCallLlmFn() });
+    expect(runs[0].repeat_index).toBe(1);
+
+    // Simulate a run recorded before effectiveTemperature/effectiveReasoning existed as settings
+    // keys (this task's renderDpi is always null, so dropping it too simulates the same gap).
+    const { effectiveTemperature, effectiveReasoning, renderDpi, ...oldShapeSettings } = runs[0].settings;
+    runs[0].settings = oldShapeSettings;
+
+    await main({ argv, store, callLlmFn: stubCallLlmFn() });
+    expect(runs[1].repeat_index).toBe(2);
+  });
+
+  it('starts repeat_index at 1 again when a setting changes, even under the same experiment and model', async () => {
+    const { store, runs } = makeFakeStore();
+    const base = ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--write-db'];
+
+    await main({ argv: base, store, callLlmFn: stubCallLlmFn() });
+    expect(runs[0].repeat_index).toBe(1);
+
+    await main({ argv: [...base, '--temperature', '0.9'], store, callLlmFn: stubCallLlmFn() });
+    expect(runs[1].repeat_index).toBe(1);
+  });
+
+  it('excludes a failed run from the repeat count', async () => {
+    const { store, runs } = makeFakeStore();
+    const argv = ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--experiment', 'test-experiment', '--write-db'];
+
+    await main({ argv, store, callLlmFn: vi.fn(async () => { throw new Error('every call fails'); }) });
+    expect(runs[0].status).toBe('failed');
+
+    await main({ argv, store, callLlmFn: stubCallLlmFn() });
+    expect(runs[1].repeat_index).toBe(1);
+  });
+
+  it('gives each of several models in one invocation its own repeat_index sequence', async () => {
+    const SECOND_MODEL = 'anthropic/claude-sonnet-5';
+    const { store, runs } = makeFakeStore({
+      async getModelBySlug(slug) {
+        if (slug === 'openai/gpt-4.1-nano') return { id: 'model-1', family_id: 'family-1', slug, effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [] };
+        if (slug === SECOND_MODEL) return { id: 'model-2', family_id: 'family-2', slug, effective_date: '2026-09-25', price_prompt_usd_per_m: '0.5', price_completion_usd_per_m: '2', hosts: [] };
+        return null;
+      },
+    });
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', `openai/gpt-4.1-nano,${SECOND_MODEL}`, '--experiment', 'test-experiment', '--repeat', '2', '--write-db'],
+      store, callLlmFn: stubCallLlmFn(),
+    });
+
+    const byModel = (model: string) => runs.filter((r) => r.model === model).map((r) => r.repeat_index);
+    expect(byModel('openai/gpt-4.1-nano')).toEqual([1, 2]);
+    expect(byModel(SECOND_MODEL)).toEqual([1, 2]);
+  });
+
+  it('without --experiment, repeat_index is just the invocation\'s own offset, as before', async () => {
+    const { store, runs } = makeFakeStore();
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--repeat', '2', '--write-db'],
+      store, callLlmFn: stubCallLlmFn(),
+    });
+    expect(runs[0].repeat_index).toBe(1);
+    expect(runs[1].repeat_index).toBe(2);
+
+    // A second invocation with no --experiment restarts at 1, same as today.
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', 'openai/gpt-4.1-nano', '--write-db'],
+      store, callLlmFn: stubCallLlmFn(),
+    });
+    expect(runs[2].repeat_index).toBe(1);
   });
 });
 
@@ -1078,6 +1239,159 @@ describe('eval-run cli: --render-dpi', () => {
 
   it('rejects a fractional value', () => {
     expect(() => cli.parse([...base, '--render-dpi', '100.5'])).toThrow(ProcessExitError);
+  });
+});
+
+describe('eval-run: per-model sampling adjustments (MODEL_CONSTRAINTS)', () => {
+  const SONNET_5_5 = 'anthropic/claude-sonnet-5.5';
+  const UNCONSTRAINED_MODEL = 'openai/gpt-4.1-nano';
+
+  beforeEach(() => {
+    vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new ProcessExitError(code ?? 0);
+    }) as unknown as typeof process.exit);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function makeGradingFakeStore(): { store: EvalStore; runs: EvalRunRow[] } {
+    const runs: EvalRunRow[] = [];
+    let nextRunId = 0;
+    const set = makeEvalSetRow();
+    const item = makeEvalItemRow({
+      payload: {
+        question: 'Comment dit-on "hello"?', submitted_answer: 'bonjour', correct_answer: 'bonjour',
+        type: 'fill-in-blank', difficulty: 'easy', label_class: 'correct',
+      },
+    });
+    const models: Record<string, EvalModelCurrentRow> = {
+      [UNCONSTRAINED_MODEL]: { id: 'model-unconstrained', family_id: 'f1', slug: UNCONSTRAINED_MODEL, effective_date: '2026-09-25', price_prompt_usd_per_m: '0.1', price_completion_usd_per_m: '0.4', hosts: [] },
+      [SONNET_5_5]: { id: 'model-sonnet-5.5', family_id: 'f2', slug: SONNET_5_5, effective_date: '2026-09-25', price_prompt_usd_per_m: '1', price_completion_usd_per_m: '5', hosts: [] },
+    };
+
+    const store: EvalStore = {
+      ...baseFakeEvalStore(),
+      async getSet(id) { return id === set.id ? set : null; },
+      async listItems(setId) { return setId === set.id ? [item] : []; },
+      async latestReviewRound() { return null; },
+      async getModelBySlug(slug) { return models[slug] ?? null; },
+      async insertRun(row) {
+        const run = makeEvalRunRow({ id: `run-${++nextRunId}`, ...row, status: row.status ?? 'running' });
+        runs.push(run);
+        return run;
+      },
+      async updateRun(id, patch) {
+        const run = runs.find((r) => r.id === id);
+        if (!run) throw new Error(`no run ${id}`);
+        Object.assign(run, patch);
+      },
+      async insertResults() {},
+    };
+    return { store, runs };
+  }
+
+  it('drops temperature for a fixedTemperature model while another variant in the same invocation still gets the task default', async () => {
+    const { store, runs } = makeGradingFakeStore();
+    const callLlmFn = vi.fn(async (opts: LlmCallOptions) => ({
+      text: JSON.stringify({ isCorrect: true, score: 95, hasCorrectAccents: true, feedback: 'Correct.', corrections: {} }),
+      model: opts.model,
+      raw: {},
+    } satisfies LlmResult));
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', `${UNCONSTRAINED_MODEL},${SONNET_5_5}`, '--write-db'],
+      store,
+      callLlmFn,
+    });
+
+    expect(callLlmFn).toHaveBeenCalledTimes(2);
+    const calls = callLlmFn.mock.calls.map(([opts]) => opts as LlmCallOptions);
+    expect(calls.find((o) => o.model === UNCONSTRAINED_MODEL)?.temperature).toBe(GRADING_CALL_SETTINGS.temperature);
+    expect(calls.find((o) => o.model === SONNET_5_5)?.temperature).toBeUndefined();
+
+    const sonnetRun = runs.find((r) => r.model === SONNET_5_5)!;
+    expect(sonnetRun.status).toBe('completed');
+    expect(sonnetRun.settings.temperature).toBe(GRADING_CALL_SETTINGS.temperature);
+    expect(sonnetRun.settings.effectiveTemperature).toBeNull();
+
+    const unconstrainedRun = runs.find((r) => r.model === UNCONSTRAINED_MODEL)!;
+    expect(unconstrainedRun.settings.effectiveTemperature).toBe(GRADING_CALL_SETTINGS.temperature);
+  });
+
+  it('drops an explicit --temperature override, not just the task default, for a fixedTemperature model', async () => {
+    const { store, runs } = makeGradingFakeStore();
+    const callLlmFn = vi.fn(async (opts: LlmCallOptions) => ({
+      text: JSON.stringify({ isCorrect: true, score: 95, hasCorrectAccents: true, feedback: 'Correct.', corrections: {} }),
+      model: opts.model,
+      raw: {},
+    } satisfies LlmResult));
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'grading', '--models', SONNET_5_5, '--temperature', '0.7', '--write-db'],
+      store,
+      callLlmFn,
+    });
+
+    expect(callLlmFn).toHaveBeenCalledTimes(1);
+    expect(callLlmFn.mock.calls[0][0].temperature).toBeUndefined();
+
+    const run = runs[0];
+    expect(run.settings.temperature).toBe(0.7);
+    expect(run.settings.effectiveTemperature).toBeNull();
+  });
+
+  function makeTranscriptionFakeStoreForConstraints(): { store: EvalStore; runs: EvalRunRow[] } {
+    const runs: EvalRunRow[] = [];
+    let nextRunId = 0;
+    const set = makeEvalSetRow({ task: 'transcription', selection: { pdfPath: 'unit-1.pdf' } });
+    const item = makeEvalItemRow({ item_key: 'slide-1', payload: { slide: 1, text_layer: 'Bonjour', category: 'text' } });
+    const model: EvalModelCurrentRow = { id: 'model-sonnet-5.5', family_id: 'f2', slug: SONNET_5_5, effective_date: '2026-09-25', price_prompt_usd_per_m: '1', price_completion_usd_per_m: '5', hosts: [] };
+
+    const store: EvalStore = {
+      ...baseFakeEvalStore(),
+      async getSet(id) { return id === set.id ? set : null; },
+      async listItems(setId) { return setId === set.id ? [item] : []; },
+      async latestReviewRound() { return null; },
+      async getModelBySlug(slug) { return slug === model.slug ? model : null; },
+      async insertRun(row) {
+        const run = makeEvalRunRow({ id: `run-${++nextRunId}`, ...row, status: row.status ?? 'running' });
+        runs.push(run);
+        return run;
+      },
+      async updateRun(id, patch) {
+        const run = runs.find((r) => r.id === id);
+        if (!run) throw new Error(`no run ${id}`);
+        Object.assign(run, patch);
+      },
+      async insertResults() {},
+    };
+    return { store, runs };
+  }
+
+  it('sends the lowest reasoning effort instead of disabling reasoning for a reasoningRequired model on the transcription task', async () => {
+    const { store, runs } = makeTranscriptionFakeStoreForConstraints();
+    const callLlmFn = vi.fn(async (opts: LlmCallOptions) => ({
+      text: 'Bonjour',
+      model: opts.model,
+      raw: {},
+    } satisfies LlmResult));
+
+    await main({
+      argv: ['--set', 'set-1', '--task', 'transcription', '--models', SONNET_5_5, '--write-db'],
+      store,
+      callLlmFn,
+    });
+
+    expect(callLlmFn).toHaveBeenCalledTimes(1);
+    expect(callLlmFn.mock.calls[0][0].reasoning).toEqual({ effort: 'minimal' });
+    expect(runs[0].status).toBe('completed');
+    expect(runs[0].settings.reasoning).toBeNull();
+    expect(runs[0].settings.effectiveReasoning).toEqual({ effort: 'minimal' });
   });
 });
 

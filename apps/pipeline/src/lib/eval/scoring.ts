@@ -1,10 +1,11 @@
 /**
  * Paired comparison between a baseline variant and a candidate variant scored on the same items:
  * agreement, discordant counts, McNemar's exact test on the discordant pairs, a 95% CI on the
- * difference in pass rate, and the non-inferiority verdict against the task's tolerance (`tolerances.ts`).
+ * difference in pass rate, and the non-inferiority verdict against a resolved tolerance
+ * (`tolerances.ts`'s `resolveTolerance`).
  */
 
-import { TASK_TOLERANCES } from './tolerances';
+import { resolveTolerance, type ResolvedTolerance } from './tolerances';
 import type { EvalTask } from './types';
 
 /**
@@ -119,14 +120,20 @@ export interface NonInferiorityVerdict {
 }
 
 /**
- * Applies a task's tolerance (`tolerances.ts`) to a paired comparison's pass rates. This
- * checks only the primary-metric direction/tolerance pair; a task's secondary conditions
- * (grading's false-positive cap, generation's reject-rate cap, etc. — see
- * `TASK_TOLERANCES[task].description`) are not expressible from pass/fail pairs alone and
- * are left to the caller to check against its own per-item breakdown.
+ * Applies a tolerance to a paired comparison's pass rates. This checks only the primary-metric
+ * direction/tolerance pair; a task's secondary conditions (grading's false-positive cap,
+ * generation's reject-rate cap, etc., see `tolerance.description`) are not expressible from
+ * pass/fail pairs alone and are left to the caller to check against its own per-item breakdown.
+ * `tolerance` defaults to the task's own default (no experiment override) when the caller has none
+ * to pass; `eval-compare` always resolves and passes one explicitly, since an experiment's
+ * `decision_rule` may override it.
  */
-export function nonInferiorityVerdict(task: EvalTask, comparison: PairedComparisonResult): NonInferiorityVerdict {
-  const spec = TASK_TOLERANCES[task];
+export function nonInferiorityVerdict(
+  task: EvalTask,
+  comparison: PairedComparisonResult,
+  tolerance: ResolvedTolerance = resolveTolerance(task),
+): NonInferiorityVerdict {
+  const spec = tolerance;
   const nonInferior = spec.direction === 'higher-is-better'
     ? comparison.candidatePassRate >= comparison.baselinePassRate - spec.tolerance
     : comparison.candidatePassRate <= comparison.baselinePassRate + spec.tolerance;

@@ -1,11 +1,18 @@
 /**
  * Paired comparison of one or more candidate runs against a baseline run on their shared,
  * reference-approved items: agreement, McNemar's exact test, a 95% CI on the
- * difference, and the non-inferiority verdict against the task's tolerance. Also reports the
+ * difference, and the non-inferiority verdict against a resolved tolerance. Also reports the
  * noise floor from repeats of the same variant among the runs given, and writes a markdown report.
  * Dry run by default (the report only); --write-db additionally updates each run's own
  * `eval_runs.summary.compare` with its part of the result. This is evidence, not a decision:
  * `--write-db` alone never touches `eval_findings` or an experiment's status — see `--decide` below.
+ *
+ * The tolerance a verdict is judged against is the task's own default (`tolerances.ts`) unless
+ * every run in `--runs`/`--baseline` cites the same experiment and that experiment's
+ * `decision_rule` carries a numeric override (`tolerance`, `precisionTolerance`, `maxSlideDrop`);
+ * runs citing different experiments are refused outright, since there would be no single rule to
+ * resolve. The report states which rule applied. An unrecognized `decision_rule` key is ignored
+ * and logged as a warning rather than silently applied or refused.
  *
  * When the eval set has no approved reference, there is no accuracy verdict to compute — the command
  * falls back to a reference-free report instead of exiting: item-level agreement between runs, per-
@@ -86,6 +93,7 @@ import {
 } from '../lib/eval/compare/transcription';
 import { runCostLatency, providerPinMismatches } from '../lib/eval/compare/shared';
 import { pairedComparison, pairedMappingComparison, mappingNoiseFloor, nonInferiorityVerdict, meanAndCi95 } from '../lib/eval/scoring';
+import { resolveTolerance, describeToleranceSource } from '../lib/eval/tolerances';
 import type { AuditGateCriterion, GradingReference } from '../lib/eval/runner';
 import type { EvalTask } from '../lib/eval/types';
 import { defineCli } from '../lib/options/define-cli';
@@ -375,6 +383,25 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
     process.exit(1);
   }
 
+  // Every compared run must cite the same experiment or none: a tolerance override is a property
+  // of one experiment, so comparing runs from two different ones has no single rule to resolve.
+  const experimentIds = new Set(runs.map((r) => r.experiment_id).filter((id): id is string => id !== null));
+  if (experimentIds.size > 1) {
+    logger.error(`Runs in --runs/--baseline cite different experiments (${[...experimentIds].join(', ')}); every compared run must share one experiment or none.`);
+    process.exit(1);
+  }
+  const sharedExperimentId = experimentIds.size === 1 ? [...experimentIds][0] : undefined;
+  const sharedExperiment = sharedExperimentId ? await store.getExperiment(sharedExperimentId) : null;
+  if (sharedExperimentId && !sharedExperiment) {
+    logger.error(`No eval_experiments row found for id ${sharedExperimentId}, cited by one of --runs/--baseline.`);
+    process.exit(1);
+  }
+  const resolvedTolerance = resolveTolerance(task, sharedExperiment?.decision_rule);
+  if (resolvedTolerance.unknownKeys.length > 0) {
+    logger.warn(`Experiment ${sharedExperiment!.slug}'s decision_rule has unrecognized key(s), ignored: ${resolvedTolerance.unknownKeys.join(', ')}.`);
+  }
+  const toleranceNote = describeToleranceSource(resolvedTolerance);
+
   const resultsByRunId = new Map<string, EvalResultRow[]>();
   for (const r of runs) {
     resultsByRunId.set(r.id, await store.listResults(r.id));
@@ -471,7 +498,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
           if (outcomes.length === 0) return undefined;
           const candidateStats = transcriptionRunStats(candidateResults);
           const noContentAgreement = transcriptionNoContentAgreementVsReference(candidateResults, referenceMarkdownByItemId);
-          const verdict = transcriptionNonInferiorityVerdict(baselineStats, candidateStats, outcomes, noContentAgreement);
+          const verdict = transcriptionNonInferiorityVerdict(baselineStats, candidateStats, outcomes, noContentAgreement, resolvedTolerance);
           return {
             variant: {
               candidateRunId: candidate.id,
@@ -498,6 +525,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
         buildMarkdown: (variants, noiseFloors) => buildTranscriptionCompareMarkdown({
           setId: baselineRun.set_id, baselineRunId: baselineRun.id, baselineModel: baselineRun.model,
           baselineStats, baselineNoContentAgreement, baselineTableAgreement, variants, noiseFloors, generatedAt: new Date().toISOString(),
+          toleranceNote,
         }),
         candidateSummary: (variant) => ({
           baselineRunId: baselineRun.id, stats: variant.candidateStats, paired: variant.paired,
@@ -590,9 +618,10 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
             ? auditPerCriterionVerdict(
                 buildAuditOutcomesForRun(itemReference as Map<string, Partial<Record<AuditGateCriterion, boolean>>>, baselineResults),
                 buildAuditOutcomesForRun(itemReference as Map<string, Partial<Record<AuditGateCriterion, boolean>>>, candidateResults),
+                resolvedTolerance,
               )
             : undefined;
-          const verdict = nonInferiorityVerdict(task, comparison);
+          const verdict = nonInferiorityVerdict(task, comparison, resolvedTolerance);
           // Audit's real decision is per-criterion (see the module doc comment); grading's pooled
           // verdict IS its real decision, since it has only one criterion.
           const candidateVerdict: CandidateVerdict = auditPerCriterion
@@ -620,7 +649,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
         },
         buildMarkdown: (variants, noiseFloors) => buildCompareMarkdown({
           task, setId: baselineRun.set_id, baselineRunId: baselineRun.id, baselineModel: baselineRun.model,
-          variants, noiseFloors, generatedAt: new Date().toISOString(), rejectedKeys,
+          variants, noiseFloors, generatedAt: new Date().toISOString(), rejectedKeys, toleranceNote,
         }),
         candidateSummary: (variant) => (variant.auditPerCriterion
           ? {

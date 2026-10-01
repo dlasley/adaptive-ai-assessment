@@ -20,6 +20,18 @@
  * model) key was already transcribed — but never writes to it, so a baseline run never mutates
  * production's own cache. A Mistral-family model is throttled to one request per second regardless
  * of interleaving.
+ *
+ * Every run's `variant_label` is always `<label>:<model slug>`, whether this invocation runs one
+ * variant or several; `--label` defaults to the experiment slug when `--experiment` is given, else
+ * the task name, so a run is never left unlabeled. `repeat_index` is the invocation's own repeat
+ * offset for an ad hoc run with no `--experiment`; with one, it continues the count already on
+ * record for that experiment and model, judged by prompt hash and the caller-controlled settings
+ * (`temperature`, `reasoning`, `provider`, `groupSize`, `shuffleSeed`, `exclusionPass`,
+ * `renderDpi`; a key missing on a run recorded before it existed is not compared at all, so an old
+ * row can still count toward a new one's repeat even where it never recorded that value), so a
+ * repeat launched by hand in a later invocation gets the next number instead of restarting at 1.
+ * This count is resolved once per distinct model before any run in the invocation is inserted, so
+ * several repeats of one model in a single invocation get consecutive numbers rather than gaps.
  */
 
 import { loadEnv } from '../lib/env';
@@ -34,6 +46,7 @@ import { runVariantsLoop } from '../lib/eval/run-loop';
 import { mulberry32, shuffle } from '../lib/eval/sampling';
 import { BUDGET_CAPS_USD, isWithinBudget, projectCostUsd, projectVariantCostUsd, registryPriceOf, type ModelPrice } from '../lib/eval/tolerances';
 import { TASK_DEFINITIONS } from '../lib/eval/tasks/registry';
+import { resolveEffectiveSamplingSettings } from '../lib/eval/tasks/shared';
 import { variantKey, type Variant, type EffectiveCallSettings, type ExclusionPassSettings } from '../lib/eval/tasks/types';
 import { CLASSIFY_PROMPT_HASH } from '../lib/slide-content-classifier';
 import { callLlm, type LlmCallOptions } from '@adaptive/shared/llm';
@@ -48,6 +61,12 @@ const logger = createLogger('eval-run');
 
 const BLOCK_SIZE = 25;
 const MISTRAL_MIN_INTERVAL_MS = 1000;
+/** Tasks whose own call site disables reasoning by default (`reasoning ?? { enabled: false }` in
+ * `tasks/mapping.ts`/`tasks/transcription.ts`) when `--reasoning` wasn't given. Audit and grading
+ * send whatever `--reasoning` resolved to, undefined included, with no default of their own. Used
+ * only to compute the per-variant settings this invocation logs and records; each task module
+ * applies the same default independently at call time. */
+const TASKS_DISABLING_REASONING_BY_DEFAULT = new Set<string>(['mapping', 'transcription']);
 const RENDER_DPI_MIN = 72;
 const RENDER_DPI_MAX = 400;
 
@@ -78,7 +97,7 @@ export const cli = defineCli(
     temperature: { type: 'number', help: "Overrides the task's production temperature for every variant" },
     repeat: { type: 'number', default: 1, min: 1, help: 'Repeats of each model, each its own eval_runs row (repeat_index)' },
     experiment: { type: 'string', help: 'eval_experiments id or slug to attribute these runs to — resolved and stamped as experiment_id on each eval_runs row' },
-    label: { type: 'string', help: 'Variant label recorded on each run (suffixed with the model slug when more than one variant runs)' },
+    label: { type: 'string', help: 'Label recorded on each run as <label>:<model slug>; defaults to the experiment slug when --experiment is given, else the task name' },
     'max-cost': { type: 'number', min: 0, help: `Refuses to start any single variant whose projected cost exceeds this (default: $${BUDGET_CAPS_USD.candidateRun})` },
     'allow-unpriced': { type: 'boolean', default: false, help: 'Run a variant even when its model has no listed price, so its cost cannot be projected or capped' },
     'group-size': { type: 'number', default: AUDIT_GROUP_SIZE, min: 1, help: `Audit task: questions sharing one audit call (default ${AUDIT_GROUP_SIZE}, matching production; a larger value groups multiple questions into one call)` },
@@ -115,11 +134,18 @@ export function buildVariants(models: string[], repeat: number): Variant[] {
   return variants;
 }
 
-export function buildVariantLabel(label: string | undefined, variant: Variant, variants: Variant[]): string | null {
-  if (!label) return null;
-  const needsSuffix = variants.length > 1;
-  if (!needsSuffix) return label;
-  return variant.repeatIndex > 1 ? `${label}:${variant.model}:r${variant.repeatIndex}` : `${label}:${variant.model}`;
+/** One run-label convention: always `<label>:<model slug>`, with no `:r<n>` repeat suffix. That
+ * distinction lives in the `repeat_index` column instead, so a repeat launched in its own
+ * invocation reads the same label as one launched alongside its baseline. */
+export function buildVariantLabel(label: string, variant: Variant): string {
+  return `${label}:${variant.model}`;
+}
+
+/** Resolves the label text `buildVariantLabel` suffixes with the model slug: `--label` when
+ * given, else the experiment's slug when `--experiment` was given, else the task name. An
+ * unlabeled run is never bare, and groups naturally with its experiment when it has one. */
+export function resolveLabel(optionLabel: string | undefined, experimentSlug: string | undefined, task: string): string {
+  return optionLabel ?? experimentSlug ?? task;
 }
 
 export function parseReasoningFlag(raw: string | undefined): LlmCallOptions['reasoning'] | undefined {
@@ -173,6 +199,57 @@ export function buildEffectiveCallSettings(
  * --shuffle-groups's determinism is unit-testable without a live Supabase connection. */
 export function orderItemsForRun<T>(items: T[], shuffleSeed: number | undefined): T[] {
   return shuffleSeed !== undefined ? shuffle(items, mulberry32(shuffleSeed)) : items;
+}
+
+/** Recursively sorts object keys so two values built with the same content in a different key
+ * order compare equal; arrays and primitives pass through unchanged. */
+function canonicalizeForComparison(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalizeForComparison);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value as Record<string, unknown>).sort().map((key) => [key, canonicalizeForComparison((value as Record<string, unknown>)[key])]),
+    );
+  }
+  return value;
+}
+
+/** The `settings` keys a repeat's identity is judged on: every flag the caller actually chose.
+ * `jsonMode` is a fixed fact about the task, not a choice, so it's left out; `effectiveTemperature`/
+ * `effectiveReasoning` are left out too, since they're derived from `MODEL_CONSTRAINTS` rather than
+ * requested, and that map can change independently of anything the caller asked for. */
+const REPEAT_IDENTITY_SETTINGS_KEYS = ['temperature', 'reasoning', 'provider', 'groupSize', 'shuffleSeed', 'exclusionPass', 'renderDpi'] as const;
+
+/** Whether two runs' settings count as the same repeat for `resolveExistingRepeatCount`, judged
+ * only on `REPEAT_IDENTITY_SETTINGS_KEYS`. A key missing entirely on either side (a run recorded
+ * before that key existed) is not compared at all rather than compared against a default: an old
+ * row with no `renderDpi` key, say, matches a new transcription row at any dpi, instead of being
+ * permanently excluded from its own repeat count because a value it never recorded doesn't match
+ * whatever the current default happens to be. */
+function settingsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  return REPEAT_IDENTITY_SETTINGS_KEYS.every((key) => {
+    const aValue = a[key];
+    const bValue = b[key];
+    if (aValue === undefined || bValue === undefined) return true;
+    return JSON.stringify(canonicalizeForComparison(aValue)) === JSON.stringify(canonicalizeForComparison(bValue));
+  });
+}
+
+/**
+ * The number of existing, non-failed runs already on `experimentId` for `model`, with the same
+ * prompt hash and the same caller-controlled settings (`settingsEqual`): what `repeat_index` for
+ * a new run of this model continues from. Called once per distinct model before any run in this
+ * invocation is inserted, so a later variant's count is never inflated by an earlier variant's own
+ * insert within the same invocation.
+ */
+export async function resolveExistingRepeatCount(
+  store: EvalStore,
+  experimentId: string,
+  model: string,
+  promptHash: string | null,
+  settings: Record<string, unknown>,
+): Promise<number> {
+  const existing = await store.listRunsByExperimentAndModel(experimentId, model);
+  return existing.filter((r) => r.status !== 'failed' && r.prompt_hash === promptHash && settingsEqual(r.settings, settings)).length;
 }
 
 /** True when every one of `resultRows` carries a non-null `error`: a variant whose loop finished
@@ -359,10 +436,47 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   const runByVariantKey = new Map<string, EvalRunRow>();
   const taskDef = TASK_DEFINITIONS[options.task];
   const promptHash = taskDef.promptHash();
+  const label = resolveLabel(options.label, experiment?.slug, options.task);
   // Stamped onto every finalized run's summary: the reviewed-reference state (if any) this run's
   // scoring reflects, so a later rescore against a newer review round is distinguishable from this
   // one. Fetched before any run row exists so a failure here cannot strand a row at 'running'.
   const reviewRound = await store.latestReviewRound(options.set);
+
+  // The settings a model's calls actually use, including MODEL_CONSTRAINTS' adjustments. The
+  // same for every repeat of one model, so this is computed once per model rather than once per
+  // variant, both for the repeat-count lookup below and for the row this invocation inserts.
+  function buildSettingsForModel(model: string): { settings: Record<string, unknown>; adjustments: string[] } {
+    const intendedReasoning = reasoning ?? (TASKS_DISABLING_REASONING_BY_DEFAULT.has(options.task) ? { enabled: false } : undefined);
+    const effectiveSampling = resolveEffectiveSamplingSettings(model, callSettings.temperature, intendedReasoning, reasoning !== undefined);
+    const settings: Record<string, unknown> = {
+      temperature: callSettings.temperature,
+      jsonMode: callSettings.jsonMode,
+      reasoning: reasoning ?? null,
+      provider: callSettings.provider ?? null,
+      groupSize,
+      shuffleSeed: shuffleSeed ?? null,
+      exclusionPass: exclusionPass
+        ? { model: exclusionPass.model, provider: exclusionPass.provider?.order?.[0] ?? null, promptHash: exclusionPass.promptHash }
+        : null,
+      renderDpi: options.task === 'transcription' ? options.renderDpi : null,
+      effectiveTemperature: effectiveSampling.temperature ?? null,
+      effectiveReasoning: effectiveSampling.reasoning ?? null,
+    };
+    return { settings, adjustments: effectiveSampling.adjustments };
+  }
+
+  // Resolved once per distinct model, before any run row exists, so a later variant's count is
+  // never inflated by an earlier variant's own insert within this same invocation (the gap A8's
+  // review caught: re-resolving per variant after each insert produced 1, 3, 5 instead of 1, 2, 3).
+  // Empty (every lookup below falls back to 0) for an ad hoc run with no --experiment, which is
+  // exactly "repeat_index is just the invocation's own offset."
+  const existingRepeatCountByModel = new Map<string, number>();
+  if (experiment) {
+    for (const model of new Set(variants.map((v) => v.model))) {
+      const { settings } = buildSettingsForModel(model);
+      existingRepeatCountByModel.set(model, await resolveExistingRepeatCount(store, experiment.id, model, promptHash, settings));
+    }
+  }
 
   for (const variant of variants) {
     const transcriptionProjected = projectVariantCostUsd(options.task, registryPriceOf(modelBySlug.get(variant.model)), items.length, groupSize);
@@ -387,29 +501,26 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
 
     if (!options.writeDb) continue;
 
-    const settings: Record<string, unknown> = {
-      temperature: callSettings.temperature,
-      jsonMode: callSettings.jsonMode,
-      reasoning: reasoning ?? null,
-      provider: callSettings.provider ?? null,
-      groupSize,
-      shuffleSeed: shuffleSeed ?? null,
-      exclusionPass: exclusionPass
-        ? { model: exclusionPass.model, provider: exclusionPass.provider?.order?.[0] ?? null, promptHash: exclusionPass.promptHash }
-        : null,
-      renderDpi: options.task === 'transcription' ? options.renderDpi : null,
-    };
+    // What this variant's model would reject as sent gets adjusted here too, purely to log and
+    // record what the task module will actually send. Each task module makes the same call
+    // independently, at the point it builds its own request.
+    const { settings, adjustments } = buildSettingsForModel(variant.model);
+    if (adjustments.length > 0) {
+      logger.info(`${variantKey(variant)}: ${adjustments.join('; ')}`);
+    }
+
+    const repeatIndex = (existingRepeatCountByModel.get(variant.model) ?? 0) + variant.repeatIndex;
     const run = await store.insertRun({
       set_id: options.set,
       task: options.task,
       model: variant.model,
       experiment_id: experiment?.id ?? null,
       model_version_id: modelBySlug.get(variant.model)?.id ?? null,
-      variant_label: buildVariantLabel(options.label, variant, variants),
+      variant_label: buildVariantLabel(label, variant),
       provider_pin: callSettings.provider?.order?.[0] ?? null,
       prompt_hash: promptHash,
       settings,
-      repeat_index: variant.repeatIndex,
+      repeat_index: repeatIndex,
       projected_cost_usd: projected ?? null,
       status: 'running',
     });

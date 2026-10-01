@@ -23,7 +23,7 @@ import {
   type PairedComparisonResult,
   type NonInferiorityVerdict,
 } from '../scoring';
-import { TASK_TOLERANCES } from '../tolerances';
+import { resolveTolerance, type ResolvedTolerance } from '../tolerances';
 import {
   expectedIsCorrect,
   criterionPrecisionRecallF1,
@@ -466,22 +466,24 @@ export interface AuditCriterionVerdict {
 /**
  * The audit task's real non-inferiority verdict: each of the six gate criteria's own recall and
  * precision, computed independently for the baseline and the candidate (not paired), checked
- * against the task's tolerance (recall >= baseline - 3pp, precision >= baseline - 5pp). A
- * criterion with no reference-backed data for either variant passes vacuously — there's nothing to
- * regress.
+ * against a tolerance (recall >= baseline - tolerance, precision >= baseline -
+ * precisionTolerance). A criterion with no reference-backed data for either variant passes
+ * vacuously: there's nothing to regress. `tolerance` defaults to the audit task's own default (no
+ * experiment override) when the caller has none to pass; `eval-compare` always resolves and passes
+ * one explicitly, since an experiment's `decision_rule` may override it.
  */
 export function auditPerCriterionVerdict(
   baselineOutcomes: AuditItemOutcome[],
   candidateOutcomes: AuditItemOutcome[],
+  tolerance: ResolvedTolerance = resolveTolerance('audit'),
 ): AuditCriterionVerdict[] {
-  const spec = TASK_TOLERANCES.audit;
-  const precisionTolerance = spec.precisionTolerance ?? spec.tolerance;
+  const precisionTolerance = tolerance.precisionTolerance ?? tolerance.tolerance;
 
   return AUDIT_GATE_CRITERIA.map((criterion) => {
     const baseline = criterionPrecisionRecallF1(baselineOutcomes, criterion);
     const candidate = criterionPrecisionRecallF1(candidateOutcomes, criterion);
     const recallOk = Number.isNaN(baseline.recall) || Number.isNaN(candidate.recall)
-      || candidate.recall >= baseline.recall - spec.tolerance;
+      || candidate.recall >= baseline.recall - tolerance.tolerance;
     const precisionOk = Number.isNaN(baseline.precision) || Number.isNaN(candidate.precision)
       || candidate.precision >= baseline.precision - precisionTolerance;
     return { criterion, baseline, candidate, recallOk, precisionOk, pass: recallOk && precisionOk };
@@ -527,6 +529,10 @@ export function buildCompareMarkdown(params: {
   noiseFloors: NoiseFloor[];
   generatedAt: string;
   rejectedKeys?: RejectedKeysReport;
+  /** Which tolerance rule the verdicts below were judged against: `describeToleranceSource`'s
+   * output. Defaults to "task default" for a caller that hasn't resolved one, matching the
+   * behaviour before an experiment could override it. */
+  toleranceNote?: string;
 }): string {
   const isAudit = params.task === 'audit';
   const lines: string[] = [];
@@ -534,6 +540,7 @@ export function buildCompareMarkdown(params: {
   lines.push('');
   lines.push(`Generated: ${params.generatedAt}`);
   lines.push(`Baseline: run ${params.baselineRunId} (${params.baselineModel})`);
+  lines.push(`Tolerance: ${params.toleranceNote ?? 'task default'}`);
 
   if (params.rejectedKeys) {
     const { questions, excludedItemCount, included } = params.rejectedKeys;

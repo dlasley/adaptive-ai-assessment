@@ -619,8 +619,18 @@ price, and each result row's `cost_usd` sums both calls when the slide was kept.
 Before anything runs, `--models` is resolved against `eval_models_current` (the latest registered
 snapshot per slug) and `--experiment`, if given, against `eval_experiments`; either a model with no
 registry row or an unresolvable experiment refuses to start the whole invocation: the same style as
-the budget-cap refusal below, printing what's missing rather than running with a gap. A resolved run
-stamps `experiment_id` and `model_version_id` on its `eval_runs` row, and each call's response stamps
+the budget-cap refusal below, printing what's missing rather than running with a gap.
+
+A model `MODEL_CONSTRAINTS` (`@adaptive/shared/models`) flags as unable to accept the task's
+intended temperature or default-disabled reasoning gets both adjusted per variant before its calls
+go out: `temperature` is dropped outright for a model that requires its own fixed default, and a
+task that would otherwise send `reasoning: { enabled: false }` sends the lowest effort tier that
+still counts as enabled instead. An explicit `--reasoning` is a deliberate choice and is never
+adjusted this way; it's left to fail if the model rejects it. Each adjustment is logged once per
+variant, and the values actually sent are recorded as `settings.effectiveTemperature`/
+`settings.effectiveReasoning` alongside the intended `settings.temperature`/`settings.reasoning`.
+
+A resolved run stamps `experiment_id` and `model_version_id` on its `eval_runs` row, and each call's response stamps
 `served_provider` on its `eval_results` rows alongside the existing `served_model` (what OpenRouter
 actually served, as distinct from `--provider`'s request). Every finished run's `summary` also gets a
 top-level `primary_metric: {name, value, direction}`, the value the comparison views select
@@ -632,6 +642,24 @@ the per-item error handling breaks that variant without stopping the others, or 
 its result rows carries a non-null `error` (every call errored individually, e.g. a model that
 rejects the task's reasoning setting), and `aborted` for every non-errored variant when SIGINT is
 received (finishing the call already in flight first, then stopping). A row is never left `running`.
+
+Every run's `variant_label` is always `<label>:<model slug>`, whether this invocation runs one
+variant or several, with no `:r<n>` repeat suffix; that distinction lives in `repeat_index`
+instead. `--label` defaults to the experiment slug when `--experiment` is given, else the task
+name, so a run is never left unlabeled; labels written before this convention may differ.
+`repeat_index` is the invocation's own repeat offset for an ad hoc run with no `--experiment`,
+restarting at 1 per invocation. With one, it is one more than the number of existing, non-failed
+runs already on that experiment for the same model, judged by prompt hash and the
+caller-controlled settings (`temperature`, `reasoning`, `provider`, `groupSize`, `shuffleSeed`,
+`exclusionPass`, `renderDpi`; the derived `effectiveTemperature`/`effectiveReasoning` don't count,
+since they follow from `MODEL_CONSTRAINTS` rather than anything asked for), plus the invocation's
+own offset. A settings key missing on a run recorded before it existed is not compared at all, so
+(for example) a `transcription` run from before `--render-dpi` existed still counts toward a new
+run's repeat regardless of dpi, rather than being permanently excluded over a value it never
+recorded. This count is resolved once per distinct model before any run in the invocation is
+inserted, so several repeats of the same model in one invocation get consecutive numbers; a
+repeat launched by hand in a later invocation continues the count instead of restarting at 1, and
+a changed setting (`--render-dpi`, a different `--temperature`, ...) starts its own count from 1.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-run.ts --set <id> --task <audit|grading|mapping|transcription> --models <slug>[,<slug>...] [options]
@@ -645,7 +673,7 @@ Options:
   --temperature <n>     Overrides the task's production temperature for every variant
   --repeat <n>          Repeats of each model, each its own eval_runs row (default: 1)
   --experiment <id|slug>  eval_experiments id or slug to attribute these runs to — resolved and stamped as experiment_id on each eval_runs row
-  --label <text>        Variant label recorded on each run (suffixed with the model slug when more than one variant runs)
+  --label <text>        Label recorded on each run as <label>:<model slug>; defaults to the experiment slug when --experiment is given, else the task name
   --max-cost <usd>      Refuses to start any single variant whose projected cost exceeds this (default: $2)
   --allow-unpriced      Run a variant even when its model has no listed price, so its cost cannot be projected or capped (default: false)
   --group-size <n>      Audit task: questions sharing one audit call (default: 1, matching production; a larger value groups multiple questions into one call)
@@ -687,9 +715,20 @@ Plus the shared Database target and Logging flags above.
 
 Paired comparison of candidate runs against a baseline run on their shared, reference-approved items:
 agreement, McNemar's exact test, a 95% confidence interval on the difference, the non-inferiority
-verdict against the task's tolerance, and the noise floor from any repeats of the same model
+verdict against a resolved tolerance, and the noise floor from any repeats of the same model
 among the runs given. Always writes the markdown report; dry run by default otherwise, `--write-db`
 additionally updates each run's own `eval_runs.summary.compare`.
+
+The tolerance a verdict is judged against is the task's own default (`TASK_TOLERANCES` in
+`tolerances.ts`) unless every run in `--runs`/`--baseline` cites the same `eval_experiments` row
+(`eval_runs.experiment_id`) and that experiment's `decision_rule` carries a numeric override:
+`tolerance`, `precisionTolerance` (audit's secondary precision check), or `maxSlideDrop`
+(transcription's per-slide limit), alongside a `description` string for a human reading the
+experiment record. Runs in `--runs`/`--baseline` that cite different experiments are refused
+outright: a tolerance override is a property of one experiment, so there's no single rule to
+resolve across two. A `decision_rule` key other than those four is ignored and logged as a
+warning rather than silently applied or refused. The report's "Tolerance:" line always states
+which rule applied: `task default`, or `experiment override: <key> <value>[, ...]`.
 
 The mapping and transcription tasks get their own report shape, since their primary metric
 (per-topic heading-set F1, or `1 - normalized edit distance` against a checked transcript, both in
