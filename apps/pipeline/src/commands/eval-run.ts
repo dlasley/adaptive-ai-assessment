@@ -70,8 +70,8 @@ const MISTRAL_MIN_INTERVAL_MS = 1000;
  * only to compute the per-variant settings this invocation logs and records; each task module
  * applies the same default independently at call time. */
 const TASKS_DISABLING_REASONING_BY_DEFAULT = new Set<string>(['mapping', 'transcription']);
-const RENDER_DPI_MIN = 72;
-const RENDER_DPI_MAX = 400;
+export const RENDER_DPI_MIN = 72;
+export const RENDER_DPI_MAX = 400;
 
 const REASONING_CHOICES = ['off', 'none', 'minimal', 'low', 'medium', 'high'] as const;
 
@@ -223,8 +223,11 @@ function canonicalizeForComparison(value: unknown): unknown {
  * `effectiveReasoning` are left out too, since they're derived from `MODEL_CONSTRAINTS` and the
  * model registry rather than requested, and either can change independently of anything the caller
  * asked for. */
-const REPEAT_IDENTITY_SETTINGS_KEYS = ['temperature', 'reasoning', 'provider', 'groupSize', 'shuffleSeed', 'exclusionPass', 'renderDpi'] as const;
-type RepeatIdentityKey = (typeof REPEAT_IDENTITY_SETTINGS_KEYS)[number];
+/** Exported so a caller validating settings before they're written (`eval-experiment-create`'s
+ * declared-variant `settings` check) checks keys against this list instead of a second, divergent
+ * copy of it. */
+export const REPEAT_IDENTITY_SETTINGS_KEYS = ['temperature', 'reasoning', 'provider', 'groupSize', 'shuffleSeed', 'exclusionPass', 'renderDpi'] as const;
+export type RepeatIdentityKey = (typeof REPEAT_IDENTITY_SETTINGS_KEYS)[number];
 type RepeatIdentityTask = 'audit' | 'grading' | 'mapping' | 'transcription';
 
 /** `temperature`'s "no override was sent" state: distinct from any number the task's own default

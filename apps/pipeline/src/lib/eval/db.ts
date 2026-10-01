@@ -133,6 +133,17 @@ export interface EvalExperimentRow {
   updated_at: string;
 }
 
+export type NewEvalExperimentRow = Pick<EvalExperimentRow, 'slug' | 'question' | 'tasks'> &
+  Partial<Pick<EvalExperimentRow, 'variants_declared' | 'decision_rule' | 'depends_on' | 'status' | 'notes'>>;
+
+/** One row of `eval_experiment_variants`, scoped to one experiment: a declared variant's label, and
+ * how many eval_runs rows currently match it under that view's rule. `eval-experiment-create`'s
+ * `--update` path reads this to refuse dropping a declared variant that already has matching runs. */
+export interface EvalExperimentVariantRunCountRow {
+  declared_label: string | null;
+  run_count: number;
+}
+
 /** One dated snapshot from `eval_models_current` (the latest row per slug) — the subset `eval-run`
  * needs to stamp `model_version_id` and identify the model it resolved. */
 export interface EvalModelCurrentRow {
@@ -215,7 +226,11 @@ export interface EvalStore {
   updateResultJudgeVerdict(id: string, verdict: Record<string, unknown>): Promise<void>;
   /** Resolves `idOrSlug` against `eval_experiments.id` first, then `.slug` — --experiment accepts either. */
   getExperiment(idOrSlug: string): Promise<EvalExperimentRow | null>;
-  updateExperiment(id: string, patch: Partial<Pick<EvalExperimentRow, 'status' | 'decided_at' | 'notes'>>): Promise<void>;
+  insertExperiment(row: NewEvalExperimentRow): Promise<EvalExperimentRow>;
+  updateExperiment(id: string, patch: Partial<Pick<EvalExperimentRow, 'status' | 'decided_at' | 'notes' | 'question' | 'variants_declared' | 'decision_rule' | 'depends_on'>>): Promise<void>;
+  /** Declared-variant row counts from `eval_experiment_variants` for one experiment: see
+   * `EvalExperimentVariantRunCountRow`. */
+  listDeclaredVariantRunCounts(experimentId: string): Promise<EvalExperimentVariantRunCountRow[]>;
   /** Resolves a --models slug against eval_models_current (the latest snapshot per slug). */
   getModelBySlug(slug: string): Promise<EvalModelCurrentRow | null>;
   /** Every eval_model_families row for one vendor, for eval-run's unregistered-model refusal: it
@@ -330,9 +345,22 @@ export function createSupabaseEvalStore(supabase: SupabaseClient): EvalStore {
       if (error) fail(`fetch eval_experiments row ${idOrSlug}`, error);
       return (data as EvalExperimentRow) ?? null;
     },
+    async insertExperiment(row) {
+      const { data, error } = await supabase.from('eval_experiments').insert(row).select().single();
+      if (error || !data) fail('insert eval_experiments row', error);
+      return data as EvalExperimentRow;
+    },
     async updateExperiment(id, patch) {
       const { error } = await supabase.from('eval_experiments').update(patch).eq('id', id);
       if (error) fail(`update eval_experiments row ${id}`, error);
+    },
+    async listDeclaredVariantRunCounts(experimentId) {
+      const { data, error } = await supabase
+        .from('eval_experiment_variants')
+        .select('declared_label, run_count')
+        .eq('experiment_id', experimentId);
+      if (error) fail(`list eval_experiment_variants for experiment ${experimentId}`, error);
+      return (data as EvalExperimentVariantRunCountRow[]) ?? [];
     },
     async getModelBySlug(slug) {
       const { data, error } = await supabase.from('eval_models_current').select().eq('slug', slug).maybeSingle();

@@ -61,7 +61,13 @@ export function baseFakeEvalStore(): EvalStore {
     async getExperiment() {
       throw new Error('not used by this test');
     },
+    async insertExperiment() {
+      throw new Error('not used by this test');
+    },
     async updateExperiment() {
+      throw new Error('not used by this test');
+    },
+    async listDeclaredVariantRunCounts() {
       throw new Error('not used by this test');
     },
     async getModelBySlug() {

@@ -502,7 +502,7 @@ This is the one script that calls `assertSupabaseTarget({ write: true })` direct
 
 ### Evaluation framework
 
-The six `eval-` commands below test whether a different model, provider, or setting would do as
+The seven `eval-` commands below test whether a different model, provider, or setting would do as
 well or better than what production currently uses on the audit, grading, mapping, or transcription
 task, on a frozen sample and through the exact prompt builder and parser production itself calls, so
 a candidate is judged on the same conditions it would actually run under. See
@@ -510,6 +510,56 @@ a candidate is judged on the same conditions it would actually run under. See
 for the table shapes and the durable experiment/model-registry/findings layer above them, and
 [`docs/cli-guide-content-ingestion-and-question-pipeline.md#10-workflow-evaluating-models`](../../docs/cli-guide-content-ingestion-and-question-pipeline.md#10-workflow-evaluating-models)
 for a full workflow walkthrough.
+
+### eval-experiment-create.ts
+
+Validates and creates (or updates) one `eval_experiments` row: the named question an evaluation
+program is testing, before any run is attributed to it. Dry run by default, printing the row it
+would insert (or the patch it would apply) plus which `eval_models_current` row each declared
+variant's `model_slug` resolved to; `--write-db` persists it.
+
+`--tasks` accepts the task vocabulary in `apps/pipeline/src/lib/eval/types.ts`; `generation` and
+`validation` are accepted but warned about, since no `eval-run` runner exists for either yet.
+`--variants` is a path to a JSON array of `{label, model_slug, role, settings?}`: `label` must be
+non-empty and unique within the file; `model_slug` must resolve against `eval_models_current` unless
+it is `'*'` (matches any model); `role` is one of `baseline`, `candidate`, `exclusion_pass`,
+`step_down`, `cross_vendor`, `specialist`, `prompt_variant`, or `successor` (the vocabulary existing
+rows use); `settings`, when given, is limited to the repeat-identity keys `eval-run` itself writes
+(`temperature`, `reasoning`, `provider`, `groupSize`, `shuffleSeed`, `exclusionPass`, `renderDpi`,
+exported from `eval-run.ts` as `REPEAT_IDENTITY_SETTINGS_KEYS` rather than re-listed here), each
+checked against the shape `eval-run` actually writes for it (for example `provider` as a bare pin
+string or an `{order: [...]}` object, `renderDpi` as a whole number from 72 to 400). `--decision-rule`
+is a path to a JSON object limited to the keys `resolveTolerance()` (`tolerances.ts`) knows:
+`tolerance`, `precisionTolerance`, `maxSlideDrop` (each a number between 0 and 1), and `description`,
+refusing an unrecognized key outright rather than warning, since this is creation time, before
+anything has run under it. `--depends-on` is a comma-separated list of experiment slugs, each
+checked to exist. `--status` accepts only `proposed` or `running`; `decided`, `deferred`, and
+`superseded` are set exclusively by `eval-compare --decide`.
+
+`--update <slug>` replaces any subset of `--question`, `--variants`, `--decision-rule`,
+`--depends-on`, `--notes` on an existing experiment, through the same validation. `--slug` cannot be
+combined with `--update` (the slug is the public identifier and is never edited); `--tasks` and
+`--status` cannot be changed this way either (a task list is fixed at creation, and status moves only
+through `eval-compare --decide`). An update that would drop a declared variant (by its `label`) that
+already has matching `eval_runs` rows is refused, read through `eval_experiment_variants` with that
+view's own match rule, so an edit can never silently orphan a run's attribution.
+
+```bash
+npx tsx apps/pipeline/src/commands/eval-experiment-create.ts --slug <slug> --question "<text>" --tasks <task,...> --variants <path.json> [options]
+
+Options:
+  --slug <value>              Lowercase letters, digits and hyphens; the public identifier (required to create; refused together with --update)
+  --update <value>             Slug of an existing experiment to update, instead of creating a new one
+  --question <value>           The falsifiable question this experiment answers (required to create)
+  --tasks <value>              Comma-separated task(s) this experiment covers (required to create; fixed after creation)
+  --variants <value>           Path to a JSON array of {label, model_slug, role, settings?} (required to create)
+  --decision-rule <value>      Path to a JSON object of decision-rule overrides (tolerance, precisionTolerance, maxSlideDrop, description)
+  --depends-on <value>         Comma-separated experiment slugs this one depends on
+  --status <proposed|running>  Initial status (default: proposed); decided/deferred/superseded come only from eval-compare --decide
+  --notes <value>              Free text notes
+```
+
+Plus the shared Database target and Logging flags above.
 
 ### eval-set-create.ts
 

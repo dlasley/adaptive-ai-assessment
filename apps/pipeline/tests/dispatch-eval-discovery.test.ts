@@ -12,6 +12,7 @@ import { COMMANDS_DIR } from '../src/lib/paths';
 
 const EXPECTED_EVAL_COMMANDS = [
   'eval-compare',
+  'eval-experiment-create',
   'eval-finding',
   'eval-judge',
   'eval-rescore',

@@ -81,9 +81,13 @@ export const TASK_TOLERANCES: Record<EvalTask, TaskTolerance> = {
  * (every task resolves it against `TRANSCRIPTION_MAX_SLIDE_DROP`, only meaningful for
  * transcription), but is carried on `ResolvedTolerance` regardless of task so one resolved object
  * always has every field a caller might need. */
-const DECISION_RULE_NUMERIC_KEYS = ['tolerance', 'precisionTolerance', 'maxSlideDrop'] as const;
-type DecisionRuleNumericKey = (typeof DECISION_RULE_NUMERIC_KEYS)[number];
-const DECISION_RULE_KNOWN_KEYS = new Set<string>([...DECISION_RULE_NUMERIC_KEYS, 'description']);
+export const DECISION_RULE_NUMERIC_KEYS = ['tolerance', 'precisionTolerance', 'maxSlideDrop'] as const;
+export type DecisionRuleNumericKey = (typeof DECISION_RULE_NUMERIC_KEYS)[number];
+/** Every key a `decision_rule` object may carry: the three numeric overrides plus `description`.
+ * Exported so a caller validating a `decision_rule` before it's written (`eval-experiment-create`)
+ * checks against this list instead of a second, divergent copy of it. */
+export const DECISION_RULE_KNOWN_KEYS = [...DECISION_RULE_NUMERIC_KEYS, 'description'] as const;
+const DECISION_RULE_KNOWN_KEYS_SET = new Set<string>(DECISION_RULE_KNOWN_KEYS);
 
 export interface ResolvedTolerance {
   task: EvalTask;
@@ -114,7 +118,7 @@ export interface ResolvedTolerance {
 export function resolveTolerance(task: EvalTask, decisionRule?: Record<string, unknown> | null): ResolvedTolerance {
   const base = TASK_TOLERANCES[task];
   const rule = decisionRule ?? {};
-  const unknownKeys = Object.keys(rule).filter((key) => !DECISION_RULE_KNOWN_KEYS.has(key));
+  const unknownKeys = Object.keys(rule).filter((key) => !DECISION_RULE_KNOWN_KEYS_SET.has(key));
   const appliedOverrides: Partial<Record<DecisionRuleNumericKey, number>> = {};
 
   let tolerance = base.tolerance;

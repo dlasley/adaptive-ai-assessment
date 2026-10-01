@@ -710,6 +710,11 @@ that outlive any single run, all service-role only with no anon policies:
   variants, and the decision rule it will be judged against (a task's default tolerance, or an
   override for this experiment only). `eval-run --experiment <id-or-slug>` attributes runs to it;
   its `status` moves through `proposed`, `running`, and then `decided`, `deferred`, or `superseded`.
+  `eval-experiment-create` is the only command that creates or edits this row: it validates the task
+  list, each declared variant's model slug against the registry and role against the vocabulary
+  existing rows use, the decision rule's keys against `resolveTolerance()`, and dependency slugs
+  before writing, and refuses an edit that would drop a declared variant that already has runs
+  matching it.
 - **`eval_model_families`** / **`eval_models`**: a dated snapshot of a model's attributes (open or
   closed weights, total and active parameter count, architecture, release date, price, context
   window, reasoning support, and known serving hosts), one row per model identifier per
