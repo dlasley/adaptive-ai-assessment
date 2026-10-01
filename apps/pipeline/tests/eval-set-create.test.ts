@@ -117,6 +117,62 @@ describe('eval-set-create cli: --unit required for every task', () => {
 });
 
 /**
+ * The five audit-sampling flags (`--include-ids`, `--exclude-topics`, `--balance-status`,
+ * `--pool-ids`, `--pool-size`) all drive `runAuditSetCreate`, which (like the rest of the audit
+ * task) opens a real Supabase client for its `questions` read even when a store is injected; see
+ * `main()`'s own doc comment above `--task transcription`'s describe block below. These are
+ * CLI-parsing-level tests only; the sampling logic itself (`drawSelectionPool`, `excludeTopics`) is
+ * covered in `eval-set-builder.test.ts`.
+ */
+describe('eval-set-create cli: audit sampling flags', () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new ProcessExitError(code ?? 0);
+    }) as unknown as typeof process.exit);
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const base = ['--task', 'audit', '--unit', 'unit-1', '--size', '10', '--label', 'l'];
+
+  it('parses --include-ids as the given path', () => {
+    expect(cli.parse([...base, '--include-ids', 'ids.txt']).includeIds).toBe('ids.txt');
+  });
+
+  it('parses --exclude-topics as the given path', () => {
+    expect(cli.parse([...base, '--exclude-topics', 'topics.txt']).excludeTopics).toBe('topics.txt');
+  });
+
+  it('defaults --balance-status to false and parses the flag as true', () => {
+    expect(cli.parse(base).balanceStatus).toBe(false);
+    expect(cli.parse([...base, '--balance-status']).balanceStatus).toBe(true);
+  });
+
+  it('parses --pool-ids and --pool-size together', () => {
+    const options = cli.parse([...base, '--pool-ids', 'pool.txt', '--pool-size', '5']);
+    expect(options.poolIds).toBe('pool.txt');
+    expect(options.poolSize).toBe(5);
+  });
+
+  it('refuses --pool-size without --pool-ids', () => {
+    expectExit(() => cli.parse([...base, '--pool-size', '5']), 1);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('--pool-ids and --pool-size must be given together'));
+  });
+
+  it('refuses --pool-ids without --pool-size', () => {
+    expectExit(() => cli.parse([...base, '--pool-ids', 'pool.txt']), 1);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('--pool-ids and --pool-size must be given together'));
+  });
+});
+
+/**
  * `--task transcription` is the one task whose --write-db path needs no live Supabase read beyond
  * the eval store itself (audit/grading/mapping all read `questions`/`units` through a real client
  * even when a store is injected — see `main()`'s own doc comment) — so it's the task this suite can

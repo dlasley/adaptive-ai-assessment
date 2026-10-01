@@ -8,7 +8,7 @@
 import type { Unit } from '@adaptive/shared/types';
 import { callMistralAuditGroup, auditGroupWithRetry, renderedMistralAuditSystemPrompt, type QuestionRow as AuditQuestionRow, type MistralAuditResult } from '../../mistral-audit';
 import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
-import { planAuditGroupCalls, buildAuditRunSummary, AUDIT_GATE_CRITERIA, type AuditItemOutcome, type AuditGateCriterion } from '../runner';
+import { planAuditGroupCalls, buildAuditRunSummary, AUDIT_GATE_CRITERIA, type AuditItemOutcome, type AuditGateCriterion, type AuditRunSummary } from '../runner';
 import { createLogger } from '../../logger';
 import { MODEL_CALL_RETRY, wholeTokens, hashText } from './shared';
 import { variantKey, type EvalTaskDefinition } from './types';
@@ -67,7 +67,7 @@ function auditOutcomeFromRow(result: EvalResultRow, item: EvalItemRow): AuditIte
   };
 }
 
-export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome> = {
+export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome, AuditRunSummary> = {
   task: 'audit',
 
   promptHash() {
@@ -163,7 +163,7 @@ export const auditTask: EvalTaskDefinition<AuditContext, AuditItemOutcome> = {
   },
 
   buildSummary(outcomes) {
-    return buildAuditRunSummary(outcomes) as unknown as Record<string, unknown>;
+    return buildAuditRunSummary(outcomes);
   },
 
   outcomeFromStoredResult(result, item) {

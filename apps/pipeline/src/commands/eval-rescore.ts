@@ -17,10 +17,11 @@
 
 import { loadEnv } from '../lib/env';
 import { createScriptSupabase } from '../lib/db-queries';
-import { createSupabaseEvalStore, type EvalStore, type EvalRunRow } from '../lib/eval/db';
+import { createSupabaseEvalStore, type EvalStore } from '../lib/eval/db';
 import { TASK_DEFINITIONS } from '../lib/eval/tasks/registry';
 import { stampSummary } from '../lib/eval/summary-stamp';
 import type { PrimaryMetric } from '../lib/eval/primary-metric';
+import { resolveTargetRuns, scoresEqual } from '../lib/eval/rescore';
 import type { EvalTask } from '../lib/eval/types';
 import { defineCli } from '../lib/options/define-cli';
 import { dbTargetFlags, loggingFlags } from '../lib/options/groups';
@@ -66,41 +67,8 @@ export const cli = defineCli(
 
 type Options = ReturnType<typeof cli.parse>;
 
-async function resolveTargetRuns(store: EvalStore, options: Options): Promise<EvalRunRow[]> {
-  if (options.run) {
-    const run = await store.getRun(options.run);
-    if (!run) {
-      logger.error(`No eval_runs row found for id ${options.run}.`);
-      process.exit(1);
-    }
-    return [run];
-  }
-  if (options.set) {
-    const set = await store.getSet(options.set);
-    if (!set) {
-      logger.error(`No eval_sets row found for id ${options.set}.`);
-      process.exit(1);
-    }
-    return store.listRunsBySet(options.set);
-  }
-  const experiment = await store.getExperiment(options.experiment!);
-  if (!experiment) {
-    logger.error(`No eval_experiments row found for id or slug '${options.experiment}'.`);
-    process.exit(1);
-  }
-  return store.listRunsByExperiment(experiment.id);
-}
-
 function formatMetric(value: number | undefined): string {
   return value === undefined ? 'none' : value.toFixed(4);
-}
-
-/** True unless `a`/`b` differ by more than float noise — the same recompute over the same stored
- * inputs should reproduce a stored score exactly, so this exists only to avoid flagging a
- * non-change over an epsilon of floating-point drift, not to tolerate a real one. */
-function scoresEqual(a: number | null, b: number | null): boolean {
-  if (a === null || b === null) return a === b;
-  return Math.abs(a - b) < 1e-9;
 }
 
 /**

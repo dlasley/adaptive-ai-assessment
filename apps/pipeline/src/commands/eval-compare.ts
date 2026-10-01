@@ -31,6 +31,10 @@
  * A second decision citing the same baseline/candidate pair under the same experiment is refused
  * unless `--supersedes <finding_id>` names the earlier one — `eval_findings` is append-only, so a
  * changed mind is a new row pointing at the old one, never an edit.
+ *
+ * `--decide` additionally requires attribution: `decided_by` comes from the explicit `--decided-by`
+ * flag, else the `EVAL_DECIDED_BY` environment variable. `--decide` refuses without either, so a
+ * recorded decision is never silently attributed to a placeholder.
  */
 
 import { writeFileSync } from 'fs';
@@ -38,6 +42,7 @@ import { join } from 'path';
 import { loadEnv } from '../lib/env';
 import { createScriptSupabase } from '../lib/db-queries';
 import { createSupabaseEvalStore, type EvalStore, type EvalResultRow, type EvalRunRow } from '../lib/eval/db';
+import { resolveDecidedBy } from '../lib/eval/decided-by';
 import {
   extractAuditPairedOutcomes,
   extractGradingPairedOutcomes,
@@ -129,6 +134,7 @@ export const cli = defineCli(
     statement: { type: 'string', help: 'One-line human-readable statement for the eval_findings row (required with --decide)' },
     candidate: { type: 'string', help: 'Which of --runs the decision is about (required with --decide when --runs names more than one candidate)' },
     supersedes: { type: 'string', help: 'eval_findings id this decision supersedes — required to re-decide a baseline/candidate pair an experiment already has a finding for' },
+    'decided-by': { type: 'string', help: 'Who this decision is attributed to; falls back to EVAL_DECIDED_BY, required with --decide' },
   },
   {
     name: 'eval-compare',
@@ -287,6 +293,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
 
   // Flag-shape validation happens before any DB lookup, so a malformed --decide invocation never
   // even looks up the runs.
+  const decidedBy = resolveDecidedBy(options.decidedBy, process.env);
   if (options.decide) {
     if (!options.writeDb) {
       logger.error('--decide requires --write-db — recording a decision is a database write, not a report-only dry run.');
@@ -294,6 +301,10 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
     }
     if (!options.statement) {
       logger.error('--decide requires --statement "<one line>" — the human-readable record of why.');
+      process.exit(1);
+    }
+    if (!decidedBy) {
+      logger.error('--decide requires attribution: pass --decided-by <name> or set the EVAL_DECIDED_BY environment variable.');
       process.exit(1);
     }
   }
@@ -668,6 +679,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
       statement: options.statement!,
       evidence_note: verdict?.reason ?? null,
       run_ids: [baselineRun.id, decideCandidateRun.id],
+      decided_by: decidedBy!,
       supersedes_finding_id: options.supersedes,
     });
     const newStatus = options.decide === 'defer' ? 'deferred' : 'decided';

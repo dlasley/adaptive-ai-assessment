@@ -8,7 +8,7 @@
 import { buildEvaluationPrompt, parseEvaluationResponse, EvaluationParseError, GRADING_CALL_SETTINGS } from '@adaptive/shared/grading-prompt';
 import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { createLogger } from '../../logger';
-import { planInterleavedCalls, buildGradingRunSummary, GRADING_PASS_SCORE_THRESHOLD, type GradingItemOutcome, type GradingReference } from '../runner';
+import { planInterleavedCalls, buildGradingRunSummary, GRADING_PASS_SCORE_THRESHOLD, type GradingItemOutcome, type GradingReference, type GradingRunSummary } from '../runner';
 import { withRateLimitRetry } from '../run-loop';
 import type { GradingLabelClass } from '../set-builder';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
@@ -47,7 +47,7 @@ function gradingOutcomeFromRow(result: EvalResultRow, item: EvalItemRow): Gradin
   };
 }
 
-export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome> = {
+export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome, GradingRunSummary> = {
   task: 'grading',
 
   promptHash() {
@@ -142,7 +142,7 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome> = {
   },
 
   buildSummary(outcomes) {
-    return buildGradingRunSummary(outcomes) as unknown as Record<string, unknown>;
+    return buildGradingRunSummary(outcomes);
   },
 
   outcomeFromStoredResult(result, item) {

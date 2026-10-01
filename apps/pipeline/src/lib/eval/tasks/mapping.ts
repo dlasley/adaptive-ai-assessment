@@ -10,7 +10,7 @@ import { extractDocumentHeadings, assertValidSlideMarkers, type HeadingRef, type
 import { createLogger } from '../../logger';
 import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { planInterleavedCalls } from '../runner';
-import { headingSetF1, computeMappingDeterministicChecks, buildMappingRunSummary, type MappingDeterministicChecks, type MappingItemOutcome } from '../mapping-scoring';
+import { headingSetF1, computeMappingDeterministicChecks, buildMappingRunSummary, type MappingDeterministicChecks, type MappingItemOutcome, type MappingRunSummary } from '../mapping-scoring';
 import { withRateLimitRetry } from '../run-loop';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
 import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, hashText } from './shared';
@@ -72,7 +72,7 @@ function mappingOutcomeFromRow(result: EvalResultRow, item: EvalItemRow): Mappin
   };
 }
 
-export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome> = {
+export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome, MappingRunSummary> = {
   task: 'mapping',
 
   promptHash() {
@@ -178,7 +178,7 @@ export const mappingTask: EvalTaskDefinition<MappingContext, MappingItemOutcome>
   },
 
   buildSummary(outcomes) {
-    return buildMappingRunSummary(outcomes) as unknown as Record<string, unknown>;
+    return buildMappingRunSummary(outcomes);
   },
 
   outcomeFromStoredResult(result, item) {

@@ -67,6 +67,7 @@ function makeFakeStore(
 
 describe('eval-finding', () => {
   beforeEach(() => {
+    delete process.env.EVAL_DECIDED_BY;
     vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
       throw new ProcessExitError(code ?? 0);
     }) as unknown as typeof process.exit);
@@ -76,6 +77,7 @@ describe('eval-finding', () => {
   });
 
   afterEach(() => {
+    delete process.env.EVAL_DECIDED_BY;
     vi.restoreAllMocks();
   });
 
@@ -125,6 +127,30 @@ describe('eval-finding', () => {
     ).rejects.toThrow(ProcessExitError);
     expect(errorText()).toContain('item-missing');
     expect(insertFindingCalls).toHaveLength(0);
+  });
+
+  it('refuses --write-db with neither --decided-by nor EVAL_DECIDED_BY set, writing nothing', async () => {
+    const { store, insertFindingCalls } = makeFakeStore();
+    await expect(main({ argv: ['--statement', 'x', '--write-db'], store })).rejects.toThrow(ProcessExitError);
+    expect(errorText()).toContain('--decided-by');
+    expect(errorText()).toContain('EVAL_DECIDED_BY');
+    expect(insertFindingCalls).toHaveLength(0);
+  });
+
+  it('allows --write-db when EVAL_DECIDED_BY is set, with no --decided-by flag', async () => {
+    const { store, insertFindingCalls } = makeFakeStore();
+    process.env.EVAL_DECIDED_BY = 'env-operator';
+    await main({ argv: ['--statement', 'x', '--write-db'], store });
+    expect(insertFindingCalls).toHaveLength(1);
+    expect(insertFindingCalls[0].decided_by).toBe('env-operator');
+  });
+
+  it('prefers --decided-by over EVAL_DECIDED_BY when both are given', async () => {
+    const { store, insertFindingCalls } = makeFakeStore();
+    process.env.EVAL_DECIDED_BY = 'env-operator';
+    await main({ argv: ['--statement', 'x', '--write-db', '--decided-by', 'flag-operator'], store });
+    expect(insertFindingCalls).toHaveLength(1);
+    expect(insertFindingCalls[0].decided_by).toBe('flag-operator');
   });
 
   it('refuses a --supersedes id that does not exist, writing nothing', async () => {
@@ -188,6 +214,7 @@ describe('eval-finding', () => {
         '--runs', 'run-1',
         '--items', 'item-1',
         '--supersedes', 'finding-old',
+        '--decided-by', 'jsmith',
         '--write-db',
       ],
       store,
@@ -202,7 +229,7 @@ describe('eval-finding', () => {
       task: 'grading',
       run_ids: ['run-1'],
       item_ids: ['item-1'],
-      decided_by: 'user',
+      decided_by: 'jsmith',
       supersedes_finding_id: 'finding-old',
     });
   });

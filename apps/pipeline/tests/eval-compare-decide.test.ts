@@ -98,6 +98,7 @@ describe('eval-compare --decide', () => {
 
   beforeEach(() => {
     outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-compare-decide-'));
+    delete process.env.EVAL_DECIDED_BY;
     vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
       throw new ProcessExitError(code ?? 0);
     }) as unknown as typeof process.exit);
@@ -107,12 +108,15 @@ describe('eval-compare --decide', () => {
   });
 
   afterEach(() => {
+    delete process.env.EVAL_DECIDED_BY;
     vi.restoreAllMocks();
     fs.rmSync(outDir, { recursive: true, force: true });
   });
 
+  // Every --decide happy-path test needs attribution, so the default argv carries --decided-by;
+  // the refusal/resolution tests below override or omit it to exercise that path specifically.
   function argv(extra: string[]): string[] {
-    return ['--runs', 'run-baseline,run-candidate-good', '--baseline', 'run-baseline', '--out', path.join(outDir, 'report.md'), ...extra];
+    return ['--runs', 'run-baseline,run-candidate-good', '--baseline', 'run-baseline', '--out', path.join(outDir, 'report.md'), '--decided-by', 'jsmith', ...extra];
   }
 
   it('refuses --decide without --write-db', async () => {
@@ -127,13 +131,40 @@ describe('eval-compare --decide', () => {
     expect(insertFindingCalls).toHaveLength(0);
   });
 
+  it('refuses --decide with neither --decided-by nor EVAL_DECIDED_BY set', async () => {
+    const { store, insertFindingCalls } = makeFakeStore();
+    await expect(
+      main({
+        argv: [
+          '--runs', 'run-baseline,run-candidate-good', '--baseline', 'run-baseline', '--out', path.join(outDir, 'report.md'),
+          '--write-db', '--decide', 'adopt', '--statement', 'x',
+        ],
+        store,
+      }),
+    ).rejects.toThrow(ProcessExitError);
+    expect(insertFindingCalls).toHaveLength(0);
+  });
+
+  it('resolves decided_by from EVAL_DECIDED_BY when --decided-by is not given', async () => {
+    const { store, insertFindingCalls } = makeFakeStore();
+    process.env.EVAL_DECIDED_BY = 'env-operator';
+    await main({
+      argv: [
+        '--runs', 'run-baseline,run-candidate-good', '--baseline', 'run-baseline', '--out', path.join(outDir, 'report.md'),
+        '--write-db', '--decide', 'adopt', '--statement', 'x',
+      ],
+      store,
+    });
+    expect(insertFindingCalls[0].decided_by).toBe('env-operator');
+  });
+
   it('refuses --decide with several candidates and no --candidate', async () => {
     const { store, insertFindingCalls } = makeFakeStore();
     await expect(
       main({
         argv: [
           '--runs', 'run-candidate-good,run-candidate-bad', '--baseline', 'run-baseline',
-          '--out', path.join(outDir, 'report.md'), '--write-db', '--decide', 'reject', '--statement', 'x',
+          '--out', path.join(outDir, 'report.md'), '--decided-by', 'jsmith', '--write-db', '--decide', 'reject', '--statement', 'x',
         ],
         store,
       }),
@@ -161,7 +192,7 @@ describe('eval-compare --decide', () => {
       main({
         argv: [
           '--runs', 'run-candidate-bad', '--baseline', 'run-baseline', '--out', path.join(outDir, 'report.md'),
-          '--write-db', '--decide', 'adopt', '--statement', 'x',
+          '--decided-by', 'jsmith', '--write-db', '--decide', 'adopt', '--statement', 'x',
         ],
         store,
       }),
@@ -215,6 +246,7 @@ describe('eval-compare --decide', () => {
       kind: 'adopt',
       statement: 'Sonnet matches baseline recall.',
       run_ids: ['run-baseline', 'run-candidate-good'],
+      decided_by: 'jsmith',
     });
     expect(insertFindingCalls[0].evidence_note).toBeTruthy();
     expect(updateExperimentCalls).toEqual([{ id: 'exp-1', patch: expect.objectContaining({ status: 'decided' }) }]);
@@ -225,7 +257,7 @@ describe('eval-compare --decide', () => {
     await main({
       argv: [
         '--runs', 'run-candidate-bad', '--baseline', 'run-baseline', '--out', path.join(outDir, 'report.md'),
-        '--write-db', '--decide', 'reject', '--statement', 'Regresses on the one reviewed item.',
+        '--decided-by', 'jsmith', '--write-db', '--decide', 'reject', '--statement', 'Regresses on the one reviewed item.',
       ],
       store,
     });

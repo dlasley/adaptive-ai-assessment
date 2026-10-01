@@ -1002,6 +1002,47 @@ describe('eval-run CLI wiring: task transcription', () => {
       expect(runs[0].projected_cost_usd).toBeCloseTo(transcriptionOnly + classifierOnly);
       expect(runs[0].projected_cost_usd).toBeGreaterThan(transcriptionOnly);
     });
+
+    it('pins the classifier call to --exclusion-provider, independent of --provider on the transcription call', async () => {
+      const { store, runs } = makeExclusionPassFakeStore();
+      const callLlmFn = makeStubCallLlmFn();
+
+      await main({
+        argv: [
+          '--set', 'set-1', '--task', 'transcription', '--models', TRANSCRIPTION_MODEL,
+          '--provider', 'main-provider', '--exclusion-pass', CLASSIFIER_MODEL, '--exclusion-provider', 'classifier-provider',
+          '--write-db',
+        ],
+        store,
+        callLlmFn,
+      });
+
+      // The run's stored settings flatten the provider override to its first order entry (a plain
+      // string); the full { order, allowFallbacks } shape is only what the LLM call itself receives.
+      expect(runs[0].settings.exclusionPass).toMatchObject({ model: CLASSIFIER_MODEL, provider: 'classifier-provider' });
+
+      const classifierCalls = callLlmFn.mock.calls.map(([opts]) => opts as LlmCallOptions).filter((opts) => opts.jsonMode);
+      const transcriptionCalls = callLlmFn.mock.calls.map(([opts]) => opts as LlmCallOptions).filter((opts) => !opts.jsonMode);
+      expect(classifierCalls.length).toBeGreaterThan(0);
+      expect(transcriptionCalls.length).toBeGreaterThan(0);
+      for (const opts of classifierCalls) expect(opts.provider).toEqual({ order: ['classifier-provider'], allowFallbacks: false });
+      for (const opts of transcriptionCalls) expect(opts.provider).toEqual({ order: ['main-provider'], allowFallbacks: false });
+    });
+
+    it('refuses --exclusion-provider without --exclusion-pass', async () => {
+      const { store } = makeExclusionPassFakeStore();
+      const callLlmFn = vi.fn();
+
+      await expect(
+        main({
+          argv: ['--set', 'set-1', '--task', 'transcription', '--models', TRANSCRIPTION_MODEL, '--exclusion-provider', 'classifier-provider'],
+          store,
+          callLlmFn,
+        }),
+      ).rejects.toThrow(ProcessExitError);
+
+      expect(callLlmFn).not.toHaveBeenCalled();
+    });
   });
 });
 

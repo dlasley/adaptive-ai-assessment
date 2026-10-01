@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -513,5 +513,76 @@ describe('eval-review-import main()', () => {
     await main({ argv: ['--set', 'set-1', '--from', csvPath, '--reviewer', 'jsmith', '--rubric-version', 'v1'], store });
 
     expect(insertReviewRoundCalls).toHaveLength(0);
+  });
+
+  it('approves typo/missing_accent items directly with --policy-labels, without a sheet row for them', async () => {
+    const items = [
+      makeItem('i-1', { question: 'Q1', submitted_answer: 'a', correct_answer: 'a', type: 'fill-in-blank', difficulty: 'easy', label_class: 'correct' }),
+      makeItem('i-2', { question: 'Q2', submitted_answer: 'b', correct_answer: 'b', type: 'fill-in-blank', difficulty: 'easy', label_class: 'typo' }),
+    ];
+    const { store, updateItemCalls } = makeFakeStore(items);
+
+    // The sheet only reviews i-1; i-2 (a typo item) is approved by policy instead.
+    const csvText = writeCsv(
+      ['item_id', 'question_group', 'key_incorrect', 'key_note', 'is_correct', 'borderline', 'reason'],
+      [['i-1', 'Q1', '', '', 'correct', '', '']],
+    );
+    const csvPath = join(dir, 'completed-grading-reference-policy-labels.csv');
+    writeFileSync(csvPath, csvText);
+
+    await main({ argv: ['--set', 'set-1', '--from', csvPath, '--reviewer', 'jsmith', '--rubric-version', 'v1', '--policy-labels', '--write-db'], store });
+
+    expect(updateItemCalls.map((c) => c.id).sort()).toEqual(['i-1', 'i-2']);
+    const policyCall = updateItemCalls.find((c) => c.id === 'i-2')!;
+    expect(policyCall.patch.reviewed_by).toBe('policy');
+    expect(policyCall.patch.reference_status).toBe('approved');
+    expect((policyCall.patch.reference as { isCorrect: boolean }).isCorrect).toBe(true);
+  });
+
+  it('does not approve typo/missing_accent items without --policy-labels', async () => {
+    const items = [
+      makeItem('i-1', { question: 'Q1', submitted_answer: 'a', correct_answer: 'a', type: 'fill-in-blank', difficulty: 'easy', label_class: 'correct' }),
+      makeItem('i-2', { question: 'Q2', submitted_answer: 'b', correct_answer: 'b', type: 'fill-in-blank', difficulty: 'easy', label_class: 'typo' }),
+    ];
+    const { store, updateItemCalls } = makeFakeStore(items);
+
+    const csvText = writeCsv(
+      ['item_id', 'question_group', 'key_incorrect', 'key_note', 'is_correct', 'borderline', 'reason'],
+      [['i-1', 'Q1', '', '', 'correct', '', '']],
+    );
+    const csvPath = join(dir, 'completed-grading-reference-no-policy-labels.csv');
+    writeFileSync(csvPath, csvText);
+
+    await main({ argv: ['--set', 'set-1', '--from', csvPath, '--reviewer', 'jsmith', '--rubric-version', 'v1', '--write-db'], store });
+
+    expect(updateItemCalls.map((c) => c.id)).toEqual(['i-1']);
+  });
+
+  it('refuses --policy-labels on a non-grading set', async () => {
+    class ProcessExitError extends Error {
+      constructor(public code: number) {
+        super(`process.exit(${code})`);
+      }
+    }
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new ProcessExitError(code ?? 0);
+    }) as unknown as typeof process.exit);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      const auditSet = makeEvalSetRow({ task: 'audit', item_count: 0 });
+      const store: EvalStore = {
+        ...baseFakeEvalStore(),
+        async getSet(id) { return id === auditSet.id ? auditSet : null; },
+      };
+
+      await expect(
+        main({ argv: ['--set', 'set-1', '--from', join(dir, 'missing.csv'), '--reviewer', 'jsmith', '--rubric-version', 'v1', '--policy-labels'], store }),
+      ).rejects.toThrow(ProcessExitError);
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('--policy-labels'));
+    } finally {
+      exitSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
   });
 });

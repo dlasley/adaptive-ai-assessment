@@ -20,7 +20,7 @@ import { classifySlideContent, SlideClassificationParseError } from '../../slide
 import { createLogger } from '../../logger';
 import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { planInterleavedCalls } from '../runner';
-import { computeTranscriptionDeterministicChecks, scoreTranscription, buildTranscriptionRunSummary, type TranscriptionDeterministicChecks, type TranscriptionItemOutcome } from '../transcription-scoring';
+import { computeTranscriptionDeterministicChecks, scoreTranscription, buildTranscriptionRunSummary, type TranscriptionDeterministicChecks, type TranscriptionItemOutcome, type TranscriptionRunSummary } from '../transcription-scoring';
 import type { TranscriptionCategory } from '../set-builder';
 import { withRateLimitRetry } from '../run-loop';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
@@ -116,7 +116,7 @@ function resultUsageFromLlmUsage(usage: LlmUsage | undefined): ResultUsage {
   };
 }
 
-export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, TranscriptionItemOutcome> = {
+export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, TranscriptionItemOutcome, TranscriptionRunSummary> = {
   task: 'transcription',
 
   promptHash() {
@@ -259,7 +259,7 @@ export const transcriptionTask: EvalTaskDefinition<TranscriptionContext, Transcr
   },
 
   buildSummary(outcomes) {
-    return buildTranscriptionRunSummary(outcomes) as unknown as Record<string, unknown>;
+    return buildTranscriptionRunSummary(outcomes);
   },
 
   outcomeFromStoredResult(result, item) {

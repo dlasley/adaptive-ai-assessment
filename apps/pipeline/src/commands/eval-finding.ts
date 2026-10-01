@@ -11,13 +11,17 @@
  * of the cited runs. `--supersedes <finding_id>` names an earlier finding this one revises, since
  * `eval_findings` is append-only and a changed mind is a new row, never an edit.
  *
- * Dry run by default, printing the row it would insert; `--write-db` inserts through
- * `store.insertFinding` with `decided_by: 'user'`.
+ * `decided_by` names who this finding is attributed to: the explicit `--decided-by` flag, else the
+ * `EVAL_DECIDED_BY` environment variable. `--write-db` refuses without either, so a written row is
+ * never silently attributed to a placeholder.
+ *
+ * Dry run by default, printing the row it would insert.
  */
 
 import { loadEnv } from '../lib/env';
 import { createScriptSupabase } from '../lib/db-queries';
 import { createSupabaseEvalStore, type EvalStore, type EvalRunRow, type NewEvalFindingRow } from '../lib/eval/db';
+import { resolveDecidedBy } from '../lib/eval/decided-by';
 import { EVAL_TASKS } from '../lib/eval/types';
 import { defineCli } from '../lib/options/define-cli';
 import { dbTargetFlags, loggingFlags } from '../lib/options/groups';
@@ -45,6 +49,7 @@ export const cli = defineCli(
     runs: { type: 'string', help: 'Comma-separated eval_runs ids cited as evidence' },
     items: { type: 'string', help: 'Comma-separated eval_items ids cited as evidence, each belonging to one of the cited runs' },
     supersedes: { type: 'string', help: 'eval_findings id this observation supersedes' },
+    'decided-by': { type: 'string', help: 'Who this finding is attributed to; falls back to EVAL_DECIDED_BY, required with --write-db' },
   },
   {
     name: 'eval-finding',
@@ -74,6 +79,12 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
   loadEnv();
   const options: Options = cli.parse(deps.argv);
   setLogLevel(levelFromFlags(options));
+
+  const decidedBy = resolveDecidedBy(options.decidedBy, process.env);
+  if (options.writeDb && !decidedBy) {
+    logger.error('--write-db requires attribution: pass --decided-by <name> or set the EVAL_DECIDED_BY environment variable.');
+    process.exit(1);
+  }
 
   const supabase = deps.store ? undefined : createScriptSupabase({ write: true });
   const store = deps.store ?? createSupabaseEvalStore(supabase!);
@@ -130,12 +141,13 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
     evidence_note: options.evidence ?? null,
     run_ids: runIds,
     item_ids: itemIds,
-    decided_by: 'user',
+    decided_by: decidedBy ?? null,
     supersedes_finding_id: options.supersedes,
   };
 
   console.log('Would insert into eval_findings:');
   console.log(JSON.stringify(row, null, 2));
+  console.log(`decided_by: ${decidedBy ?? 'unset'}`);
 
   if (options.writeDb) {
     const finding = await store.insertFinding(row);

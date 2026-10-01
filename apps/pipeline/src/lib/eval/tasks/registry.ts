@@ -9,9 +9,11 @@ import { mappingTask } from './mapping';
 import { transcriptionTask } from './transcription';
 import type { EvalTaskDefinition } from './types';
 
-export const TASK_DEFINITIONS: Record<'audit' | 'grading' | 'mapping' | 'transcription', EvalTaskDefinition<unknown, unknown>> = {
-  audit: auditTask as EvalTaskDefinition<unknown, unknown>,
-  grading: gradingTask,
-  mapping: mappingTask as EvalTaskDefinition<unknown, unknown>,
-  transcription: transcriptionTask as EvalTaskDefinition<unknown, unknown>,
+type ErasedTaskDefinition = EvalTaskDefinition<unknown, unknown, Record<string, unknown>>;
+
+export const TASK_DEFINITIONS: Record<'audit' | 'grading' | 'mapping' | 'transcription', ErasedTaskDefinition> = {
+  audit: auditTask as unknown as ErasedTaskDefinition,
+  grading: gradingTask as unknown as ErasedTaskDefinition,
+  mapping: mappingTask as unknown as ErasedTaskDefinition,
+  transcription: transcriptionTask as unknown as ErasedTaskDefinition,
 };

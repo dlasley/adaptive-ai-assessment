@@ -751,6 +751,9 @@ compared run ids and moves the experiment to `decided` (adopt/reject) or `deferr
 `eval_findings` is append-only, a second decision citing the same baseline/candidate pair under the
 same experiment is refused unless `--supersedes <finding_id>` names the earlier one.
 
+`--decide` also requires attribution: the row's `decided_by` comes from `--decided-by <name>`, or
+else the `EVAL_DECIDED_BY` environment variable. `--decide` refuses when neither is set.
+
 ```bash
 npx tsx apps/pipeline/src/commands/eval-compare.ts --runs <id,id,...> --baseline <id> [options]
 
@@ -759,10 +762,11 @@ Options:
   --baseline <id>             eval_runs id to treat as the baseline variant (required)
   --out <path>                Markdown report path (default: .private/eval/reports/eval-compare-<timestamp>.md, or $EVAL_REPORTS_DIR if set)
   --include-rejected-keys     Grading task: include items whose question key the reviewer marked Incorrect in the accuracy figures (excluded by default)
-  --decide <kind>             adopt|reject|defer — records the decision as an eval_findings row and moves the experiment to decided (adopt/reject) or deferred (defer); requires --write-db and --statement, and a candidate run with an experiment_id
+  --decide <kind>             adopt|reject|defer: records the decision as an eval_findings row and moves the experiment to decided (adopt/reject) or deferred (defer); requires --write-db, --statement, and attribution, and a candidate run with an experiment_id
   --statement <text>          One-line human-readable statement for the eval_findings row (required with --decide)
   --candidate <id>            Which of --runs the decision is about (required with --decide when --runs names more than one candidate)
   --supersedes <id>           eval_findings id this decision supersedes — required to re-decide a pair an experiment already has a finding for
+  --decided-by <name>         Who this decision is attributed to; falls back to EVAL_DECIDED_BY, required with --decide
 ```
 
 Plus the shared Database target and Logging flags above.
@@ -777,8 +781,9 @@ since an observation can predate a numbered experiment or not relate to one at a
 `--items` are the evidence this observation cites: each run id must resolve, and each item id must
 belong to the set of at least one of the cited runs. `--supersedes <finding_id>` names an earlier
 finding this one revises. `--kind` accepts only `observation`; `adopt`, `reject`, and `defer` stay
-with `eval-compare --decide`. Dry run by default, printing the row it would insert; `--write-db`
-inserts it with `decided_by: user`. Never touches `eval_experiments`.
+with `eval-compare --decide`. `decided_by` comes from `--decided-by <name>`, or else the
+`EVAL_DECIDED_BY` environment variable; `--write-db` refuses when neither is set. Dry run by
+default, printing the row it would insert. Never touches `eval_experiments`.
 
 ```bash
 npx tsx apps/pipeline/src/commands/eval-finding.ts --statement "<one paragraph>" [options]
@@ -792,6 +797,7 @@ Options:
   --runs <ids>            Comma-separated eval_runs ids cited as evidence
   --items <ids>           Comma-separated eval_items ids cited as evidence, each belonging to one of the cited runs
   --supersedes <id>       eval_findings id this observation supersedes
+  --decided-by <name>     Who this finding is attributed to; falls back to EVAL_DECIDED_BY, required with --write-db
 ```
 
 Plus the shared Database target and Logging flags above.
@@ -1052,9 +1058,14 @@ description row, freeze panes, hidden columns, dropdown validation, and sheet pr
 including grading's per-question `question_group` grouping and the multiple-choice `answer_key`
 option-number prefix, shared by both output formats), `review-import.ts` (pure row validation and
 reference-shape construction for `eval-review-import`, format-agnostic once a sheet's rows are parsed into
-objects), and `paths.ts` (`EVAL_REPORTS_DIR`, the default report/reference output location outside the
+objects), `paths.ts` (`EVAL_REPORTS_DIR`, the default report/reference output location outside the
 tracked tree, and `guardTrackedTreeWrite()`, which every write-capable command calls before its
-first write to refuse a resolved output path inside the tracked pipeline package).
+first write to refuse a resolved output path inside the tracked pipeline package), `decided-by.ts`
+(`resolveDecidedBy()`, shared by `eval-compare --decide` and `eval-finding` to resolve `--decided-by`
+or `EVAL_DECIDED_BY` before either command writes an `eval_findings` row), `judge.ts` (the judge
+prompt and its hash, the verdict shape and parser, the position-swap combination rule, and the
+per-call message builder behind `eval-judge`), and `rescore.ts` (`eval-rescore`'s target resolution
+for `--run`/`--set`/`--experiment` and its float-tolerant score comparison).
 
 ### lib/eval/compare/
 

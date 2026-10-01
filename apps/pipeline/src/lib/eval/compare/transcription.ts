@@ -1,13 +1,14 @@
 /**
- * Pure logic behind `eval-compare` for the transcription task. Transcription's primary metric
- * (1 - normalized edit distance against a checked transcript, stored in `eval_results.score` by
- * `eval-run`) is continuous like mapping's F1, so its paired comparison reuses the same
- * mean-difference-plus-exact-sign-test shape (`meanAndCi95`, `signTestPValue`, both from
- * `scoring.ts`). Unlike mapping, reference for this task is reviewed after the fact
- * (`eval-review-export`/`eval-review-import`) rather than known at `eval-set-create` time, so a set
- * whose reference is still pending falls back to a reference-free report instead — agreement
- * between each candidate and the baseline's own transcript, by the same distance, clearly not an
- * accuracy figure. No Supabase or LLM calls here.
+ * Pure logic behind `eval-compare` for the transcription task. Transcription's primary metric is
+ * continuous like mapping's F1: mean words captured (formatting-blind word recall against a
+ * checked transcript) when the paired outcomes carry the word measures, falling back to
+ * `1 - normalized edit distance` (also stored in `eval_results.score` by `eval-run`) when they
+ * don't. So its paired comparison reuses the same mean-difference-plus-exact-sign-test shape
+ * (`meanAndCi95`, `signTestPValue`, both from `scoring.ts`). Unlike mapping, reference for this task
+ * is reviewed after the fact (`eval-review-export`/`eval-review-import`) rather than known at
+ * `eval-set-create` time, so a set whose reference is still pending falls back to a reference-free
+ * report instead: agreement between each candidate and the baseline's own transcript, by the
+ * edit-distance score, clearly not an accuracy figure. No Supabase or LLM calls here.
  */
 
 import { meanAndCi95, signTestPValue } from '../scoring';

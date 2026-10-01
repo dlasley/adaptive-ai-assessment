@@ -14,7 +14,8 @@ vi.mock('../src/lib/pdf-conversion', async (importOriginal) => {
 });
 import { renderSlideImage } from '../src/lib/pdf-conversion';
 
-import { main, combineJudgeOrders, parseJudgeVerdict, JudgeParseError, JUDGE_PROMPT, type JudgeVerdict } from '../src/commands/eval-judge';
+import { main } from '../src/commands/eval-judge';
+import { combineJudgeOrders, parseJudgeVerdict, JudgeParseError, JUDGE_PROMPT, type JudgeVerdict } from '../src/lib/eval/judge';
 import type { EvalStore, EvalRunRow, EvalItemRow, EvalResultRow, EvalModelCurrentRow, EvalSetRow } from '../src/lib/eval/db';
 import type { LlmCallOptions, LlmResult } from '@adaptive/shared/llm';
 import { baseFakeEvalStore, makeEvalSetRow, makeEvalItemRow, makeEvalRunRow, makeEvalResultRow } from './helpers/eval-store';
