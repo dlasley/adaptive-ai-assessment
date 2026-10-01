@@ -971,33 +971,43 @@ JOIN eval_models m ON m.family_id = fam.id
 JOIN eval_run_model_stats s ON s.model_version_id = m.id
 ORDER BY fam.family, s.model_effective_date, s.run_id;
 
+-- The per-task verdict eval_item_consensus and eval_run_pair_agreement both compare, factored into
+-- one function so the two cannot drift. See eval_item_consensus's own comment for what each task's
+-- case means. IMMUTABLE: a pure function of its three arguments, reading no table.
+CREATE OR REPLACE FUNCTION eval_result_verdict(p_task text, p_output jsonb, p_deterministic_checks jsonb) RETURNS jsonb AS $$
+  SELECT CASE p_task
+    WHEN 'grading' THEN jsonb_build_object('is_correct', p_output ->> 'isCorrect')
+    WHEN 'audit' THEN jsonb_build_object(
+      'answer_correct', p_output ->> 'answer_correct',
+      'grammar_correct', p_output ->> 'grammar_correct',
+      'no_hallucination', p_output ->> 'no_hallucination',
+      'question_coherent', p_output ->> 'question_coherent',
+      'natural_language', p_output ->> 'natural_language',
+      'register_appropriate', p_output ->> 'register_appropriate'
+    )
+    WHEN 'mapping' THEN jsonb_build_object('headings', (
+      SELECT COALESCE(jsonb_agg(heading ORDER BY heading), '[]'::jsonb)
+      FROM (
+        SELECT DISTINCT elem ->> 'heading' AS heading
+        FROM jsonb_array_elements(COALESCE(p_output -> 'headings', '[]'::jsonb)) elem
+      ) distinct_headings
+    ))
+    WHEN 'transcription' THEN jsonb_build_object(
+      'no_content_marker', p_deterministic_checks ->> 'no_content_marker'
+    )
+  END;
+$$ LANGUAGE sql IMMUTABLE
+SET search_path = public;
+
+COMMENT ON FUNCTION eval_result_verdict(text, jsonb, jsonb) IS 'The per-task verdict compared by eval_item_consensus and eval_run_pair_agreement, factored out so the two cannot drift. grading is is_correct from output->>''isCorrect''; audit is the six gate-criteria booleans together; mapping is the sorted, de-duplicated set of heading strings returned; transcription is the no-content-marker decision alone. Null for a task with no case here (generation, validation, which have no runner).';
+
 -- The human-review worklist: how much a task's completed, non-error runs agree on each item.
--- The per-result verdict compared is task-specific (see the view comment below).
+-- The per-result verdict compared is eval_result_verdict (see its comment for the per-task cases).
 CREATE VIEW eval_item_consensus WITH (security_invoker = true) AS
 WITH result_verdicts AS (
   SELECT
     ei.id AS item_id,
-    CASE es.task
-      WHEN 'grading' THEN jsonb_build_object('is_correct', er.output ->> 'isCorrect')
-      WHEN 'audit' THEN jsonb_build_object(
-        'answer_correct', er.output ->> 'answer_correct',
-        'grammar_correct', er.output ->> 'grammar_correct',
-        'no_hallucination', er.output ->> 'no_hallucination',
-        'question_coherent', er.output ->> 'question_coherent',
-        'natural_language', er.output ->> 'natural_language',
-        'register_appropriate', er.output ->> 'register_appropriate'
-      )
-      WHEN 'mapping' THEN jsonb_build_object('headings', (
-        SELECT COALESCE(jsonb_agg(heading ORDER BY heading), '[]'::jsonb)
-        FROM (
-          SELECT DISTINCT elem ->> 'heading' AS heading
-          FROM jsonb_array_elements(COALESCE(er.output -> 'headings', '[]'::jsonb)) elem
-        ) distinct_headings
-      ))
-      WHEN 'transcription' THEN jsonb_build_object(
-        'no_content_marker', er.deterministic_checks ->> 'no_content_marker'
-      )
-    END AS verdict
+    eval_result_verdict(es.task, er.output, er.deterministic_checks) AS verdict
   FROM eval_results er
   JOIN eval_runs r ON r.id = er.run_id
   JOIN eval_items ei ON ei.id = er.item_id
@@ -1277,6 +1287,145 @@ FROM eval_experiments e
 CROSS JOIN LATERAL unnest(e.depends_on) AS dep(slug)
 LEFT JOIN eval_experiments d ON d.slug = dep.slug;
 
+-- One row of header counts for the dashboard: how much is in each table and how it splits by
+-- status or kind, read directly rather than re-derived from several hand-written queries.
+CREATE VIEW eval_overview WITH (security_invoker = true) AS
+SELECT
+  (SELECT count(*) FROM eval_sets)                                        AS sets,
+  (SELECT count(*) FROM eval_items)                                       AS items,
+  (SELECT count(*) FROM eval_items WHERE reference_status = 'approved')   AS items_with_approved_reference,
+  (SELECT count(*) FROM eval_runs WHERE status = 'running')               AS runs_running,
+  (SELECT count(*) FROM eval_runs WHERE status = 'completed')             AS runs_completed,
+  (SELECT count(*) FROM eval_runs WHERE status = 'failed')                AS runs_failed,
+  (SELECT count(*) FROM eval_runs WHERE status = 'aborted')               AS runs_aborted,
+  (SELECT count(*) FROM eval_results)                                     AS results,
+  (SELECT count(*) FROM eval_experiments WHERE status = 'proposed')       AS experiments_proposed,
+  (SELECT count(*) FROM eval_experiments WHERE status = 'running')        AS experiments_running,
+  (SELECT count(*) FROM eval_experiments WHERE status = 'decided')        AS experiments_decided,
+  (SELECT count(*) FROM eval_experiments WHERE status = 'deferred')       AS experiments_deferred,
+  (SELECT count(*) FROM eval_experiments WHERE status = 'superseded')     AS experiments_superseded,
+  (SELECT count(*) FROM eval_findings WHERE kind = 'adopt')               AS findings_adopt,
+  (SELECT count(*) FROM eval_findings WHERE kind = 'reject')              AS findings_reject,
+  (SELECT count(*) FROM eval_findings WHERE kind = 'defer')               AS findings_defer,
+  (SELECT count(*) FROM eval_findings WHERE kind = 'observation')         AS findings_observation,
+  (SELECT count(*) FROM eval_models_current)                              AS registered_models;
+
+COMMENT ON VIEW eval_overview IS 'One row of header counts for the dashboard: eval_sets, eval_items (total and with an approved reference), eval_runs by status, eval_results, eval_experiments by status, eval_findings by kind, and eval_models_current (the latest snapshot per registered model slug). Every count is a direct count(*) on its table, or that count filtered by status or kind; nothing here is derived from another view.';
+
+-- One row per experiment: how much has run against it, what was concluded, and whether its
+-- declared plan and its dependencies are caught up with reality. declared_variants_with_runs and
+-- undecided_dependency_count read eval_experiment_variants and eval_experiment_dependencies rather
+-- than re-deriving either view's own matching rule here.
+CREATE VIEW eval_experiment_summary WITH (security_invoker = true) AS
+SELECT
+  e.id                                     AS experiment_id,
+  e.slug,
+  e.status,
+  e.tasks,
+  e.question,
+  e.decision_rule,
+  (SELECT count(*) FROM eval_runs r WHERE r.experiment_id = e.id)     AS run_count,
+  (SELECT count(*) FROM eval_findings f WHERE f.experiment_id = e.id) AS finding_count,
+  lf.kind                                  AS latest_finding_kind,
+  lf.decided_at                            AS latest_finding_at,
+  jsonb_array_length(e.variants_declared)  AS declared_variant_count,
+  (SELECT count(*) FROM eval_experiment_variants v
+    WHERE v.experiment_id = e.id AND v.run_count > 0)                 AS declared_variants_with_runs,
+  (SELECT count(*) FROM eval_experiment_dependencies d
+    WHERE d.experiment_id = e.id AND d.depends_on_status <> 'decided') AS undecided_dependency_count
+FROM eval_experiments e
+LEFT JOIN LATERAL (
+  SELECT f.kind, f.decided_at
+  FROM eval_findings f
+  WHERE f.experiment_id = e.id
+  ORDER BY f.decided_at DESC
+  LIMIT 1
+) lf ON true;
+
+COMMENT ON VIEW eval_experiment_summary IS 'One row per experiment: its own columns, how many eval_runs and eval_findings cite it, the most recent finding''s kind and date, how many variants it declared (variants_declared), how many of those declared variants have matched at least one run (eval_experiment_variants.run_count > 0), and how many of its eval_experiment_dependencies entries name a dependency whose own status is not ''decided'' (proposed, running, deferred, superseded, or missing all count as undecided).';
+
+-- The findings feed with a superseded chain collapsed to its most recent link: when a finding
+-- supersedes an earlier one, and that one may itself supersede a still earlier one, only the chain
+-- head (the one nothing else supersedes) is shown, with the chain's length and the ids it
+-- supersedes carried alongside it. A finding nobody has superseded is a chain of one.
+CREATE VIEW eval_findings_current WITH (security_invoker = true) AS
+WITH RECURSIVE chain AS (
+  SELECT f.id AS head_id, f.id AS node_id, f.supersedes_finding_id, 1 AS depth
+  FROM eval_findings f
+  WHERE NOT EXISTS (SELECT 1 FROM eval_findings s WHERE s.supersedes_finding_id = f.id)
+  UNION ALL
+  SELECT c.head_id, p.id AS node_id, p.supersedes_finding_id, c.depth + 1
+  FROM chain c
+  JOIN eval_findings p ON p.id = c.supersedes_finding_id
+),
+chain_agg AS (
+  SELECT
+    head_id,
+    max(depth)                                                            AS chain_length,
+    array_agg(node_id ORDER BY node_id) FILTER (WHERE node_id <> head_id)  AS superseded_finding_ids
+  FROM chain
+  GROUP BY head_id
+)
+SELECT
+  f.id,
+  f.kind,
+  f.experiment_id,
+  x.slug AS experiment_slug,
+  f.task,
+  f.statement,
+  f.evidence_note,
+  f.decided_by,
+  f.decided_at,
+  f.run_ids,
+  f.item_ids,
+  ca.chain_length,
+  COALESCE(ca.superseded_finding_ids, '{}') AS superseded_finding_ids
+FROM chain_agg ca
+JOIN eval_findings f ON f.id = ca.head_id
+LEFT JOIN eval_experiments x ON x.id = f.experiment_id
+ORDER BY f.decided_at DESC;
+
+COMMENT ON VIEW eval_findings_current IS 'eval_findings with a superseded chain (supersedes_finding_id, possibly several links deep) collapsed to its most recent link. chain_length counts every finding in the chain including the head; superseded_finding_ids lists the earlier ones it replaces, empty for a finding nobody has superseded. Has exactly as many fewer rows than eval_findings as there are superseded (non-head) findings. Ordered newest first by decided_at, the order a reader of the feed wants.';
+
+-- Every unordered pair of completed runs on the same set: how many items both scored without
+-- error, and the share of those where they reached the same per-task verdict
+-- (eval_result_verdict, the same expression eval_item_consensus uses). Generalizes the dashboard
+-- snapshot's grading_pairwise_agreement dataset to every task, not only grading.
+CREATE VIEW eval_run_pair_agreement WITH (security_invoker = true) AS
+WITH completed_runs AS (
+  SELECT r.id AS run_id, r.set_id, r.variant_label, r.model, es.task
+  FROM eval_runs r
+  JOIN eval_sets es ON es.id = r.set_id
+  WHERE r.status = 'completed'
+),
+verdicts AS (
+  SELECT er.run_id, er.item_id,
+    eval_result_verdict(cr.task, er.output, er.deterministic_checks) AS verdict
+  FROM eval_results er
+  JOIN completed_runs cr ON cr.run_id = er.run_id
+  WHERE er.error IS NULL
+)
+SELECT
+  a.set_id,
+  a.task,
+  a.run_id        AS run_id_a,
+  a.variant_label AS variant_label_a,
+  a.model         AS model_a,
+  b.run_id        AS run_id_b,
+  b.variant_label AS variant_label_b,
+  b.model         AS model_b,
+  count(*)                                                       AS n,
+  count(*) FILTER (WHERE va.verdict = vb.verdict)                AS agree_count,
+  round(count(*) FILTER (WHERE va.verdict = vb.verdict)::numeric
+    / nullif(count(*), 0), 4)                                    AS agreement_rate
+FROM completed_runs a
+JOIN completed_runs b ON b.set_id = a.set_id AND a.run_id < b.run_id
+JOIN verdicts va ON va.run_id = a.run_id
+JOIN verdicts vb ON vb.run_id = b.run_id AND vb.item_id = va.item_id
+GROUP BY a.set_id, a.task, a.run_id, a.variant_label, a.model, b.run_id, b.variant_label, b.model;
+
+COMMENT ON VIEW eval_run_pair_agreement IS 'One row per unordered pair of completed runs on the same eval_sets row (a.run_id < b.run_id so each pair appears once). n is the number of items both runs scored without error; agree_count and agreement_rate compare eval_result_verdict(task, output, deterministic_checks) between the two, the same verdict eval_item_consensus uses. For the grading task this reproduces the dashboard snapshot''s grading_pairwise_agreement numbers; unlike that dataset, this view covers every task, not only grading.';
+
 -- RLS for the experiment/model-registry/findings tables — no anon or authenticated
 -- policies, same rationale as the eval tables above
 ALTER TABLE eval_model_families ENABLE ROW LEVEL SECURITY;
@@ -1322,7 +1471,7 @@ COMMENT ON VIEW eval_model_history IS 'eval_run_scorecard reordered by model slu
 COMMENT ON VIEW eval_run_model_stats IS 'One row per run: outcome (primary_metric_value), predictors (model attributes), and covariates (mean_cost_usd, mean_latency_ms, error_count, provider_mismatch_count) in a shape suitable for a regression or grouped-statistics query, e.g. "does parameter_count_total predict primary_metric_value, controlling for task." cost_per_metric_unit is cost per unit of whatever the task''s primary metric measures — it reads literally as "cost per correct answer" only when that task''s primary metric is an accuracy-style fraction (audit, grading); for a continuous score (mapping F1, transcription''s 1-minus-edit-distance) it is cost per point of that score, not a count of correct answers. A dozen or so distinct models with runs today is not enough for a between-model attribute regression (the model, not the item or repeat count, is the unit of replication); treat any single-attribute pattern here as advisory until roughly 15-20 independent models spanning the attribute''s range exist on the same task. metric_status explains a null primary_metric_value the same way it does on eval_run_scorecard.';
 COMMENT ON VIEW eval_family_history IS 'eval_run_model_stats reordered by family and snapshot date, for "how has model X trended across versions" — the one query eval_model_history cannot answer, since it groups by slug (one version) rather than family_id (a lineage across slug changes). Requires family_id to be populated on eval_models; a model with no family row simply does not appear here (an inner join deliberately, since a LEFT JOIN would produce one all-null row per unlinked model, not useful for a trend query). metric_status explains a null primary_metric_value the same way it does on eval_run_scorecard.';
 
-COMMENT ON VIEW eval_item_consensus IS 'One row per item with at least two completed, non-error runs: how much a task''s variants agree on it, for ranking the human-review queue by disagreement. The verdict compared per result is task-specific: grading is output->>''isCorrect''; audit is the six gate-criteria booleans together; mapping is the sorted, de-duplicated set of heading strings returned; transcription is the no-content-marker decision alone, the one reference-free call runs can disagree on. Transcription''s content agreement (how similar two runs'' transcripts are on a kept slide) is a similarity question, not a verdict this view can hold, and is answered instead by eval-compare''s per-slide report. Repeat runs of the same variant count once each, so a repeat that flips its own verdict is itself disagreement, not noise to average away. majority_share is the largest single-verdict group''s share of run_count; low values are the items most worth a reviewer''s attention. Differs from the grading_item_consensus dataset in .private/eval/scripts/dashboard-snapshot.sql in reporting majority_share (1 minus disagreement) rather than disagreement directly, and in covering every task instead of only grading.';
+COMMENT ON VIEW eval_item_consensus IS 'One row per item with at least two completed, non-error runs: how much a task''s variants agree on it, for ranking the human-review queue by disagreement. The verdict compared per result is eval_result_verdict(task, output, deterministic_checks); see that function''s comment for what each task''s case means. Transcription''s content agreement (how similar two runs'' transcripts are on a kept slide) is a similarity question, not a verdict this view can hold, and is answered instead by eval-compare''s per-slide report. Repeat runs of the same variant count once each, so a repeat that flips its own verdict is itself disagreement, not noise to average away. majority_share is the largest single-verdict group''s share of run_count; low values are the items most worth a reviewer''s attention. Differs from the grading_item_consensus dataset in .private/eval/scripts/dashboard-snapshot.sql in reporting majority_share (1 minus disagreement) rather than disagreement directly, and in covering every task instead of only grading.';
 COMMENT ON COLUMN eval_item_consensus.unit_id IS 'From the owning eval_sets row, not eval_items itself, so a reviewer can find the item''s source unit without a second lookup.';
 COMMENT ON COLUMN eval_item_consensus.majority_share IS 'The largest single-verdict group''s run count divided by run_count. 1.0 means every run agreed; lower means more disagreement. For a two-verdict task (grading) this equals 1 minus the dashboard snapshot''s disagreement score.';
 COMMENT ON COLUMN eval_item_consensus.seeded_class IS 'Copied from eval_items.seeded_class, so the review worklist can be filtered by design class without a join. Null for an item built before the column existed or for a task that does not seed one.';

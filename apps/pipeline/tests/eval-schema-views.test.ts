@@ -79,17 +79,75 @@ describe('supabase/schema.sql declares the evaluation framework cross-cutting vi
     expect(schema).toMatch(new RegExp(`CREATE (OR REPLACE )?VIEW ${viewName} `));
   });
 
-  it('eval_item_consensus compares transcription on the no-content marker alone, not a score band', () => {
-    const viewStart = schema.indexOf('CREATE VIEW eval_item_consensus');
-    expect(viewStart).toBeGreaterThan(-1);
-    const transcriptionBranchStart = schema.indexOf("WHEN 'transcription' THEN", viewStart);
-    expect(transcriptionBranchStart).toBeGreaterThan(viewStart);
-    const transcriptionBranchEnd = schema.indexOf('END AS verdict', transcriptionBranchStart);
-    expect(transcriptionBranchEnd).toBeGreaterThan(transcriptionBranchStart);
-    const branch = schema.slice(transcriptionBranchStart, transcriptionBranchEnd);
+  it('eval_result_verdict function is declared and compares transcription on the no-content marker alone, not a score band', () => {
+    const fnStart = schema.indexOf('CREATE OR REPLACE FUNCTION eval_result_verdict(');
+    expect(fnStart).toBeGreaterThan(-1);
+    const fnEnd = schema.indexOf('$$ LANGUAGE sql IMMUTABLE', fnStart);
+    expect(fnEnd).toBeGreaterThan(fnStart);
+    const body = schema.slice(fnStart, fnEnd);
+    const transcriptionBranchStart = body.indexOf("WHEN 'transcription' THEN");
+    expect(transcriptionBranchStart).toBeGreaterThan(-1);
+    const branch = body.slice(transcriptionBranchStart);
     expect(branch).toContain('no_content_marker');
     expect(branch).not.toContain('score_band');
-    expect(branch).not.toMatch(/round\(er\.score/);
+    expect(branch).not.toMatch(/round\(p_output/);
+  });
+
+  it('eval_result_verdict carries a COMMENT ON FUNCTION', () => {
+    expect(schema).toContain('COMMENT ON FUNCTION eval_result_verdict(text, jsonb, jsonb) IS');
+  });
+
+  it.each(['eval_item_consensus', 'eval_run_pair_agreement'])(
+    '%s calls eval_result_verdict rather than its own inline CASE',
+    (viewName) => {
+      const viewStart = schema.indexOf(`CREATE VIEW ${viewName} `);
+      expect(viewStart).toBeGreaterThan(-1);
+      const viewEnd = schema.indexOf(';', viewStart);
+      expect(viewEnd).toBeGreaterThan(viewStart);
+      const viewBody = schema.slice(viewStart, viewEnd);
+      expect(viewBody).toContain('eval_result_verdict(');
+      expect(viewBody).not.toMatch(/WHEN 'grading' THEN jsonb_build_object\('is_correct'/);
+    },
+  );
+
+  it.each(['eval_overview', 'eval_experiment_summary', 'eval_findings_current', 'eval_run_pair_agreement'])(
+    '%s view is declared',
+    (viewName) => {
+      expect(schema).toMatch(new RegExp(`CREATE (OR REPLACE )?VIEW ${viewName} `));
+    },
+  );
+
+  it('eval_findings_current walks the supersedes_finding_id chain recursively and collapses to the head', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_findings_current');
+    expect(viewStart).toBeGreaterThan(-1);
+    const viewEnd = schema.indexOf('COMMENT ON VIEW eval_findings_current', viewStart);
+    expect(viewEnd).toBeGreaterThan(viewStart);
+    const viewBody = schema.slice(viewStart, viewEnd);
+    expect(viewBody).toContain('WITH RECURSIVE chain AS');
+    expect(viewBody).toContain('NOT EXISTS (SELECT 1 FROM eval_findings s WHERE s.supersedes_finding_id = f.id)');
+    expect(viewBody).toContain('superseded_finding_ids');
+  });
+
+  it('eval_experiment_summary reads eval_experiment_variants and eval_experiment_dependencies rather than re-deriving their matching rules', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_experiment_summary');
+    expect(viewStart).toBeGreaterThan(-1);
+    const viewEnd = schema.indexOf(';', viewStart);
+    expect(viewEnd).toBeGreaterThan(viewStart);
+    const viewBody = schema.slice(viewStart, viewEnd);
+    expect(viewBody).toContain('FROM eval_experiment_variants v');
+    expect(viewBody).toContain('FROM eval_experiment_dependencies d');
+    expect(viewBody).toContain("d.depends_on_status <> 'decided'");
+  });
+
+  it('eval_overview counts every table and status/kind split named in the brief', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_overview');
+    expect(viewStart).toBeGreaterThan(-1);
+    const viewEnd = schema.indexOf(';', viewStart);
+    expect(viewEnd).toBeGreaterThan(viewStart);
+    const viewBody = schema.slice(viewStart, viewEnd);
+    for (const table of ['eval_sets', 'eval_items', 'eval_runs', 'eval_results', 'eval_experiments', 'eval_findings', 'eval_models_current']) {
+      expect(viewBody).toContain(`FROM ${table}`);
+    }
   });
 
   it('eval_experiment_variants declares an ambiguous column and matches on declared settings, not model alone', () => {
