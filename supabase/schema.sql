@@ -723,24 +723,9 @@ SELECT DISTINCT ON (slug) *
 FROM eval_models
 ORDER BY slug, effective_date DESC, created_at DESC;
 
-CREATE TABLE eval_hypothesis_classes (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  slug        TEXT NOT NULL UNIQUE,
-  name        TEXT NOT NULL,
-  statement   TEXT NOT NULL,
-  legacy_code TEXT UNIQUE,                  -- the historical H-number (H1..H10) this class predates
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TRIGGER eval_hypothesis_classes_updated_at
-  BEFORE UPDATE ON eval_hypothesis_classes
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
 CREATE TABLE eval_experiments (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   slug                TEXT NOT NULL UNIQUE,        -- descriptive public identifier, e.g. 'audit-single-vs-grouped'
-  legacy_code         TEXT UNIQUE,                 -- the historical E-number (E0..E13) this experiment predates
   question            TEXT NOT NULL,               -- the falsifiable question this experiment answers
   tasks               TEXT[] NOT NULL,             -- usually one; a baseline sweep lists several
   variants_declared   JSONB NOT NULL DEFAULT '[]', -- [{label, model_slug, role, settings}, ...] planned before running
@@ -763,15 +748,6 @@ CREATE INDEX idx_eval_experiments_status ON eval_experiments(status);
 CREATE TRIGGER eval_experiments_updated_at
   BEFORE UPDATE ON eval_experiments
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-CREATE TABLE eval_experiment_hypotheses (
-  experiment_id       UUID NOT NULL REFERENCES eval_experiments(id) ON DELETE CASCADE,
-  hypothesis_class_id UUID NOT NULL REFERENCES eval_hypothesis_classes(id) ON DELETE RESTRICT,
-
-  PRIMARY KEY (experiment_id, hypothesis_class_id)
-);
-
-CREATE INDEX idx_eval_experiment_hypotheses_class ON eval_experiment_hypotheses(hypothesis_class_id);
 
 CREATE TABLE eval_findings (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1181,9 +1157,7 @@ LEFT JOIN eval_experiments d ON d.slug = dep.slug;
 -- policies, same rationale as the eval tables above
 ALTER TABLE eval_model_families ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eval_models ENABLE ROW LEVEL SECURITY;
-ALTER TABLE eval_hypothesis_classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eval_experiments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE eval_experiment_hypotheses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eval_findings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eval_review_rounds ENABLE ROW LEVEL SECURITY;
 
@@ -1201,16 +1175,10 @@ COMMENT ON COLUMN eval_models.attribute_provenance IS 'Per-attribute exceptions 
 
 COMMENT ON VIEW eval_models_current IS 'Latest known snapshot per slug. eval-run resolves --models against this view when stamping model_version_id.';
 
-COMMENT ON TABLE eval_hypothesis_classes IS 'A small catalog of falsifiable hypothesis classes an experiment can test (e.g. "a cheaper same-vendor model matches the current one within tolerance"). legacy_code is the historical H-number a private research catalog still cross-references; slug is the public identifier. Populated by hand, same precedent as eval_model_families.';
-COMMENT ON COLUMN eval_hypothesis_classes.legacy_code IS 'The historical H-number (H1..H10) this class was first defined under, kept only so an existing private catalog document can still cross-reference it. Nothing public shows this code; slug is what a command or report displays.';
-
-COMMENT ON TABLE eval_experiments IS 'One named question under test, identified by a descriptive slug (legacy_code keeps the historical E-number a private research catalog still cross-references). Declares its variants and decision rule before running; the runs that answer it are eval_runs rows with experiment_id set. No owner column: exactly one operator runs this program today.';
+COMMENT ON TABLE eval_experiments IS 'One named question under test, identified by a descriptive slug. The falsifiable claim lives in question as prose. Declares its variants and decision rule before running; the runs that answer it are eval_runs rows with experiment_id set. No owner column: exactly one operator runs this program today.';
 COMMENT ON COLUMN eval_experiments.slug IS 'Descriptive, public identifier for this experiment (e.g. audit-single-vs-grouped), derived from its question. What eval-run --experiment and any report or doc display.';
-COMMENT ON COLUMN eval_experiments.legacy_code IS 'The historical E-number (E0..E13) this experiment was first defined under, kept only so an existing private catalog document can still cross-reference it. Nothing public shows this code.';
 COMMENT ON COLUMN eval_experiments.variants_declared IS 'Planned variants, recorded before execution. What actually ran is the set of eval_runs rows with this experiment_id, which may be a subset (a variant was dropped) or differ in settings (a declared plan changed): variants_declared is intent, eval_runs is fact.';
 COMMENT ON COLUMN eval_experiments.decision_rule IS 'The rule this experiment is judged by. May carry any of tolerance, precisionTolerance, maxSlideDrop (numeric, each overriding the matching part of the task default from TASK_TOLERANCES in apps/pipeline/src/lib/eval/tolerances.ts) plus description (plain-language prose for a human reading the experiment record). eval-compare resolves this experiment''s runs against the override via tolerances.ts''s resolveTolerance() and states which rule applied in its report; an unrecognized key is ignored and logged as a warning. Empty (the default) means every run on this experiment is judged by the task default with no override.';
-
-COMMENT ON TABLE eval_experiment_hypotheses IS 'Which hypothesis classes an experiment tests — a join table rather than an array column, since a hypothesis class is now a real row in eval_hypothesis_classes and this relation should refuse a dangling reference rather than let one drift silently the way an unenforced array or text code could. Small and fixed cardinality (on the order of ten classes, a few dozen experiments), so a join table costs nothing here in a way it would for eval_findings.run_ids, which cites from a large, growing id space instead.';
 
 COMMENT ON TABLE eval_findings IS 'Append-only record of what was concluded from a run or comparison, with the run and item ids that support it. Never UPDATEd or DELETEd; a change of mind is a new row with supersedes_finding_id pointing at the one it revises, so the earlier claim and what was known when it was made both stay intact.';
 COMMENT ON COLUMN eval_findings.run_ids IS 'Not FK-enforced per element (Postgres arrays can''t reference a table), the same "free text, not a foreign key" precedent as eval_sets.source. Move to a join table only if a finding routinely cites more than a handful of runs or a referential-integrity problem actually shows up.';

@@ -67,7 +67,6 @@ function makeFakeStore(overrides: Partial<EvalStore> = {}): { store: EvalStore; 
   const experiment: EvalExperimentRow = {
     id: 'exp-1',
     slug: 'test-experiment',
-    legacy_code: null,
     question: 'Does the candidate model grade as well as baseline?',
     tasks: ['grading'],
     variants_declared: [],
@@ -638,7 +637,7 @@ describe('eval-run: repeat_index identity on the transcription task (temperature
     const set = makeEvalSetRow({ task: 'transcription', selection: { pdfPath: 'unit-1.pdf' } });
     const item = makeEvalItemRow({ item_key: 'slide-1', payload: { slide: 1, text_layer: 'Bonjour', category: 'text' } });
     const experiment: EvalExperimentRow = {
-      id: 'exp-1', slug: 'transcription-experiment', legacy_code: null, question: 'q', tasks: ['transcription'],
+      id: 'exp-1', slug: 'transcription-experiment', question: 'q', tasks: ['transcription'],
       variants_declared: [], decision_rule: {}, depends_on: [], status: 'proposed', decided_at: null, notes: null,
       created_at: '2026-09-29T00:00:00Z', updated_at: '2026-09-29T00:00:00Z',
     };

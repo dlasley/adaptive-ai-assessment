@@ -51,4 +51,11 @@ describe('supabase/schema.sql declares the evaluation framework cross-cutting vi
     expect(viewEnd).toBeGreaterThan(viewStart);
     expect(schema.slice(viewStart, viewEnd)).toContain('ei.seeded_class');
   });
+
+  it.each(['eval_hypothesis_classes', 'eval_experiment_hypotheses', 'legacy_code'])(
+    '%s is retired and no longer declared',
+    (name) => {
+      expect(schema).not.toContain(name);
+    },
+  );
 });

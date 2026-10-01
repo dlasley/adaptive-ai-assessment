@@ -80,7 +80,6 @@ function makeExperimentRow(overrides: Partial<EvalExperimentRow> = {}): EvalExpe
   return {
     id: '3f6e1c9a-4b2d-4a7e-9c1f-2d8b5a6e7f10',
     slug: 'sonnet-vs-opus-grading',
-    legacy_code: null,
     question: 'Does the candidate model grade as well as baseline?',
     tasks: ['grading'],
     variants_declared: [],

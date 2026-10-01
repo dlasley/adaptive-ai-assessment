@@ -155,7 +155,6 @@ export function makeEvalExperimentRow(overrides: Partial<EvalExperimentRow> = {}
   return {
     id: 'exp-1',
     slug: 'exp-1',
-    legacy_code: null,
     question: 'question',
     tasks: ['grading'],
     variants_declared: [],

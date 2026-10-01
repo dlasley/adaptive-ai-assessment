@@ -694,10 +694,6 @@ that outlive any single run, all service-role only with no anon policies:
   variants, and the decision rule it will be judged against (a task's default tolerance, or an
   override for this experiment only). `eval-run --experiment <id-or-slug>` attributes runs to it;
   its `status` moves through `proposed`, `running`, and then `decided`, `deferred`, or `superseded`.
-- **`eval_hypothesis_classes`** / **`eval_experiment_hypotheses`**: a small catalog of falsifiable
-  hypothesis classes an experiment can test (for example, that a cheaper same-vendor model matches
-  the current one within tolerance), and the join table linking each experiment to the classes it
-  tests.
 - **`eval_model_families`** / **`eval_models`**: a dated snapshot of a model's attributes (open or
   closed weights, total and active parameter count, architecture, release date, price, context
   window, reasoning support, and known serving hosts), one row per model identifier per
@@ -747,9 +743,6 @@ ids); `eval_experiment_variants` (one row per declared variant, joined to the ru
 by matching model slug, not label, since a run's own label isn't reliably the plan's label string);
 and `eval_experiment_dependencies` (one row per `depends_on` entry with that dependency's current
 status, or `missing` when no experiment carries the slug).
-
-No command reads or writes `eval_hypothesis_classes`, `eval_experiment_hypotheses`, or
-`eval_experiments.legacy_code` today; they are candidates for retirement.
 
 Every view also carries `metric_status`, which explains a null `primary_metric`/`primary_metric_value`
 rather than leaving it to guesswork: `failed run` (the run itself didn't complete), `ok` (a metric is

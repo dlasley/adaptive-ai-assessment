@@ -185,7 +185,6 @@ describe('eval-finding', () => {
     const experiment: EvalExperimentRow = {
       id: 'exp-1',
       slug: 'my-experiment',
-      legacy_code: null,
       question: 'q',
       tasks: ['grading'],
       variants_declared: [],

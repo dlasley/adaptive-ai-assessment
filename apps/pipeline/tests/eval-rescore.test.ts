@@ -401,7 +401,6 @@ describe('eval-rescore skip, refuse, and resolution rules', () => {
     const experiment: EvalExperimentRow = {
       id: 'exp-1',
       slug: 'test-experiment',
-      legacy_code: null,
       question: 'Does the candidate model transcribe as well as baseline?',
       tasks: ['transcription'],
       variants_declared: [],

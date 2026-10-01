@@ -102,7 +102,6 @@ export type NewEvalResultRow = Pick<EvalResultRow, 'run_id' | 'item_id'> &
 export interface EvalExperimentRow {
   id: string;
   slug: string;
-  legacy_code: string | null;
   question: string;
   tasks: EvalTask[];
   variants_declared: unknown[];
