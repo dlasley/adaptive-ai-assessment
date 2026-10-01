@@ -720,14 +720,36 @@ that outlive any single run, all service-role only with no anon policies:
   `eval_items.reviewed_by`/`reviewed_at`, which are per item. A re-review under a revised rubric adds
   a new round rather than overwriting the claim about what confidence applied under the old one.
 
-Four views compute across these tables so a comparison doesn't need a hand-written join each time:
+Nine views compute across these tables so a comparison doesn't need a hand-written join each time:
 `eval_run_scorecard` (one row per run, with its model's registry attributes and experiment slug
 joined in), `eval_model_history` (the same information reordered by model identifier and time, for
 tracking one model across runs), `eval_run_model_stats` (one row per run with mean cost, mean
 latency, error count, and provider-pin mismatch count computed from that run's own results, plus a
 cost-per-metric-unit ratio, joined to the model's registry attributes), and `eval_family_history`
 (`eval_run_model_stats` reordered by model family and effective date, for tracking a lineage across
-version changes rather than one identifier).
+version changes rather than one identifier). Provider-pin mismatch is compared through
+`eval_normalize_provider(name, is_pin)`, a SQL mirror of `normalizeProviderName`/`normalizePin` in
+`apps/pipeline/src/lib/eval/compare/shared.ts` (lowercase, strip non-alphanumerics, and for a pin
+drop everything after the first `/`), so a hand-typed `--provider anthropic` isn't flagged against
+OpenRouter's own `Anthropic`.
+
+Five more views answer the questions a front-end most needs without re-deriving them in application
+code: `eval_item_consensus` (one row per item with at least two completed, non-error runs, with how
+many runs agree on a task-specific verdict: the human-review worklist, ordered by the reader's own
+`ORDER BY majority_share`); `eval_run_behaviour` (one row per completed run, reference-free: result
+and error counts, parse-failure rate, mean cost, latency p50/p95, and a task-specific behaviour
+column that needs no reference, which is what ranks audit and grading variants while their
+references are still pending); `eval_variant_stability` (one row per variant identity, grouped on
+`experiment_id`, `set_id`, `model`, `prompt_hash`, and the caller-chosen settings keys, normalized
+the same way `normalizeRepeatIdentitySettings` in `apps/pipeline/src/commands/eval-run.ts` does,
+never on `variant_label`, with run count, the metric's mean and spread, mean cost, and the run
+ids); `eval_experiment_variants` (one row per declared variant, joined to the runs that exist for it
+by matching model slug, not label, since a run's own label isn't reliably the plan's label string);
+and `eval_experiment_dependencies` (one row per `depends_on` entry with that dependency's current
+status, or `missing` when no experiment carries the slug).
+
+No command reads or writes `eval_hypothesis_classes`, `eval_experiment_hypotheses`, or
+`eval_experiments.legacy_code` today; they are candidates for retirement.
 
 Every view also carries `metric_status`, which explains a null `primary_metric`/`primary_metric_value`
 rather than leaving it to guesswork: `failed run` (the run itself didn't complete), `ok` (a metric is
