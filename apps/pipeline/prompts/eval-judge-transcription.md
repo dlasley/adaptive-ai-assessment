@@ -41,6 +41,13 @@ What still counts as invention, and should still be judged as such: a translatio
 show, a heading that names a topic the slide does not present, a vocabulary word, example, or
 grammar point not visible on the slide, or any other content not actually on the slide.
 
+Formatting is never the deciding factor, in either direction. Neither the presence nor the absence
+of the `### Exercices` and `### Réponses` headings, a bilingual heading, bold or plain text, bullet
+or numbered lists, a table or a list, nesting, or a label such as a caption prefix makes one
+transcript more complete or more faithful than the other. Decide only on the words of the slide
+each transcript captured and the content each one added that the slide does not show. When the two
+transcripts carry the same slide content and differ only in formatting, the answer is a tie.
+
 ## The No-Teaching-Content Exclusion Rule
 
 Some slides carry no content a student learns the language from — they are about the course rather
