@@ -805,8 +805,16 @@ OpenRouter's own `Anthropic`. The per-task verdict compared by `eval_item_consen
 transcription's no-content-marker decision) lives in one function, `eval_result_verdict(task, output,
 deterministic_checks)`, so the two views cannot drift apart on what a verdict means.
 
-The evaluation dashboard (`.private/eval/scripts/dashboard-snapshot.sql`) reads only these views and
-plain columns on the underlying tables; it never re-derives an aggregate a view already computes.
+Four further read-only summary views exist for a reader that wants the layer's caveats computed
+rather than derived: `eval_reference_status_by_task` (items and sets per task and reference status),
+`eval_provider_coverage` (per task, how many results never recorded a serving host, taken over
+non-errored results with slides the exclusion pass dropped left out, plus pin and mismatch counts),
+`eval_metric_status_by_task` (runs per task and metric status) and `eval_run_snapshot_status` (per
+run, whether the model snapshot it resolved at start is still the current one for its slug). No
+tracked code reads them yet.
+
+The evaluation dashboard snapshot, kept outside the tracked tree, reads only these views and plain
+columns on the underlying tables; it never re-derives an aggregate a view already computes.
 
 Three run views, `eval_run_scorecard`, `eval_run_model_stats` and `eval_run_behaviour`, carry
 `metric_status` (`eval_family_history` passes through `eval_run_model_stats`'s), which explains a null

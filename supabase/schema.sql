@@ -1519,3 +1519,92 @@ ALTER TABLE eval_results
   ADD COLUMN response_meta JSONB;
 
 COMMENT ON COLUMN eval_results.response_meta IS 'OpenRouter response facts with no column of their own: the response id, created, each choice''s finish_reason and native_finish_reason, and the parts of usage that parseUsage does not already map (cached token counts, the upstream-cost breakdown). Never contains message content. Kept when a call returned content, including content that then failed to parse (error parse); null when the call failed or returned no content (error api or empty). One shape per task: the primary call''s fields at the top level; a transcription row whose slide went through --exclusion-pass adds a classifier key holding the same fields for the classifier call plus its served_model and served_provider, which this row''s own served_model/served_provider columns do not carry (they describe the transcription call only). A transcription row is therefore one of four shapes: null (no call returned a response); top-level fields only (no exclusion pass ran); top-level plus classifier (both calls returned a response); or classifier only, meaning the transcription call returned nothing to record, told apart by the row''s error and deterministic_checks.exclusion_decision: the classifier dropped the slide (no error, decision drop, no transcription call made), the transcription call failed after the classifier kept the slide (error api or empty, decision keep), or the classifier''s own response did not parse (error parse, decision null). For a grouped audit call (several questions in one call) this is the whole call''s response, written identically on every row in the group: unlike the per-row token columns, which are that group''s split, this value is not divisible and must not be summed across rows. Nothing reads this column yet; it exists so a question asked later about one specific call, such as which host served it or why it stopped, can be answered from the row.';
+
+-- ============================================================
+-- Evaluation read-only summary views
+-- Aggregates a reader can take as computed so no application does arithmetic over stored counts.
+-- No tracked code reads these four views yet. None selects question text, model output, reviewer
+-- material, judge reasons or free-text error fields.
+-- ============================================================
+
+CREATE OR REPLACE VIEW eval_reference_status_by_task WITH (security_invoker = true) AS
+SELECT
+  es.task,
+  ei.reference_status,
+  count(*)                 AS item_count,
+  count(DISTINCT es.id)    AS set_count
+FROM eval_items ei
+JOIN eval_sets es ON es.id = ei.set_id
+GROUP BY es.task, ei.reference_status;
+
+COMMENT ON VIEW eval_reference_status_by_task IS 'One row per task and reference_status that has at least one item: how many items carry that status and in how many sets. A task with no approved row has no reviewed references, so its runs carry agreement and behaviour figures rather than accuracy.';
+
+CREATE OR REPLACE VIEW eval_provider_coverage WITH (security_invoker = true) AS
+WITH run_mismatch AS (
+  SELECT task, COALESCE(sum(provider_mismatch_count), 0)::bigint AS provider_mismatch_count
+  FROM eval_run_model_stats
+  GROUP BY task
+),
+per_task AS (
+  SELECT
+    r.task,
+    count(*)                                                                 AS result_count,
+    count(*) FILTER (WHERE res.error IS NOT NULL)                            AS errored_result_count,
+    count(*) FILTER (WHERE res.error IS NULL AND res.served_provider IS NULL
+                     AND (res.deterministic_checks ->> 'exclusion_decision') IS DISTINCT FROM 'drop') AS served_provider_null_count,
+    count(*) FILTER (WHERE res.error IS NULL
+                     AND (res.deterministic_checks ->> 'exclusion_decision') IS DISTINCT FROM 'drop') AS non_errored_result_count,
+    count(DISTINCT r.id) FILTER (WHERE r.provider_pin IS NOT NULL)           AS pinned_run_count,
+    count(DISTINCT r.provider_pin)                                           AS distinct_pin_values_exact,
+    count(DISTINCT lower(r.provider_pin))                                    AS distinct_pin_values_lowercased,
+    count(*) FILTER (WHERE (res.deterministic_checks ->> 'exclusion_decision') = 'drop') AS dropped_result_count
+  FROM eval_results res
+  JOIN eval_runs r ON r.id = res.run_id
+  GROUP BY r.task
+)
+SELECT
+  p.task,
+  p.result_count,
+  p.errored_result_count,
+  p.served_provider_null_count,
+  round(p.served_provider_null_count::numeric / nullif(p.non_errored_result_count, 0), 4) AS served_provider_null_share,
+  p.pinned_run_count,
+  p.distinct_pin_values_exact,
+  p.distinct_pin_values_lowercased,
+  COALESCE(m.provider_mismatch_count, 0)                                                  AS provider_mismatch_count,
+  p.dropped_result_count
+FROM per_task p
+LEFT JOIN run_mismatch m ON m.task = p.task;
+
+COMMENT ON VIEW eval_provider_coverage IS 'One row per task that has results: how many results never recorded a serving host, how runs pinned a host, and how many results came from a different host than the pin. An errored result never reports a host, so served_provider_null_count and served_provider_null_share are taken over results with no error; errored_result_count is the number left out, and result_count is the total. distinct_pin_values_lowercased is a spelling count only (lower(provider_pin)); it is not the comparison eval_normalize_provider applies, which also strips every non-alphanumeric character and drops the host suffix after a slash. provider_mismatch_count sums eval_run_model_stats.provider_mismatch_count, which counts only results that recorded a serving host. Pin values themselves are not returned. A transcription slide the exclusion pass dropped makes no transcription call, so it has no serving host by design; those results (counted in dropped_result_count and still part of result_count) are left out of served_provider_null_count and served_provider_null_share so a dropped slide is not read as a result that failed to record a host. pinned_run_count and the pin-spelling counts cover runs with at least one result.';
+
+CREATE OR REPLACE VIEW eval_metric_status_by_task WITH (security_invoker = true) AS
+SELECT
+  task,
+  metric_status,
+  count(*) AS run_count
+FROM eval_run_scorecard
+GROUP BY task, metric_status;
+
+COMMENT ON VIEW eval_metric_status_by_task IS 'One row per task and metric_status (see eval_run_scorecard) that has at least one run, with the number of runs in it. Shows how many runs on each task carry a final accuracy figure and how many are waiting on reviewed references or a rescore.';
+
+CREATE OR REPLACE VIEW eval_run_snapshot_status WITH (security_invoker = true) AS
+SELECT
+  r.id                     AS run_id,
+  r.task,
+  x.slug                   AS experiment_slug,
+  r.variant_label,
+  r.model                  AS model_slug,
+  m.effective_date         AS run_effective_date,
+  c.effective_date         AS current_effective_date,
+  CASE
+    WHEN r.model_version_id IS NULL THEN 'unregistered'
+    WHEN c.id = m.id THEN 'current'
+    WHEN c.id <> m.id THEN 'superseded'
+  END                      AS snapshot_state
+FROM eval_runs r
+LEFT JOIN eval_experiments x ON x.id = r.experiment_id
+LEFT JOIN eval_models m ON m.id = r.model_version_id
+LEFT JOIN eval_models_current c ON c.slug = m.slug;
+
+COMMENT ON VIEW eval_run_snapshot_status IS 'One row per run: whether the model snapshot the run resolved at start is still the latest for its slug. current means it is; superseded means a newer snapshot of the slug has been registered since, so the model attributes and price the run was stamped with have been replaced; unregistered means the run has no snapshot (model_version_id is null). A null state is unreachable while every run''s snapshot slug has a current row in eval_models_current. run_effective_date and current_effective_date are the two snapshot dates being compared.';

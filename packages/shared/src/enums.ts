@@ -25,3 +25,31 @@ export const WRITING_TYPES = [
   'sentence_building',
 ] as const;
 export type WritingType = (typeof WRITING_TYPES)[number];
+
+/**
+ * Value sets for the evaluation framework's CHECK constraints (`task` on eval_sets, eval_runs and
+ * eval_findings, `status` on eval_runs and eval_experiments, `kind` on eval_findings,
+ * `reference_status` on eval_items). The pipeline imports `EVAL_TASKS`; the other lists are drift
+ * guards pinned to the schema file by the enums test.
+ */
+export const EVAL_TASKS = [
+  'audit',
+  'grading',
+  'generation',
+  'validation',
+  'transcription',
+  'mapping',
+] as const;
+export type EvalTask = (typeof EVAL_TASKS)[number];
+
+export const FINDING_KINDS = ['adopt', 'reject', 'defer', 'observation'] as const;
+export type FindingKind = (typeof FINDING_KINDS)[number];
+
+export const EXPERIMENT_STATUSES = ['proposed', 'running', 'decided', 'deferred', 'superseded'] as const;
+export type ExperimentStatus = (typeof EXPERIMENT_STATUSES)[number];
+
+export const RUN_STATUSES = ['running', 'completed', 'failed', 'aborted'] as const;
+export type RunStatus = (typeof RUN_STATUSES)[number];
+
+export const REFERENCE_STATUSES = ['pending', 'approved', 'rejected'] as const;
+export type ReferenceStatus = (typeof REFERENCE_STATUSES)[number];

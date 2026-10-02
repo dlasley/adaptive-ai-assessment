@@ -130,7 +130,7 @@ The system prioritizes structured validation and guardrails over unchecked model
 - Anonymous study codes for identity (no accounts, no PII)
 
 **Admin**
-- Dashboard (`/admin`, gated by `NEXT_PUBLIC_ENABLE_ADMIN_PANEL`) backed by `/api/admin/*` routes: study-code search, bulk delete, and CSV export
+- Dashboard (`/admin`) backed by `/api/admin/*` routes: study-code search, bulk delete, and CSV export. These are protected by the admin session alone; `NEXT_PUBLIC_ENABLE_ADMIN_PANEL` only shows the "Teacher Dashboard" navigation link
 - Feature flags for runtime configuration
 
 **Content pipeline**
@@ -149,7 +149,7 @@ The system is configurable via environment variables to support model routing, f
 | `ADMIN_SESSION_SECRET` | Admin only | Hex string for HMAC cookie signing |
 | `COURSE_NAME` / `COURSE_TITLE` | Yes (deployed) | Course branding read by `packages/shared/src/course.ts`: the app title and header, and the pipeline's prompts. Server-side only; other clients read it from `GET /api/course`. Local development, tests and local builds fall back to "French II" / "French II Practice & Assessment"; a Vercel build or deployment, or a production server, fails without them |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Yes (deployed), one pair | Upstash Redis for durable rate limiting, as set by the Vercel Marketplace integration. Without a pair, the limiter runs in memory in development and tests, and denies requests in production builds (`NODE_ENV=production`, which includes Vercel previews) |
-| `NEXT_PUBLIC_ENABLE_ADMIN_PANEL` | No | Enable admin dashboard (`true`/`false`) |
+| `NEXT_PUBLIC_ENABLE_ADMIN_PANEL` | No | Shows the "Teacher Dashboard" navigation link (`true`/`false`). Does not gate `/admin` or `/api/admin/*`, which the admin session protects |
 | `NEXT_PUBLIC_ENABLE_LEITNER` | No | Toggle adaptive question selection |
 | `NEXT_PUBLIC_SHOW_STUDY_CODE` | No | Toggle study code display |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
