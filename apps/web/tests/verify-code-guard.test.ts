@@ -41,7 +41,7 @@ describe('per-code lockout', () => {
 });
 
 describe('per-IP miss lock', () => {
-  it('locks an IP for 15 minutes once it reaches the miss limit', async () => {
+  it('locks an IP for 5 minutes once it reaches the miss limit', async () => {
     const store = new InMemoryRateLimitStore();
 
     for (let i = 0; i < PER_IP_MAX_MISSES - 1; i++) {
@@ -51,8 +51,8 @@ describe('per-IP miss lock', () => {
 
     await recordIpMiss(store, '203.0.113.1');
     const retryAfter = await ipLockRetryAfterSeconds(store, '203.0.113.1');
-    expect(retryAfter).toBeGreaterThan(14 * 60);
-    expect(retryAfter).toBeLessThanOrEqual(15 * 60);
+    expect(retryAfter).toBeGreaterThan(4 * 60);
+    expect(retryAfter).toBeLessThanOrEqual(5 * 60);
   });
 
   it('does not lock a different IP', async () => {

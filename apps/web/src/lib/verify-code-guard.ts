@@ -8,9 +8,9 @@
 
 import type { RateLimitStore } from './rate-limit-store';
 
-export const PER_IP_MAX_MISSES = 5;
-const PER_IP_MISS_WINDOW_MS = 60 * 1000;
-const PER_IP_LOCK_MS = 15 * 60 * 1000;
+export const PER_IP_MAX_MISSES = 20;
+const PER_IP_MISS_WINDOW_MS = 5 * 60 * 1000;
+const PER_IP_LOCK_MS = 5 * 60 * 1000;
 
 export const PER_CODE_MAX_FAILURES = 5;
 const PER_CODE_FAILURE_WINDOW_MS = 15 * 60 * 1000;
