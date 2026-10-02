@@ -121,9 +121,8 @@ discovers `_pipeline` on `fpath` the same way it discovers any other completion 
 generated script works identically whether it's `source`d directly (a) or autoloaded this way (b).
 
 Either mode needs `pipeline` on PATH. `npx --no -- pipeline` always works from the repo root without any
-setup. For a bare `pipeline`: run `npm link` inside `apps/pipeline/`, or add
-`apps/pipeline/node_modules/.bin` (or the repo root's `node_modules/.bin`, where npm workspaces
-also place it) to PATH.
+setup. For a bare `pipeline`: run `npm link` inside `apps/pipeline/`, or add the repo root's `node_modules/.bin`
+(where npm workspaces place it) to PATH.
 
 ### Guided mode
 
@@ -181,7 +180,7 @@ Two option groups (`apps/pipeline/src/lib/options/groups.ts`) are shared by most
 | `--write-db` | Write results to the database (uses the secret key, bypasses RLS) |
 | `--yes-production` | Confirm a write-capable run against an unexpected Supabase target |
 
-`--sync-db` and `--mark-db` are deprecated aliases for `--write-db`; using either prints a warning and behaves the same as `--write-db`. See "Supabase target guard" below for what `--yes-production` gates.
+See "Supabase target guard" below for what `--yes-production` gates.
 
 **Logging** (every script):
 
@@ -313,7 +312,7 @@ are untouched). No model call. Otherwise this script has no database-write flags
 flags.
 
 **Any existing unit must be mapped with `--map-existing` before its topics can generate anything.**
-A unit's `headings` predating exact-heading matching (word tokens like `["révision:", "present",
+A unit's `headings` predating exact-heading matching (word tokens like `["bilan:", "past",
 "tense"]` rather than verbatim heading text) will never resolve under the current matching rule.
 `questions-generate.ts` and `content-extract-resources.ts` both check this before doing anything
 else and exit with an error naming the unit and every mismatched heading; see their sections

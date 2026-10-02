@@ -49,11 +49,11 @@ export const cli = defineCli(
       default: 'xlsx',
       help: 'Audit/grading output format: an .xlsx workbook (headers, descriptions, validation, protection) or a flat .csv',
     },
-    seed: { type: 'number', help: 'Random seed shuffling row order (default: a fresh seed, printed to the console) — audit/grading only' },
+    seed: { type: 'number', help: 'Random seed shuffling row order (audit/grading only; default: a fresh seed, printed to the console)' },
     'all-classes': {
       type: 'boolean',
       default: false,
-      help: "Grading task: include typo/missing_accent items (excluded by default — see eval-review-import --policy-labels)",
+      help: "Grading task: include typo/missing_accent items (excluded by default; see eval-review-import --policy-labels)",
     },
     'from-run': { type: 'string', help: "Transcription task: eval_runs id whose output prefills each slide's file (default: empty files)" },
   },

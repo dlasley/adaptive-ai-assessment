@@ -169,7 +169,7 @@ Test Database Connection
 Usage: npx tsx apps/pipeline/src/commands/db-check-connection.ts
 
 Verifies Supabase connectivity and schema for all core tables.
-No options — just run it.
+No options. Just run it.
 `);
     process.exit(0);
   }

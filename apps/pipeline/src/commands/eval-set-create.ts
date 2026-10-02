@@ -80,7 +80,7 @@ export const cli = defineCli(
       help: 'Comma-separated question fields to stratify the audit sample by',
     },
     size: { type: 'number', min: 1, help: 'Sample size: questions for --task audit (required); questions before label classes for --task grading (default: all)' },
-    seed: { type: 'number', help: 'Random seed for the sample — recorded either way; omit to generate one' },
+    seed: { type: 'number', help: 'Random seed for the sample (recorded either way; omit to generate one)' },
     'include-ids': { type: 'string', help: 'Path to a file of question ids (one per line) to restrict sampling to (audit)' },
     'exclude-topics': { type: 'string', help: 'Path to a file of topic names (one per line, exact match) to exclude from the audit candidate pool before sampling' },
     'balance-status': {

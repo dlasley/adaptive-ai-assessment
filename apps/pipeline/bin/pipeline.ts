@@ -5,8 +5,8 @@
  * `pipeline <command> [options]` runs `src/commands/<command>.ts` with the same argv, stdio, and
  * exit code as `npx tsx apps/pipeline/src/commands/<command>.ts [options]` (see
  * `lib/dispatch/spawn-command.ts`). This is the package.json `bin` target: npm workspaces symlink
- * it so `npx --no -- pipeline` works from the repo root, and `npm link` (or adding
- * `apps/pipeline/node_modules/.bin` to PATH) makes a bare `pipeline` work too.
+ * it so `npx --no -- pipeline` works from the repo root, and `npm link` (or adding the repo root's
+ * `node_modules/.bin` to PATH) makes a bare `pipeline` work too.
  *
  * `pipeline` with no arguments, at an interactive TTY and outside CI, enters guided mode instead
  * of printing help (see `lib/dispatch/tty-gate.ts` for the exact conditions).
@@ -24,21 +24,21 @@ import { unitIdsFromPdfDir } from '../src/lib/dispatch/completion-units';
 import { runGuidedMode } from '../src/lib/dispatch/guided';
 
 function completionInstructions(): string {
-  return `pipeline completion — shell tab completion
+  return `pipeline completion: shell tab completion
 
 Two ways to install, pick one:
 
-(a) Always current, ~200ms per new shell — add this line to ~/.zshrc, AFTER the line that calls
+(a) Always current, ~200ms per new shell. Add this line to ~/.zshrc, AFTER the line that calls
     \`compinit\` (usually near the top of ~/.zshrc, via \`autoload -U compinit && compinit\`):
 
       source <(pipeline completion zsh)
 
-    Then reload: exec zsh. This regenerates completions — command names, flags, choice values, and
-    \`--unit\` candidates from apps/pipeline/content/pdf/ — fresh every time a new shell starts, so
+    Then reload: exec zsh. This regenerates completions (command names, flags, choice values, and
+    \`--unit\` candidates from apps/pipeline/content/pdf/) every time a new shell starts, so
     they never go stale as commands or PDFs are added, at the cost of importing every command
     module on every shell start.
 
-(b) Faster shell start, manual refresh — write the script once to a file on fpath, BEFORE the
+(b) Faster shell start, manual refresh. Write the script once to a file on fpath, BEFORE the
     \`compinit\` line in ~/.zshrc (autoload needs the file in place first):
 
       mkdir -p ~/.zfunc
@@ -50,16 +50,15 @@ Two ways to install, pick one:
       autoload -U compinit && compinit
 
     Re-run the \`pipeline completion zsh > ~/.zfunc/_pipeline\` line after adding a command, adding
-    a PDF, or pulling changes — this mode doesn't regenerate itself.
+    a PDF, or pulling changes. This mode doesn't regenerate itself.
 
-Bash only supports (a) — add this to ~/.bashrc instead:
+Bash only supports (a). Add this to ~/.bashrc instead:
 
   source <(pipeline completion bash)
 
 Either mode requires \`pipeline\` on PATH. \`npx --no -- pipeline\` always works without any setup, from the
-repo root. For a bare \`pipeline\`: run \`npm link\` inside apps/pipeline/, or add
-apps/pipeline/node_modules/.bin (or the repo root's node_modules/.bin, where npm workspaces also
-place it) to PATH.
+repo root. For a bare \`pipeline\`: run \`npm link\` inside apps/pipeline/, or add the repo root's
+node_modules/.bin (where npm workspaces place it) to PATH.
 
 Print a completion script directly:
 
@@ -108,7 +107,7 @@ async function main(): Promise<void> {
   const match = commands.find((c) => c.name === first);
   if (!match) {
     const suggestion = nearestCommand(first, commands.map((c) => c.name));
-    console.error(`Unknown command: '${first}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`);
+    console.error(`Unknown command: '${first}'${suggestion ? `. Did you mean '${suggestion}'?` : ''}`);
     console.error('Run `pipeline --help` (or `pipeline` at a TTY) to see all commands.');
     process.exit(1);
   }

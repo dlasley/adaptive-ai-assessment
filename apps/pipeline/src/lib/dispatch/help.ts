@@ -7,7 +7,7 @@ import type { CommandMeta } from './types';
 
 export function formatHelp(commands: CommandMeta[]): string {
   const lines: string[] = [];
-  lines.push('pipeline — content pipeline dispatcher for apps/pipeline');
+  lines.push('pipeline: content pipeline dispatcher for apps/pipeline');
   lines.push('');
   lines.push('Usage:');
   lines.push('  pipeline                         Guided mode (interactive, at a TTY)');

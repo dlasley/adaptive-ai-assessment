@@ -44,7 +44,7 @@ export const cli = defineCli(
     ...dbTargetFlags,
     ...loggingFlags,
     set: { type: 'string', required: true, help: 'eval_sets id to import reference into' },
-    from: { type: 'string', required: true, help: 'Reviewer-completed .xlsx or .csv path (audit/grading), or reference directory (transcription) — all from eval-review-export' },
+    from: { type: 'string', required: true, help: 'Reviewer-completed .xlsx or .csv path (audit/grading), or reference directory (transcription), all from eval-review-export' },
     reviewer: { type: 'string', required: true, help: 'Reviewer handle recorded as reviewed_by on each written item, and as the eval_review_rounds row\'s reviewer' },
     'rubric-version': { type: 'string', required: true, help: 'Label of the rubric this review round was labeled under (e.g. v1), recorded on the eval_review_rounds row' },
     'rubric-hash': { type: 'string', help: 'Content hash of the rubric at labeling time, recorded on the eval_review_rounds row' },

@@ -51,7 +51,7 @@ export const cli = defineCli(
   },
   {
     name: 'eval-seed-grading',
-    description: "Fills a grading eval set's submitted_answer placeholders — deterministic for typo/missing_accent, model-written for the rest. Every item stays reference_status 'pending'. Dry run by default (plan and projected cost, no model call); --write-db calls the model and persists answers.",
+    description: "Fills a grading eval set's submitted_answer placeholders: deterministic for typo/missing_accent, model-written for the rest. Every item stays reference_status 'pending'. Dry run by default (plan and projected cost, no model call); --write-db calls the model and persists answers.",
     examples: [
       'npx tsx apps/pipeline/src/commands/eval-seed-grading.ts --set <id> --model anthropic/claude-sonnet-5 --write-db',
     ],

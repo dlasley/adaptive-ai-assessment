@@ -206,7 +206,7 @@ export const cli = defineCli(
     },
     statement: { type: 'string', help: 'One-line human-readable statement for the eval_findings row (required with --decide)' },
     candidate: { type: 'string', help: "Which of --runs the comparison's decision_rule (and, with --decide, the decision) is about; required with --decide, or with multiple candidates citing different experiments, when --runs names more than one" },
-    supersedes: { type: 'string', help: 'eval_findings id this decision supersedes — required to re-decide a baseline/candidate pair an experiment already has a finding for' },
+    supersedes: { type: 'string', help: 'eval_findings id this decision supersedes. Required to re-decide a baseline/candidate pair an experiment already has a finding for' },
     'decided-by': { type: 'string', help: 'The operator running this command, recorded on the row; falls back to EVAL_DECIDED_BY, required with --decide' },
   },
   {

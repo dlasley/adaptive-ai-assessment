@@ -108,9 +108,8 @@ pipeline completion zsh > ~/.zfunc/_pipeline
 Re-run the `pipeline completion zsh > ~/.zfunc/_pipeline` line after adding a command, adding a
 PDF, or pulling changes. This mode doesn't regenerate itself.
 
-Either mode needs `pipeline` on PATH: run `npm link` inside `apps/pipeline/`, or add
-`apps/pipeline/node_modules/.bin` (or the repo root's `node_modules/.bin`, where npm workspaces
-also place it) to PATH. `npx --no -- pipeline` always works without any of this, from the repo root.
+Either mode needs `pipeline` on PATH: run `npm link` inside `apps/pipeline/`, or add the repo root's `node_modules/.bin`
+(where npm workspaces place it) to PATH. `npx --no -- pipeline` always works without any of this, from the repo root.
 
 ---
 
@@ -161,8 +160,6 @@ In practice:
 Every write-capable command also defaults to a dry run: `--dry-run` (or, for commands that only
 ever preview under `--write-db`, the plain no-flag invocation) shows what would happen without
 writing anything. `--write-db` is the flag that turns a preview into an actual write.
-`--sync-db`/`--mark-db` are deprecated aliases for `--write-db`; either still works, with a
-deprecation warning.
 
 ---
 
