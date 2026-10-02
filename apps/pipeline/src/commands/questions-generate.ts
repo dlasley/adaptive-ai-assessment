@@ -818,7 +818,7 @@ export async function generateAllQuestions(options: ReturnType<typeof cli.parse>
   const gitInfo = getGitInfo();
 
   // Fetch units from database
-  const dbClient = options.writeDb ? createScriptSupabase({ write: true }) : createScriptSupabase({ serviceRole: true });
+  const dbClient = createScriptSupabase({ write: options.writeDb });
   const units = await fetchUnitsFromDb(dbClient);
 
   // Filter units based on CLI options

@@ -100,7 +100,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
 
   // eval_items is service-role only, read or write. Real Supabase access is skipped entirely when a
   // store is injected, so a test never needs live credentials or a network connection.
-  const store = deps.store ?? createSupabaseEvalStore(createScriptSupabase({ write: options.writeDb, serviceRole: true }));
+  const store = deps.store ?? createSupabaseEvalStore(createScriptSupabase({ write: options.writeDb }));
 
   const set = await store.getSet(options.set);
   if (!set) {

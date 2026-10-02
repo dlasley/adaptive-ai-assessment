@@ -81,7 +81,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
   const options: Options = cli.parse(deps.argv);
   setLogLevel(levelFromFlags(options));
 
-  const supabase = deps.store ? undefined : createScriptSupabase({ write: options.writeDb, serviceRole: true });
+  const supabase = deps.store ? undefined : createScriptSupabase({ write: options.writeDb });
   const store = deps.store ?? createSupabaseEvalStore(supabase!);
 
   const runs = await resolveTargetRuns(store, options);

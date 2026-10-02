@@ -87,7 +87,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
     process.exit(1);
   }
 
-  const supabase = deps.store ? undefined : createScriptSupabase({ write: options.writeDb, serviceRole: true });
+  const supabase = deps.store ? undefined : createScriptSupabase({ write: options.writeDb });
   const store = deps.store ?? createSupabaseEvalStore(supabase!);
 
   const runIds = splitIds(options.runs);

@@ -370,7 +370,7 @@ is given. The app cannot issue study codes until this has run.
 
 Deletes study codes with no activity for `--inactive-days <n>` days (default 90). A code's activity
 is its last quiz submission, or its creation if it never submitted one. `--no-quizzes-only` limits
-the prune to codes with no `quiz_history` rows. Deleting a code cascades to its quiz history,
+the prune to codes with no `quiz_history` rows. Superuser codes are never pruned. Deleting a code cascades to its quiz history,
 question results and Leitner state. A dry run unless `--write-db`, which prints how many codes
 would go and how many of them have quiz history. The admin stats show the count of inactive codes.
 
@@ -694,8 +694,8 @@ Commands read the repo-root `.env.local` (copy `.env.local.example`).
 | Variable | Needed for |
 |----------|------------|
 | `OPENROUTER_API_KEY` | Every model call |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Every command that reads the database |
-| `SUPABASE_SECRET_KEY` | Writes (`--write-db`); bypasses RLS |
+| `NEXT_PUBLIC_SUPABASE_URL` | Every command that reads the database |
+| `SUPABASE_SECRET_KEY` | Every command that reads or writes the database (the pipeline never uses the anon key); bypasses RLS |
 | `EXPECTED_SUPABASE_REF` | Confirms which project a write targets; see below |
 | `COURSE_NAME`, `COURSE_TITLE` | Course branding interpolated into every generation and audit prompt (read by `packages/shared/src/course.ts`) |
 | `EVAL_DECIDED_BY` | Default for `--decided-by` on `eval-compare --decide` and `eval-finding` |

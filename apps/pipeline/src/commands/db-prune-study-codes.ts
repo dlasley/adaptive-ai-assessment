@@ -2,7 +2,8 @@
 /**
  * Deletes study codes that have not been active for a number of days. A code's activity is its last
  * quiz submission (or its creation, if it never submitted one). Deleting a code cascades to its quiz
- * history, question results and Leitner state. A dry run unless `--write-db`.
+ * history, question results and Leitner state. Superuser codes are never selected. A dry run unless
+ * `--write-db`.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -52,7 +53,7 @@ export interface PruneOptions {
 }
 
 export interface PruneResult {
-  /** Codes whose last activity is older than the cutoff. */
+  /** Non-superuser codes whose last activity is older than the cutoff. */
   inactive: number;
   /** Of those, how many have at least one quiz_history row. */
   inactiveWithQuizzes: number;
@@ -89,7 +90,7 @@ export async function pruneStudyCodes(supabase: SupabaseClient, options: PruneOp
   const inactiveRows = await fetchAllPages<{ id: string }>(
     supabase,
     'study_codes',
-    (query) => query.lt('last_active_at', cutoff),
+    (query) => query.lt('last_active_at', cutoff).eq('is_superuser', false),
     'id',
   );
   const inactiveIds = inactiveRows.map((row) => row.id);
@@ -119,7 +120,7 @@ async function main() {
   const options = cli.parse();
   setLogLevel(levelFromFlags(options));
 
-  const supabase = createScriptSupabase({ write: options.writeDb, serviceRole: true });
+  const supabase = createScriptSupabase({ write: options.writeDb });
   const result = await pruneStudyCodes(supabase, {
     inactiveDays: options.inactiveDays,
     noQuizzesOnly: options.noQuizzesOnly,

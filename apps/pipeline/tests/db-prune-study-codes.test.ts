@@ -12,7 +12,7 @@ const NOW = new Date('2026-10-01T00:00:00.000Z');
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
 
 interface FakeData {
-  study_codes: { id: string; last_active_at: string }[];
+  study_codes: { id: string; last_active_at: string; is_superuser?: boolean }[];
   quiz_history: { id: string; study_code_id: string }[];
 }
 
@@ -21,15 +21,19 @@ function fakeSupabase(data: FakeData) {
   const deletedIds: string[] = [];
   const client = {
     from(table: keyof FakeData) {
-      let rows: Record<string, string>[] = data[table];
+      let rows: Record<string, string | boolean | undefined>[] = data[table];
       const builder: Record<string, unknown> = {
         select: () => builder,
         lt: (column: string, value: string) => {
-          rows = rows.filter((row) => row[column] < value);
+          rows = rows.filter((row) => (row[column] as string) < value);
+          return builder;
+        },
+        eq: (column: string, value: boolean) => {
+          rows = rows.filter((row) => (row[column] ?? false) === value);
           return builder;
         },
         in: (column: string, values: string[]) => {
-          rows = rows.filter((row) => values.includes(row[column]));
+          rows = rows.filter((row) => values.includes(row[column] as string));
           return builder;
         },
         order: () => builder,
@@ -58,6 +62,18 @@ const DATA: FakeData = {
 };
 
 describe('pruneStudyCodes', () => {
+  it('never selects a superuser code, however inactive', async () => {
+    const data: FakeData = {
+      study_codes: [...DATA.study_codes, { id: 'old-superuser', last_active_at: daysAgo(400), is_superuser: true }],
+      quiz_history: DATA.quiz_history,
+    };
+    const { client, deletedIds } = fakeSupabase(data);
+    const result = await pruneStudyCodes(client, { inactiveDays: 90, noQuizzesOnly: false, write: true, now: NOW });
+
+    expect(result.inactive).toBe(2);
+    expect(deletedIds).not.toContain('old-superuser');
+  });
+
   it('on a dry run counts what it would delete and deletes nothing', async () => {
     const { client, deletedIds } = fakeSupabase(DATA);
     const result = await pruneStudyCodes(client, { inactiveDays: 90, noQuizzesOnly: false, write: false, now: NOW });

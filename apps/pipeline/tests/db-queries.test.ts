@@ -132,27 +132,24 @@ describe('createScriptSupabase', () => {
     process.argv = ORIGINAL_ARGV;
   });
 
-  it('reads with the anon key by default', () => {
-    createScriptSupabase();
-
-    expect(mockCreateClient).toHaveBeenCalledWith(expect.any(String), 'anon-key');
-  });
-
-  it('reads a service-role table with the secret key without a write confirmation', () => {
-    createScriptSupabase({ write: false, serviceRole: true });
+  it.each([
+    ['no options', undefined],
+    ['write: false', { write: false }],
+  ])('reads with the service-role key, never the anon key, for %s', (_name, opts) => {
+    createScriptSupabase(opts);
 
     expect(mockCreateClient).toHaveBeenCalledWith(expect.any(String), 'service-role-secret');
+    expect(mockCreateClient).not.toHaveBeenCalledWith(expect.any(String), 'anon-key');
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
-  it('refuses an unconfirmed write target, with or without the service-role option', () => {
+  it('refuses an unconfirmed write target', () => {
     expect(() => createScriptSupabase({ write: true })).toThrow(ProcessExitError);
-    expect(() => createScriptSupabase({ write: true, serviceRole: true })).toThrow(ProcessExitError);
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 
   it.each([
-    ['a service-role read', { write: false, serviceRole: true }],
+    ['a default read', undefined],
     ['a write', { write: true }],
   ])('exits when SUPABASE_SECRET_KEY is missing for %s instead of using the anon key', (_name, opts) => {
     delete process.env.SUPABASE_SECRET_KEY;

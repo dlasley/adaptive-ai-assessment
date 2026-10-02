@@ -1003,7 +1003,7 @@ async function main() {
   const options = cli.parse();
 
   // Fetch units from database
-  const supabase = createScriptSupabase({ serviceRole: true });
+  const supabase = createScriptSupabase();
   const units = await fetchUnitsFromDb(supabase);
 
   // Standalone consolidation mode

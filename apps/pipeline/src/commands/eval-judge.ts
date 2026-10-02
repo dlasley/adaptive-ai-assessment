@@ -156,7 +156,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   const callLlmFn = deps.callLlmFn ?? callLlm;
   // eval_* tables are service-role only. Real Supabase access is skipped entirely when a store is
   // injected, so a test never needs live credentials or a network connection.
-  const supabase = deps.store ? undefined : createScriptSupabase({ write: options.writeDb, serviceRole: true });
+  const supabase = deps.store ? undefined : createScriptSupabase({ write: options.writeDb });
   const store = deps.store ?? createSupabaseEvalStore(supabase!);
 
   const runIds = [...new Set(options.runs.split(',').map((s) => s.trim()).filter(Boolean))];

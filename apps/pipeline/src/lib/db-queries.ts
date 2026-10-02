@@ -47,37 +47,30 @@ export interface DistributionAnalysis {
 }
 
 /**
- * Create a Supabase client using env vars.
- * Exits the process if credentials are missing.
+ * Create a Supabase client with the service-role key (`SUPABASE_SECRET_KEY`, bypasses RLS).
+ * Exits the process if the URL or the key is missing: the anon key would return zero rows from
+ * the question bank and units instead of failing, so the pipeline never uses it.
  *
  * @param opts.write - The caller is about to mutate the database: the resolved target must be
  *                     confirmed first (see `assertSupabaseTarget`).
- * @param opts.serviceRole - Use SUPABASE_SECRET_KEY (bypasses RLS) for reads of tables the anon key
- *                     cannot see. A write always uses it. A missing secret key is an error, because
- *                     the anon key would return zero rows from those tables instead of failing.
  */
-export function createScriptSupabase(opts?: { write?: boolean; serviceRole?: boolean }): SupabaseClient {
+export function createScriptSupabase(opts?: { write?: boolean }): SupabaseClient {
   loadEnv();
   assertSupabaseTarget({ write: !!opts?.write });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   const secretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl || !anonKey) {
-    logger.error('Missing Supabase credentials');
+  if (!supabaseUrl) {
+    logger.error('Missing NEXT_PUBLIC_SUPABASE_URL');
+    process.exit(1);
+  }
+  if (!secretKey) {
+    logger.error('SUPABASE_SECRET_KEY is required: the anon key reads nothing from the question bank or units.');
     process.exit(1);
   }
 
-  if (opts?.write || opts?.serviceRole) {
-    if (!secretKey) {
-      logger.error('SUPABASE_SECRET_KEY is required for a write or a read of a service-role table.');
-      process.exit(1);
-    }
-    return createClient(supabaseUrl, secretKey);
-  }
-
-  return createClient(supabaseUrl, anonKey);
+  return createClient(supabaseUrl, secretKey);
 }
 
 /** A `SupabaseClient.from(table)` result narrowed to only the `select()` entry point — the type

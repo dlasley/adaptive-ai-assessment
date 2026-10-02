@@ -34,7 +34,7 @@ export async function bootstrapCommand<S extends OptionSpecs>(
 ): Promise<{ options: ParsedOptions<S>; supabase: SupabaseClient; units?: Unit[] }> {
   const options = cli.parse();
   setLogLevel(levelFromFlags(options));
-  const supabase = createScriptSupabase({ serviceRole: true });
+  const supabase = createScriptSupabase();
   const units = opts?.units ? await fetchUnitsFromDb(supabase) : undefined;
   return { options, supabase, units };
 }
