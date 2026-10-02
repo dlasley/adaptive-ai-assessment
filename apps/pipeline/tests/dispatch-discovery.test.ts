@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { discoverCommands, groupByArea } from '../src/lib/dispatch/discovery';
+import { formatHelp } from '../src/lib/dispatch/help';
 
 const FIXTURES_DIR = path.resolve(__dirname, 'fixtures/dispatch');
 
@@ -66,5 +69,41 @@ describe('groupByArea', () => {
     const groups = groupByArea(commands);
     expect(groups.map((g) => g.area)).toEqual(['pipeline', 'content', 'db']);
     expect(groups.find((g) => g.area === 'pipeline')!.commands.map((c) => c.name)).toEqual(['pipeline-fixture-one']);
+  });
+});
+
+describe('discoverCommands with a broken command module', () => {
+  let tmp: string;
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'discovery-'));
+    fs.writeFileSync(
+      path.join(tmp, 'db-working.ts'),
+      "export const commandMeta = { name: 'db-working', description: 'Works.' };\n",
+    );
+    fs.writeFileSync(path.join(tmp, 'db-broken.ts'), "throw new Error('module exploded on import');\n");
+    fs.writeFileSync(path.join(tmp, 'db-no-export.ts'), 'export const unrelated = 1;\n');
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('still lists the commands that load, and reports the broken ones as a readable line', async () => {
+    const commands = await discoverCommands(tmp);
+    const byName = Object.fromEntries(commands.map((c) => [c.name, c]));
+
+    expect(Object.keys(byName).sort()).toEqual(['db-broken', 'db-no-export', 'db-working']);
+    expect(byName['db-working'].description).toBe('Works.');
+    expect(byName['db-broken'].description).toContain('Failed to load');
+    expect(byName['db-broken'].description).toContain('module exploded on import');
+    expect(byName['db-no-export'].description).toContain('Failed to load');
+  });
+
+  it('keeps the broken command in the help listing', async () => {
+    const help = formatHelp(await discoverCommands(tmp));
+
+    expect(help).toContain('db-working');
+    expect(help).toMatch(/db-broken\s+Failed to load/);
   });
 });

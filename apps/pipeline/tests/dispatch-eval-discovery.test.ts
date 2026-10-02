@@ -1,9 +1,8 @@
 /**
  * Discovery regression test against the real `src/commands` directory (not the `fixtures/dispatch`
- * directory `dispatch-discovery.test.ts` exercises). `bin/pipeline.ts` calls `discoverCommands`
- * once and reuses the same list for `--help`, direct dispatch, and guided mode's command picker —
- * so a single assertion against the real directory covers all three tasks named in the eval
- * framework's move: `pipeline eval-run --help`, `pipeline eval-run ...`, and guided mode's list.
+ * directory `dispatch-discovery.test.ts` exercises). `bin/pipeline.ts` builds `--help` and guided mode's
+ * command picker from `discoverCommands`, and resolves a direct run by name from `listCommandFiles`, so
+ * assertions against the real directory cover the eval commands in all three places.
  */
 
 import { describe, expect, it } from 'vitest';

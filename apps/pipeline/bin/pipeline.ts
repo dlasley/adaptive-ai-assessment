@@ -13,7 +13,7 @@
  */
 
 import { COMMANDS_DIR, PDF_DIR } from '../src/lib/paths';
-import { discoverCommands } from '../src/lib/dispatch/discovery';
+import { discoverCommands, listCommandFiles } from '../src/lib/dispatch/discovery';
 import { formatHelp } from '../src/lib/dispatch/help';
 import { nearestCommand } from '../src/lib/dispatch/nearest-command';
 import { spawnCommand, forwardResultAndExit } from '../src/lib/dispatch/spawn-command';
@@ -82,6 +82,22 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Help and guided mode need every command's description and flags, so they import each module.
+  // A direct run only needs to know the name exists; the command's own process loads its module.
+  if (argv.length > 0 && first !== '--help' && first !== '-h') {
+    const names = listCommandFiles(COMMANDS_DIR);
+    if (!names.includes(first)) {
+      const suggestion = nearestCommand(first, names);
+      console.error(`Unknown command: '${first}'${suggestion ? `. Did you mean '${suggestion}'?` : ''}`);
+      console.error('Run `pipeline --help` (or `pipeline` at a TTY) to see all commands.');
+      process.exit(1);
+    }
+
+    const result = await spawnCommand(first, rest, { commandsDir: COMMANDS_DIR });
+    forwardResultAndExit(result);
+    return;
+  }
+
   const commands = await discoverCommands(COMMANDS_DIR);
 
   if (argv.length === 0) {
@@ -99,21 +115,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (first === '--help' || first === '-h') {
-    console.log(formatHelp(commands));
-    return;
-  }
-
-  const match = commands.find((c) => c.name === first);
-  if (!match) {
-    const suggestion = nearestCommand(first, commands.map((c) => c.name));
-    console.error(`Unknown command: '${first}'${suggestion ? `. Did you mean '${suggestion}'?` : ''}`);
-    console.error('Run `pipeline --help` (or `pipeline` at a TTY) to see all commands.');
-    process.exit(1);
-  }
-
-  const result = await spawnCommand(first, rest, { commandsDir: COMMANDS_DIR });
-  forwardResultAndExit(result);
+  console.log(formatHelp(commands));
 }
 
 main().catch((err) => {

@@ -53,14 +53,23 @@ async function loadCommandMeta(name: string, filePath: string): Promise<{ descri
   );
 }
 
-/** Discovers every command in `commandsDir` with its area and one-line description. */
+/**
+ * Discovers every command in `commandsDir` with its area and one-line description. A module that
+ * fails to load stays in the list with a description saying why, so one broken file never hides
+ * the others.
+ */
 export async function discoverCommands(commandsDir: string): Promise<CommandMeta[]> {
   const names = listCommandFiles(commandsDir);
   return Promise.all(
     names.map(async (name) => {
       const filePath = path.join(commandsDir, `${name}.ts`);
-      const { description, specs } = await loadCommandMeta(name, filePath);
-      return { name, area: areaOf(name), description, specs };
+      try {
+        const { description, specs } = await loadCommandMeta(name, filePath);
+        return { name, area: areaOf(name), description, specs };
+      } catch (err) {
+        const reason = err instanceof Error ? err.message.split('\n')[0] : String(err);
+        return { name, area: areaOf(name), description: `Failed to load: ${reason}` };
+      }
     }),
   );
 }

@@ -5,14 +5,13 @@
 import type { OptionSpecs } from '../options/types';
 
 /** The `<area>` prefix a command file's name starts with, e.g. `questions-audit.ts` -> `questions`. */
-export const AREAS = ['pipeline', 'content', 'questions', 'audit', 'db', 'eval'] as const;
+export const AREAS = ['pipeline', 'content', 'questions', 'db', 'eval'] as const;
 export type Area = (typeof AREAS)[number];
 
 export const AREA_LABELS: Record<Area, string> = {
   pipeline: 'Pipeline',
   content: 'Content',
   questions: 'Questions',
-  audit: 'Audit',
   db: 'Database',
   eval: 'Evaluation',
 };

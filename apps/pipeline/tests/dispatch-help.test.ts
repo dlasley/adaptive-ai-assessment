@@ -6,7 +6,7 @@ const FIXTURE_COMMANDS: CommandMeta[] = [
   { name: 'pipeline-run', area: 'pipeline', description: 'Run the full pipeline.' },
   { name: 'content-suggest-topics', area: 'content', description: 'Suggest topics.' },
   { name: 'content-extract-resources', area: 'content', description: 'Extract resources.' },
-  { name: 'audit-compare', area: 'audit', description: 'Compare Sonnet and Mistral audit results.' },
+  { name: 'questions-audit', area: 'questions', description: 'Audit questions with a second model.' },
 ];
 
 describe('formatHelp', () => {
@@ -22,14 +22,13 @@ describe('formatHelp', () => {
   it('groups commands under their area label, in AREAS display order', () => {
     const pipelineIndex = output.indexOf('Pipeline:');
     const contentIndex = output.indexOf('Content:');
-    const auditIndex = output.indexOf('Audit:');
+    const questionsIndex = output.indexOf('Questions:');
     expect(pipelineIndex).toBeGreaterThan(-1);
     expect(contentIndex).toBeGreaterThan(pipelineIndex);
-    expect(auditIndex).toBeGreaterThan(contentIndex);
+    expect(questionsIndex).toBeGreaterThan(contentIndex);
   });
 
   it('omits area headings with no commands', () => {
-    expect(output).not.toContain('Questions:');
     expect(output).not.toContain('Database:');
   });
 

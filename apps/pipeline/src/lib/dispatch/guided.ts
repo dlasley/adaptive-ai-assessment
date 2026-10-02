@@ -22,7 +22,7 @@ const GUIDED_WORKFLOWS_CHOICE = '__workflows__';
 // (see `lib/options/types.ts`) — these casts recover what `spec.type` already established at
 // runtime, in each branch below.
 
-async function promptForFlag(flagName: string, spec: OptionSpecs[string]): Promise<string | number | boolean | undefined> {
+async function promptForFlag(spec: OptionSpecs[string]): Promise<string | number | boolean | undefined> {
   const message = spec.required ? `${spec.help} (required)` : `${spec.help} (optional — leave blank to skip)`;
 
   if (spec.type === 'boolean') {
@@ -70,7 +70,7 @@ async function walkSpecs(specs: OptionSpecs): Promise<GuidedAnswers> {
   const answers: GuidedAnswers = {};
   for (const [flagName, spec] of Object.entries(specs)) {
     if (flagName === 'yes-production') continue;
-    answers[flagName] = await promptForFlag(flagName, spec);
+    answers[flagName] = await promptForFlag(spec);
   }
   return answers;
 }
