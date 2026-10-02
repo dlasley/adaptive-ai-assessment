@@ -19,6 +19,7 @@ next-env.d.ts
 # The canonical .env.local/.env.test.local live at the repo root only. apps/web
 # loads them itself via @next/env in next.config.ts rather than through a
 # tracked path that has to be carved out of this blanket rule.
+.env
 .env.*
 !.env.local.example
 
@@ -28,8 +29,10 @@ supabase/.temp/
 
 # OS / editor
 .DS_Store
+Thumbs.db
 *.pem
 .vscode/
+.idea/
 
 # debug and generation logs
 npm-debug.log*
@@ -37,6 +40,7 @@ yarn-debug.log*
 yarn-error.log*
 generation.log
 generation.pid
+*.log
 
 # Claude Code local state
 .claude/
@@ -72,4 +76,4 @@ apps/pipeline/references/
 /apps/web/src/app/celebrations-test-v2/
 
 # local-only working files (agent reports, design docs, private scripts)
-/.private/
+.private/
