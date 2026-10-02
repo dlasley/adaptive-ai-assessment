@@ -8,9 +8,6 @@ import { createLogger } from './logger';
 const logger = createLogger('feature-flags');
 
 export const FEATURES = {
-  // Show study code text and QR code to students (code creation and progress tracking always active)
-  SHOW_STUDY_CODE: process.env.NEXT_PUBLIC_SHOW_STUDY_CODE === 'true',
-
   // Admin Dashboard
   ADMIN_PANEL: process.env.NEXT_PUBLIC_ENABLE_ADMIN_PANEL === 'true',
 
