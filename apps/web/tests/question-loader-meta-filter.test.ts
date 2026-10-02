@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { fromMock } = vi.hoisted(() => ({ fromMock: vi.fn() }));
 
-vi.mock('@/lib/supabase', () => ({
-  supabase: { from: fromMock },
-  isSupabaseAvailable: () => true,
+vi.mock('@/lib/supabase-admin', () => ({
+  supabaseAdmin: { from: fromMock },
+  isSupabaseAdminAvailable: () => true,
 }));
 
 import { loadAllQuestions, loadQuestionsByIds } from '@/lib/question-loader';
@@ -24,7 +24,7 @@ const BASE_ROW = {
   has_complete_sentence_requirement: false,
 };
 
-/** Wires `.from('questions').select('*').eq().order().range()` to resolve once with `rows`, then
+/** Wires `.from('questions').select(columns).eq().order().range()` to resolve once with `rows`, then
  * an empty page — matching loadAllQuestions' pagination loop, which stops once a page comes back
  * shorter than PAGE_SIZE. */
 function mockQuestionPool(rows: Record<string, unknown>[]): void {
@@ -86,6 +86,20 @@ describe('loadQuestionsByIds', () => {
     expect(inMock).toHaveBeenCalledWith('id', ['q1', 'q2']);
     expect(result.get('q1')?.correctAnswer).toBe('Bonjour');
     expect(result.get('q2')?.correctAnswer).toBe('Au revoir');
+  });
+
+  it('selects only the columns the mapper reads, never every column', async () => {
+    const selectMock = vi.fn(() => ({ in: vi.fn().mockResolvedValue({ data: [], error: null }) }));
+    fromMock.mockReturnValue({ select: selectMock });
+
+    await loadQuestionsByIds(['q1']);
+
+    const requested = (selectMock.mock.calls[0] as unknown as [string])[0];
+    expect(requested).not.toBe('*');
+    for (const hidden of ['audit_metadata', 'source_file', 'batch_id', 'content_hash', 'generated_by', 'quality_status']) {
+      expect(requested).not.toContain(hidden);
+    }
+    expect(requested).toContain('correct_answer');
   });
 
   it('returns an empty map for an empty id list without querying the database', async () => {

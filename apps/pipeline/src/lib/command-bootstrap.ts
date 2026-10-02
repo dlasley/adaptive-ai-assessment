@@ -1,8 +1,9 @@
 /**
  * Shared startup sequence for pipeline commands built on `defineCli()`: parse `process.argv`,
  * set the process-wide log level from the parsed `--verbose`/`--quiet` flags, and create a
- * read-only Supabase client. Pass `{ units: true }` to also fetch every unit via
- * `fetchUnitsFromDb()` once the client exists.
+ * Supabase client that reads with the service key (the question bank and units have no anon
+ * policy). Pass `{ units: true }` to also fetch every unit via `fetchUnitsFromDb()` once the
+ * client exists.
  *
  * Write-capable clients (`createScriptSupabase({ write: true })`) are a separate concern with
  * their own timing per command and are created at their existing call sites, not here.
@@ -33,7 +34,7 @@ export async function bootstrapCommand<S extends OptionSpecs>(
 ): Promise<{ options: ParsedOptions<S>; supabase: SupabaseClient; units?: Unit[] }> {
   const options = cli.parse();
   setLogLevel(levelFromFlags(options));
-  const supabase = createScriptSupabase();
+  const supabase = createScriptSupabase({ serviceRole: true });
   const units = opts?.units ? await fetchUnitsFromDb(supabase) : undefined;
   return { options, supabase, units };
 }

@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE study_codes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code TEXT UNIQUE NOT NULL,
-  display_name TEXT, -- Optional: student can add their name
+  display_name TEXT, -- Optional label set by the owner in the database; the app never collects or writes it
   admin_label TEXT, -- Optional label/identifier assigned by admin, not visible to students
   is_superuser BOOLEAN DEFAULT false NOT NULL, -- Enables detailed evaluation metadata
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -16,8 +16,7 @@ CREATE TABLE study_codes (
   correct_answers INTEGER DEFAULT 0,
   wrong_answer_countdown INTEGER DEFAULT NULL, -- Per-user override for wrong answer countdown (NULL = global default)
   session_epoch INTEGER NOT NULL DEFAULT 1 -- Bumped to revoke all of this student's active session cookies before expiry
-  -- No code_format constraint: validation happens in application layer
-  -- Supports both old "study-xxxxxxxx" and new "adjective animal" formats
+  -- No code_format constraint: the app generates codes ("adjective adjective animal") and looks them up as stored strings
 );
 
 -- Index for ordering by creation date (code column already indexed via UNIQUE constraint)
@@ -254,29 +253,6 @@ FROM concept_mastery
 WHERE mastery_percentage >= 85 AND total_attempts >= 5
 ORDER BY mastery_percentage DESC;
 
--- Function to generate unique study code
-CREATE OR REPLACE FUNCTION generate_study_code()
-RETURNS TEXT AS $$
-DECLARE
-  new_code TEXT;
-  code_exists BOOLEAN;
-BEGIN
-  LOOP
-    -- Generate format: study-xxxxxxxx (8 random alphanumeric chars)
-    new_code := 'study-' || lower(substring(md5(random()::text) from 1 for 8));
-
-    -- Check if code already exists
-    SELECT EXISTS(SELECT 1 FROM study_codes WHERE code = new_code) INTO code_exists;
-
-    -- If unique, return it
-    IF NOT code_exists THEN
-      RETURN new_code;
-    END IF;
-  END LOOP;
-END;
-$$ LANGUAGE plpgsql
-SET search_path = public;
-
 -- Function to update last_active timestamp
 CREATE OR REPLACE FUNCTION update_last_active()
 RETURNS TRIGGER AS $$
@@ -294,32 +270,6 @@ CREATE TRIGGER update_study_code_last_active
 AFTER INSERT ON quiz_history
 FOR EACH ROW
 EXECUTE FUNCTION update_last_active();
-
--- Function to calculate overall stats
-CREATE OR REPLACE FUNCTION calculate_overall_stats(study_code_id UUID)
-RETURNS TABLE(
-  total_quizzes BIGINT,
-  total_questions BIGINT,
-  correct_answers BIGINT,
-  overall_accuracy NUMERIC
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    COUNT(DISTINCT qh.id)::BIGINT as total_quizzes,
-    COUNT(qr.id)::BIGINT as total_questions,
-    SUM(CASE WHEN qr.is_correct THEN 1 ELSE 0 END)::BIGINT as correct_answers,
-    ROUND(
-      (SUM(CASE WHEN qr.is_correct THEN 1 ELSE 0 END)::NUMERIC /
-       COUNT(qr.id)::NUMERIC) * 100,
-      2
-    ) as overall_accuracy
-  FROM quiz_history qh
-  LEFT JOIN question_results qr ON qr.quiz_history_id = qh.id
-  WHERE qh.study_code_id = calculate_overall_stats.study_code_id;
-END;
-$$ LANGUAGE plpgsql
-SET search_path = public;
 
 -- Generic trigger function to bump updated_at, shared by every table below
 -- that carries the column
@@ -367,17 +317,9 @@ ALTER TABLE learning_resources ENABLE ROW LEVEL SECURITY;
 -- session cookie before touching a row. RLS stays ENABLED on all four
 -- with zero permissive policies for anon, i.e. deny-by-default.
 
--- Questions policies (read-only for anon; scripts use secret key for writes)
-CREATE POLICY "anon_select_questions"
-  ON questions FOR SELECT
-  TO anon
-  USING (true);
-
--- Units policies (read-only for anon; scripts use secret key for writes)
-CREATE POLICY "anon_select_units"
-  ON units FOR SELECT
-  TO anon
-  USING (true);
+-- questions and units carry no anon policies either: the question bank holds answers and audit
+-- metadata, and the unit rows hold course section headings. Server routes read them with
+-- supabaseAdmin and return only the fields a student needs.
 
 -- Learning resources policies (read-only for anon; scripts use secret key for writes)
 CREATE POLICY "anon_select_learning_resources"
@@ -411,8 +353,9 @@ COMMENT ON COLUMN leitner_state.box IS 'Leitner box 1-5. Box 1 = most frequent r
 COMMENT ON COLUMN leitner_state.consecutive_correct IS 'Number of consecutive correct answers. Resets to 0 on wrong answer.';
 COMMENT ON COLUMN leitner_state.last_reviewed IS 'When this question was last attempted';
 COMMENT ON TABLE learning_resources IS 'Learning resources (videos, articles, etc.) organized by unit and topic. Resource-type-agnostic for future extensibility.';
-COMMENT ON TABLE study_code_source_words IS 'Adjective/animal word pools for server-side study code generation. No anon RLS — only service role can access.';
-COMMENT ON COLUMN study_code_source_words.first_letter IS 'Generated column for efficient alliterative pair lookups';
+COMMENT ON TABLE study_code_source_words IS 'Adjective and animal word pools for server-side study code generation. A study code is two different adjectives and an animal; drawing from a seeded sample of the source word lists raises the cost of guessing a code but does not hide the scheme. No anon RLS: only service role can access.';
+COMMENT ON COLUMN study_code_source_words.first_letter IS 'First letter of the word. Code generation matches the second adjective to an animal with the same first letter.';
+COMMENT ON COLUMN study_codes.display_name IS 'Optional label an owner can set directly in the database. The app does not collect or write it.';
 COMMENT ON COLUMN learning_resources.provider IS 'Content host identifier: youtube, vimeo, etc.';
 COMMENT ON COLUMN learning_resources.metadata IS 'Extensible JSON: videoId, isShort, channelName, language, etc.';
 COMMENT ON COLUMN learning_resources.content_hash IS 'MD5(url|unit_id|topic) for deduplication during extraction';

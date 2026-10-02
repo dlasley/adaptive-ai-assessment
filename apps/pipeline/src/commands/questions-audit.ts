@@ -957,7 +957,7 @@ async function main() {
 
   // Batch bookkeeping (llm_batch_jobs) always needs a write-capable client, independent of
   // --write-db, which gates writes to questions specifically.
-  supabase = createScriptSupabase({ write: options.writeDb || options.llmBatch || !!options.llmBatchResume });
+  supabase = createScriptSupabase({ write: options.writeDb || options.llmBatch || !!options.llmBatchResume, serviceRole: true });
 
   // Needed by every path below to ground the auditor in the material each question's topic was
   // generated from — fetched once up front rather than per-run-path.

@@ -1,4 +1,4 @@
-import { supabase, isSupabaseAvailable } from './supabase';
+import { supabaseAdmin, isSupabaseAdminAvailable } from './supabase-admin';
 import { Question } from '@adaptive/shared/types';
 import { getQuestionWeight } from './leitner';
 import type { Difficulty, QuestionType, WritingType } from '@adaptive/shared/enums';
@@ -27,6 +27,10 @@ interface DBQuestion {
   has_complete_sentence_requirement: boolean;
 }
 
+/** The columns dbToQuestion reads. Listed explicitly so a column added to the table later is not served to students by default. */
+const QUESTION_COLUMNS =
+  'id, question, correct_answer, explanation, unit_id, topic, difficulty, type, options, acceptable_variations, writing_type, hints, has_complete_sentence_requirement';
+
 /**
  * Convert database row to Question type
  */
@@ -54,7 +58,7 @@ const PAGE_SIZE = 1000;
  * Load all questions from database (paginated to bypass Supabase 1000-row default limit)
  */
 export async function loadAllQuestions(): Promise<Question[]> {
-  if (!isSupabaseAvailable()) {
+  if (!isSupabaseAdminAvailable()) {
     logger.warn('Supabase not available. No questions loaded.');
     return [];
   }
@@ -64,9 +68,9 @@ export async function loadAllQuestions(): Promise<Question[]> {
     let page = 0;
 
     while (true) {
-      const { data, error } = await supabase!
+      const { data, error } = await supabaseAdmin!
         .from('questions')
-        .select('*')
+        .select(QUESTION_COLUMNS)
         .eq('quality_status', 'active')
         .order('created_at', { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -107,12 +111,12 @@ export async function loadAllQuestions(): Promise<Question[]> {
  * returned map rather than causing an error.
  */
 export async function loadQuestionsByIds(ids: string[]): Promise<Map<string, Question>> {
-  if (!isSupabaseAvailable() || ids.length === 0) return new Map();
+  if (!isSupabaseAdminAvailable() || ids.length === 0) return new Map();
 
   try {
-    const { data, error } = await supabase!
+    const { data, error } = await supabaseAdmin!
       .from('questions')
-      .select('*')
+      .select(QUESTION_COLUMNS)
       .in('id', ids);
 
     if (error || !data) {

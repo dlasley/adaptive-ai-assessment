@@ -4,9 +4,9 @@ const order = vi.fn();
 const select = vi.fn(() => ({ order }));
 const from = vi.fn(() => ({ select }));
 
-vi.mock('@/lib/supabase', () => ({
-  supabase: { from },
-  isSupabaseAvailable: () => true,
+vi.mock('@/lib/supabase-admin', () => ({
+  supabaseAdmin: { from },
+  isSupabaseAdminAvailable: () => true,
 }));
 
 const { GET } = await import('@/app/api/units/route');

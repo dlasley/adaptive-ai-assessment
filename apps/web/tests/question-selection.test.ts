@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Question } from '@adaptive/shared/types';
 
-vi.mock('@/lib/supabase', () => ({
-  supabase: null,
-  isSupabaseAvailable: () => false,
+vi.mock('@/lib/supabase-admin', () => ({
+  supabaseAdmin: null,
+  isSupabaseAdminAvailable: () => false,
 }));
 
 import { selectQuestions } from '@/lib/question-loader';

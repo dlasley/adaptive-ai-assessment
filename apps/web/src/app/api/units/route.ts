@@ -1,19 +1,19 @@
 import { NextResponse } from 'next/server';
-import { supabase, isSupabaseAvailable } from '@/lib/supabase';
+import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('units');
 
 export async function GET() {
-  if (!isSupabaseAvailable()) {
+  if (!isSupabaseAdminAvailable()) {
     return NextResponse.json(
       { error: 'Service unavailable' },
       { status: 503 },
     );
   }
 
-  const { data, error } = await supabase!
+  const { data, error } = await supabaseAdmin!
     .from('units')
     .select('id, title, label, description, topics, sort_order')
     .order('sort_order');
