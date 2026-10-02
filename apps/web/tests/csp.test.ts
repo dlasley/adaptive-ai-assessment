@@ -38,4 +38,13 @@ describe('CSP script-src', () => {
     const csp = headerGroups[0].headers.find((h) => h.key === 'Content-Security-Policy');
     expect(csp?.value).toContain('frame-src https://challenges.cloudflare.com');
   });
+
+  it('blocks plugin content with object-src none', async () => {
+    vi.resetModules();
+    vi.stubEnv('NODE_ENV', 'production');
+    const { default: nextConfig } = await import('../next.config');
+    const headerGroups = await nextConfig.headers!();
+    const csp = headerGroups[0].headers.find((h) => h.key === 'Content-Security-Policy');
+    expect(csp?.value.split('; ')).toContain("object-src 'none'");
+  });
 });

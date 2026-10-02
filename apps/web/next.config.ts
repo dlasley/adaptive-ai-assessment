@@ -60,6 +60,7 @@ const nextConfig: NextConfig = {
               "font-src 'self'",
               "frame-src https://challenges.cloudflare.com",
               "worker-src 'self' blob:",
+              "object-src 'none'",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
