@@ -17,6 +17,10 @@ const { fromMock, tables } = vi.hoisted(() => {
         return q;
       }),
       gte: vi.fn(() => q),
+      lt: vi.fn(() => {
+        countKey = `${table}:inactive`;
+        return q;
+      }),
       order: vi.fn(() => q),
       range: vi.fn((from: number, to: number) =>
         Promise.resolve({ data: tables.studyCodes.slice(from, to + 1), error: null }),
@@ -62,6 +66,7 @@ describe('GET /api/admin/stats', () => {
       quiz_history: 40,
       question_results: 2000,
       'question_results:correct': 1500,
+      'study_codes:inactive': 120,
     };
 
     const res = await statsGet(request('/api/admin/stats'));
@@ -71,6 +76,7 @@ describe('GET /api/admin/stats', () => {
     expect(body.totalQuestions).toBe(2000);
     expect(body.averageAccuracy).toBe(75);
     expect(body.totalStudyCodes).toBe(1500);
+    expect(body.inactiveStudyCodes).toBe(120);
   });
 
   it('answers 500 when a count fails instead of reporting zeros', async () => {

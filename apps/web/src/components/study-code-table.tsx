@@ -80,13 +80,14 @@ export function StudyCodeTable({
 
       {/* Class-wide Stats */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
           <StatCard value={stats.totalStudyCodes} label="Total Students" colorClass="text-indigo-600 dark:text-indigo-400" />
           <StatCard value={stats.totalQuizzes} label="Total Quizzes" colorClass="text-purple-600 dark:text-purple-400" />
           <StatCard value={stats.totalQuestions} label="Questions Answered" colorClass="text-blue-600 dark:text-blue-400" />
           <StatCard value={`${stats.averageAccuracy.toFixed(0)}%`} label="Class Average" colorClass={getAccuracyColor(stats.averageAccuracy)} />
           <StatCard value={stats.activeStudyCodesLast7Days} label="Active (7 days)" colorClass="text-green-600 dark:text-green-400" />
           <StatCard value={stats.activeStudyCodesLast30Days} label="Active (30 days)" colorClass="text-teal-600 dark:text-teal-400" />
+          <StatCard value={stats.inactiveStudyCodes} label="Inactive (90+ days)" colorClass="text-gray-600 dark:text-gray-400" />
         </div>
       )}
 

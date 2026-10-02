@@ -14,6 +14,8 @@ export interface ClasswideStats {
   averageAccuracy: number;
   activeStudyCodesLast7Days: number;
   activeStudyCodesLast30Days: number;
+  /** Study codes with no quiz activity for 90 days. */
+  inactiveStudyCodes: number;
 }
 
 export interface StudyCodeSummary {

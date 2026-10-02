@@ -6,6 +6,9 @@ import { supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('admin/stats');
 
+/** A study code with no quiz activity for this many days counts as inactive; db-prune-study-codes defaults to the same window. */
+const INACTIVE_DAYS = 90;
+
 function daysAgo(days: number): string {
   const date = new Date();
   date.setDate(date.getDate() - days);
@@ -23,16 +26,17 @@ export async function GET(request: NextRequest) {
   try {
     const headCount = () => ({ count: 'exact', head: true }) as const;
 
-    const [totalStudyCodes, totalQuizzes, totalQuestions, totalCorrect, active7, active30] = await Promise.all([
+    const [totalStudyCodes, totalQuizzes, totalQuestions, totalCorrect, active7, active30, inactive] = await Promise.all([
       supabaseAdmin!.from('study_codes').select('*', headCount()),
       supabaseAdmin!.from('quiz_history').select('*', headCount()),
       supabaseAdmin!.from('question_results').select('*', headCount()),
       supabaseAdmin!.from('question_results').select('*', headCount()).eq('is_correct', true),
       supabaseAdmin!.from('study_codes').select('*', headCount()).gte('last_active_at', daysAgo(7)),
       supabaseAdmin!.from('study_codes').select('*', headCount()).gte('last_active_at', daysAgo(30)),
+      supabaseAdmin!.from('study_codes').select('*', headCount()).lt('last_active_at', daysAgo(INACTIVE_DAYS)),
     ]);
 
-    const failed = [totalStudyCodes, totalQuizzes, totalQuestions, totalCorrect, active7, active30].find(
+    const failed = [totalStudyCodes, totalQuizzes, totalQuestions, totalCorrect, active7, active30, inactive].find(
       (result) => result.error,
     );
     if (failed) {
@@ -50,6 +54,7 @@ export async function GET(request: NextRequest) {
       averageAccuracy,
       activeStudyCodesLast7Days: active7.count ?? 0,
       activeStudyCodesLast30Days: active30.count ?? 0,
+      inactiveStudyCodes: inactive.count ?? 0,
     });
   } catch (error) {
     logger.error('Error fetching classwide stats', supabaseErrorFields(error));
