@@ -3,6 +3,13 @@ import { NextRequest } from 'next/server';
 
 const from = vi.fn();
 const checkRateLimit = vi.fn();
+const { randomIntMock } = vi.hoisted(() => ({ randomIntMock: vi.fn() }));
+
+vi.mock('node:crypto', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:crypto')>();
+  randomIntMock.mockImplementation(actual.randomInt);
+  return { ...actual, randomInt: randomIntMock };
+});
 
 vi.mock('@/lib/supabase-admin', () => ({
   supabaseAdmin: { from },
@@ -28,6 +35,7 @@ beforeEach(() => {
   process.env.STUDENT_SESSION_SECRET = 'test-student-secret-0123456789abcdef012345';
   delete process.env.VERCEL_URL;
   from.mockReset();
+  randomIntMock.mockClear();
   checkRateLimit.mockReset();
 });
 
@@ -131,15 +139,23 @@ describe('POST /api/generate-code code format', () => {
   it('falls back to any animal when none shares the second adjective\'s letter', async () => {
     allowAll();
     wirePools();
-    const randomSpy = vi.spyOn(Math, 'random');
     // Second adjective 'calm' (index 3), then an animal from the fallback draw, then a first adjective.
-    randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.5).mockReturnValueOnce(0);
+    randomIntMock.mockReturnValueOnce(3).mockReturnValueOnce(1).mockReturnValueOnce(0);
 
     const response = await POST(validRequest());
     const { code } = await response.json();
 
     expect(code).toBe('brave calm panda');
-    randomSpy.mockRestore();
+  });
+
+  it('draws every word offset with crypto.randomInt, bounded by the pool size', async () => {
+    allowAll();
+    wirePools();
+
+    await POST(validRequest());
+
+    expect(randomIntMock).toHaveBeenCalled();
+    for (const [bound] of randomIntMock.mock.calls) expect(bound).toBeGreaterThan(0);
   });
 
   it('retries with a new draw after a unique-constraint collision', async () => {

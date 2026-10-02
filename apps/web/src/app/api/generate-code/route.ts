@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
@@ -26,7 +27,7 @@ async function pickRandom(category: WordCategory) {
 
   if (!count) return null;
 
-  const offset = Math.floor(Math.random() * count);
+  const offset = randomInt(count);
   const { data } = await supabaseAdmin!
     .from('study_code_source_words')
     .select('word, first_letter')
@@ -46,7 +47,7 @@ async function pickAnimalFor(letter: string): Promise<string | null> {
     .eq('first_letter', letter);
 
   if (matchingAnimals && matchingAnimals.length > 0) {
-    return matchingAnimals[Math.floor(Math.random() * matchingAnimals.length)].word;
+    return matchingAnimals[randomInt(matchingAnimals.length)].word;
   }
 
   const fallback = await pickRandom('animal');
