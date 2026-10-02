@@ -36,9 +36,9 @@ const APPROVED_HOSTNAMES = [
  * Their siteverify responses report a fixed placeholder hostname
  * ("example.com") rather than the
  * real request host, since the widget never runs a real challenge for them.
- * Preview and Development are configured with one of these, so hostname
- * validation is skipped in that branch only — Production's secret is never
- * a member of this set, so its hostname check is never weakened.
+ * Local development and forks use one of these, so hostname validation is
+ * skipped in that branch only. A live production secret is never a member of
+ * this set, so its hostname check is never weakened.
  */
 const TEST_SECRET_KEYS = new Set([
   '1x0000000000000000000000000000000AA',
@@ -53,6 +53,9 @@ function allowedHostnames(): Set<string> {
   }
   if (process.env.VERCEL_BRANCH_URL) {
     hostnames.add(process.env.VERCEL_BRANCH_URL);
+  }
+  if (process.env.VERCEL_URL) {
+    hostnames.add(process.env.VERCEL_URL);
   }
   return hostnames;
 }

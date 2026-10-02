@@ -275,5 +275,19 @@ describe('verifyTurnstileToken', () => {
       const result = await verifyTurnstileToken('valid-token');
       expect(result).toEqual({ success: true });
     });
+
+    it('accepts VERCEL_URL, the per-deployment host, when present', async () => {
+      process.env.VERCEL_URL = 'adaptive-ai-assessment-abc123-davids-projects.vercel.app';
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => siteverifyResponse({ hostname: 'adaptive-ai-assessment-abc123-davids-projects.vercel.app' }),
+        })
+      );
+
+      const result = await verifyTurnstileToken('valid-token');
+      expect(result).toEqual({ success: true });
+    });
   });
 });
