@@ -6,10 +6,22 @@
  * runs it.
  */
 
-import { pathToFileURL } from 'node:url';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+// Both sides are resolved through symlinks: Node reports `import.meta.url` as the real path while
+// `process.argv[1]` keeps the path the user typed.
+function realPathOrNull(filePath: string): string | null {
+  try {
+    return fs.realpathSync(filePath);
+  } catch {
+    return null;
+  }
+}
 
 export function runIfMain(moduleUrl: string, main: () => Promise<void>): void {
-  if (!process.argv[1] || moduleUrl !== pathToFileURL(process.argv[1]).href) return;
+  const entry = process.argv[1] ? realPathOrNull(process.argv[1]) : null;
+  if (!entry || entry !== realPathOrNull(fileURLToPath(moduleUrl))) return;
   main().catch((err) => {
     console.error(err);
     process.exit(1);

@@ -50,7 +50,7 @@ export function defineCli<S extends OptionSpecs>(specs: S, config: CliConfig<S>)
     const usagePositional = positionalsBySlot.map(([, name]) => ` <${name}>`).join('');
     lines.push(`Usage: npx tsx apps/pipeline/src/commands/${config.name}.ts${usagePositional} [options]`);
     lines.push('');
-    lines.push('Flags accept either `--flag value` or `--flag=value`.');
+    lines.push('Value flags accept `--flag value` or `--flag=value`. Switches are written bare, with no value.');
     lines.push('');
 
     const groupOrder: string[] = [];
@@ -150,6 +150,18 @@ export function defineCli<S extends OptionSpecs>(specs: S, config: CliConfig<S>)
         continue;
       }
 
+      if (spec.type === 'boolean') {
+        if (raw !== true) {
+          fail(`--${name} is a switch and takes no value; pass it bare`);
+        }
+        result[field] = true;
+        continue;
+      }
+
+      if (typeof raw !== 'string') {
+        fail(`--${name} needs a value`);
+      }
+
       if (spec.type === 'number') {
         const num = Number(raw);
         if (Number.isNaN(num)) {
@@ -159,11 +171,6 @@ export function defineCli<S extends OptionSpecs>(specs: S, config: CliConfig<S>)
           fail(`--${name} must be at least ${spec.min}`);
         }
         result[field] = num;
-        continue;
-      }
-
-      if (spec.type === 'boolean') {
-        result[field] = raw;
         continue;
       }
 

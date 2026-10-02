@@ -81,6 +81,21 @@ describe('defineCli', () => {
     expect(equalsForm).toEqual(spaceForm);
   });
 
+  it('rejects a value attached to a boolean flag', () => {
+    const cli = defineCli(baseSpecs, { name: 'test-script', description: 'A test script' });
+    expectExit(() => cli.parse(['--write-db=false']), 1);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('--write-db is a switch'));
+    expectExit(() => cli.parse(['--write-db=text']), 1);
+  });
+
+  it('rejects a trailing number or string flag with no value', () => {
+    const cli = defineCli(baseSpecs, { name: 'test-script', description: 'A test script' });
+    expectExit(() => cli.parse(['--count']), 1);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('--count needs a value'));
+    expectExit(() => cli.parse(['--unit']), 1);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('--unit needs a value'));
+  });
+
   it('validates choices, hard-erroring on an invalid value', () => {
     const cli = defineCli(baseSpecs, { name: 'test-script', description: 'A test script' });
     expectExit(() => cli.parse(['--difficulty', 'expert']), 1);
