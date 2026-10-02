@@ -1,16 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { orderMock, fromMock } = vi.hoisted(() => {
-  const orderMock = vi.fn().mockResolvedValue({
+const { rangeMock, fromMock } = vi.hoisted(() => {
+  const rangeMock = vi.fn().mockResolvedValue({
     data: [
       { code: 'curious-otter', display_name: 'Alice', admin_label: null, total_questions: 0, correct_answers: 0, total_quizzes: 0, last_active_at: null, created_at: null },
       { code: 'happy-fox', display_name: null, admin_label: 'VIP, watch closely', total_questions: 0, correct_answers: 0, total_quizzes: 0, last_active_at: null, created_at: null },
     ],
     error: null,
   });
-  const fromMock = vi.fn(() => ({ select: vi.fn(() => ({ order: orderMock })) }));
-  return { orderMock, fromMock };
+  const query = { order: vi.fn(() => query), range: rangeMock };
+  const fromMock = vi.fn(() => ({ select: vi.fn(() => query) }));
+  return { rangeMock, fromMock };
 });
 
 vi.mock('@/lib/supabase-admin', () => ({
@@ -25,7 +26,7 @@ vi.mock('@/lib/admin-route-guard', () => ({
 import { GET } from '@/app/api/admin/study-codes/route';
 
 beforeEach(() => {
-  orderMock.mockClear();
+  rangeMock.mockClear();
   fromMock.mockClear();
 });
 

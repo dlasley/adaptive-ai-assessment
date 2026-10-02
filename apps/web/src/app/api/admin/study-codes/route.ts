@@ -7,33 +7,44 @@ import { supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('admin/study-codes');
 
+const PAGE_SIZE = 1000;
+
 export async function GET(request: NextRequest) {
   const authError = requireAdmin(request);
   if (authError) return authError;
 
   if (!isSupabaseAdminAvailable()) {
-    return NextResponse.json({ error: 'Database not available' }, { status: 503 });
+    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
   }
 
   const sortBy = request.nextUrl.searchParams.get('sortBy') || 'lastActive';
   const query = request.nextUrl.searchParams.get('q');
 
   try {
-    const { data, error } = await supabaseAdmin!
-      .from('study_codes')
-      .select('*')
-      .order('last_active_at', { ascending: false });
+    // The API returns at most one page per request, so read pages until a short one arrives.
+    // `id` breaks ties so rows with equal activity times never move between pages.
+    const data: Record<string, unknown>[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data: page, error } = await supabaseAdmin!
+        .from('study_codes')
+        .select('*')
+        .order('last_active_at', { ascending: false })
+        .order('id')
+        .range(from, from + PAGE_SIZE - 1);
 
-    if (error) {
-      logger.error('Error fetching study codes', supabaseErrorFields(error));
-      return NextResponse.json({ error: 'Failed to fetch study codes' }, { status: 500 });
+      if (error) {
+        logger.error('Error fetching study codes', supabaseErrorFields(error));
+        return NextResponse.json({ error: 'Failed to fetch study codes' }, { status: 500 });
+      }
+      data.push(...(page ?? []));
+      if ((page?.length ?? 0) < PAGE_SIZE) break;
     }
 
     // Filtered in application code rather than interpolated into a
     // PostgREST .or() filter string — this table is small, and a search
     // term with a comma or wildcard character can't reshape the query.
     const rows = query
-      ? (data || []).filter((sc) => {
+      ? data.filter((sc) => {
           const needle = query.toLowerCase();
           return (
             (sc.code as string | null)?.toLowerCase().includes(needle) ||
@@ -41,7 +52,7 @@ export async function GET(request: NextRequest) {
             (sc.admin_label as string | null)?.toLowerCase().includes(needle)
           );
         })
-      : data || [];
+      : data;
 
     const studyCodes = rows.map(dbToStudyCodeSummary);
 

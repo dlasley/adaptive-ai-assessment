@@ -10,6 +10,15 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 
 const { MARKER, fromMock, singleMock, insertQuestionResultsMock } = vi.hoisted(() => {
+  // Stands in for a head-only exact-count query: awaiting it yields a count.
+  const countQuery = () => {
+    const query: Record<string, unknown> = {
+      eq: vi.fn(() => query),
+      then: (resolve: (value: unknown) => unknown) => resolve({ count: 1, error: null }),
+    };
+    return query;
+  };
+
   const MARKER = 'UNMISTAKABLE_STUDENT_ANSWER_998877';
   const singleMock = vi.fn().mockResolvedValue({ data: { id: 'quiz-history-id' }, error: null });
 
@@ -27,14 +36,14 @@ const { MARKER, fromMock, singleMock, insertQuestionResultsMock } = vi.hoisted((
   const fromMock = vi.fn((table: string) => {
     if (table === 'question_results') {
       return {
-        select: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ data: [{ is_correct: true }], error: null }) })),
+        select: vi.fn(() => countQuery()),
         insert: insertQuestionResultsMock,
       };
     }
     if (table === 'quiz_history') {
       return {
         insert: vi.fn(() => ({ select: () => ({ single: singleMock }) })),
-        select: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ data: [{ id: 'quiz-history-id' }], error: null }) })),
+        select: vi.fn(() => countQuery()),
       };
     }
     if (table === 'study_codes') {

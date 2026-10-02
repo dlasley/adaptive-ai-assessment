@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { loadQuestionsByIds } from '@/lib/question-loader';
 import { requireStudentSession } from '@/lib/student-api-guard';
 import { verifyCsrfProtection } from '@/lib/csrf';
@@ -9,33 +9,34 @@ import { supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('student/quiz-results');
 
+async function countRows(
+  table: 'question_results' | 'quiz_history',
+  studyCodeId: string,
+  onlyCorrect = false,
+): Promise<number | null> {
+  let query = supabaseAdmin!
+    .from(table)
+    .select('id', { count: 'exact', head: true })
+    .eq('study_code_id', studyCodeId);
+  if (onlyCorrect) query = query.eq('is_correct', true);
+
+  const { count, error } = await query;
+  if (error || count === null) {
+    logger.error(`Error counting `, supabaseErrorFields(error));
+    return null;
+  }
+  return count;
+}
+
 async function updateStudyCodeStats(studyCodeId: string): Promise<void> {
-  const { data: resultsData, error: resultsError } = await supabaseAdmin!
-    .from('question_results')
-    .select('is_correct')
-    .eq('study_code_id', studyCodeId);
+  const [totalQuestions, correctAnswers, totalQuizzes] = await Promise.all([
+    countRows('question_results', studyCodeId),
+    countRows('question_results', studyCodeId, true),
+    countRows('quiz_history', studyCodeId),
+  ]);
+  if (totalQuestions === null || correctAnswers === null || totalQuizzes === null) return;
 
-  if (resultsError || !resultsData) {
-    logger.error('Error getting stats', supabaseErrorFields(resultsError));
-    return;
-  }
-
-  const totalQuestions = resultsData.length;
-  const correctAnswers = resultsData.filter((r) => r.is_correct).length;
-
-  const { data: quizData, error: quizError } = await supabaseAdmin!
-    .from('quiz_history')
-    .select('id', { count: 'exact' })
-    .eq('study_code_id', studyCodeId);
-
-  if (quizError) {
-    logger.error('Error getting quiz count', supabaseErrorFields(quizError));
-    return;
-  }
-
-  const totalQuizzes = quizData?.length || 0;
-
-  await supabaseAdmin!
+  const { error } = await supabaseAdmin!
     .from('study_codes')
     .update({
       total_quizzes: totalQuizzes,
@@ -43,7 +44,15 @@ async function updateStudyCodeStats(studyCodeId: string): Promise<void> {
       correct_answers: correctAnswers,
     })
     .eq('id', studyCodeId);
+
+  if (error) {
+    logger.error('Error updating study code totals', supabaseErrorFields(error));
+  }
 }
+
+// Types the server can grade by comparing against the stored answer. Typed answers (fill-in-blank,
+// writing) are graded by the evaluation step, whose result the client reports back.
+const SERVER_GRADED_TYPES = new Set(['multiple-choice', 'true-false']);
 
 export async function POST(request: NextRequest) {
   const csrfError = verifyCsrfProtection(request);
@@ -51,10 +60,6 @@ export async function POST(request: NextRequest) {
 
   const session = await requireStudentSession(request);
   if (session instanceof NextResponse) return session;
-
-  if (!isSupabaseAdminAvailable()) {
-    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
-  }
 
   let rawBody: unknown;
   try {
@@ -93,12 +98,14 @@ export async function POST(request: NextRequest) {
 
     const quizHistoryId = quizData.id;
 
-    // The stored correct_answer, and the is_correct comparison derived from it, come from the
-    // questions table rather than the client — a client-supplied correctAnswer could otherwise
-    // be set equal to the client's own userAnswer to force a 100%-correct result.
+    // The stored correct_answer comes from the questions table, and so does the is_correct
+    // comparison for every question type the server can grade itself. A client-supplied
+    // evaluation is used only for typed answers.
     const dbQuestions = await loadQuestionsByIds(result.questions.map((q) => q.id));
 
-    const questionResults = result.questions
+    const uniqueQuestions = [...new Map(result.questions.map((q) => [q.id, q])).values()];
+
+    const questionResults = uniqueQuestions
       .map((question) => {
         const dbQuestion = dbQuestions.get(question.id);
         if (!dbQuestion) {
@@ -106,7 +113,9 @@ export async function POST(request: NextRequest) {
           return null;
         }
 
-        const evalResult = result.evaluationResults?.[question.id];
+        const evalResult = SERVER_GRADED_TYPES.has(dbQuestion.type)
+          ? undefined
+          : result.evaluationResults?.[question.id];
         const isCorrect = evalResult
           ? evalResult.isCorrect
           : result.userAnswers[question.id] === dbQuestion.correctAnswer;
