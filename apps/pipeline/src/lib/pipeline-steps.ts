@@ -33,6 +33,8 @@ const logger = createLogger('pipeline-steps');
 export interface StepOptions {
   dryRun: boolean;
   writeDb: boolean;
+  /** `--yes-production` was passed to the orchestrator; each writing child needs it in its own argv. */
+  yesProduction?: boolean;
   skipConvert?: boolean;
   forceConvert?: boolean;
   skipTopics?: boolean;
@@ -49,6 +51,11 @@ export interface StepOptions {
   // the top-level command apply to the whole pipeline, not just the orchestrator's own output.
   verbose?: boolean;
   quiet?: boolean;
+}
+
+/** Builds the `--yes-production` arg a writing child needs to accept the confirmed write target. */
+function targetArgs(options: Pick<StepOptions, 'yesProduction'>): string[] {
+  return options.yesProduction ? ['--yes-production'] : [];
 }
 
 /** Builds the `--verbose`/`--quiet` args to forward to a child script, from the orchestrator's own flags. */
@@ -440,7 +447,7 @@ export async function stepGenerateQuestions(
   if (options.markdownFile) {
     args.push('--source-file', options.markdownFile);
   }
-  args.push(...loggingArgs(options));
+  args.push(...targetArgs(options), ...loggingArgs(options));
   console.log(`  🚀 Running: npx tsx apps/pipeline/src/commands/questions-generate.ts ${args.join(' ')}\n`);
 
   if (options.dryRun) {
@@ -469,7 +476,7 @@ export async function stepAuditQuestions(
   if (options.batchId) {
     args.push('--batch-id', options.batchId);
   }
-  args.push(...loggingArgs(options));
+  args.push(...targetArgs(options), ...loggingArgs(options));
   console.log(`  🔍 Auditing pending questions for ${unitId} (${auditorLabel})`);
   console.log(`  🚀 Running: npx tsx apps/pipeline/src/commands/${auditScript} ${args.join(' ')}\n`);
 
@@ -491,7 +498,7 @@ export async function stepExtractResources(
   console.log('│  STEP 5: Learning Resource Extraction                       │');
   console.log('└─────────────────────────────────────────────────────────────┘\n');
 
-  const resourceArgs = ['--unit', unitId, '--write-db', ...loggingArgs(options)];
+  const resourceArgs = ['--unit', unitId, '--write-db', ...targetArgs(options), ...loggingArgs(options)];
   const result = runScript('content-extract-resources.ts', resourceArgs, options.dryRun);
   if (!result.success) {
     console.log('\n  ⚠️  Resource extraction failed (non-fatal)');

@@ -26,6 +26,7 @@ import {
   UnitPipelineResult,
 } from '../lib/pipeline-steps';
 import { runScript } from '../lib/script-runner';
+import { assertSupabaseTarget } from '../lib/supabase-target';
 import { defineCli } from '../lib/options/define-cli';
 import { dbTargetFlags, loggingFlags } from '../lib/options/groups';
 import { createLogger } from '../lib/logger';
@@ -223,6 +224,9 @@ export async function main() {
     // unrecognized unit, same as any other unit id that doesn't match a known unit.
     unitId: parsedOptions.all ? '--all' : (parsedOptions.unit ?? ''),
   };
+
+  // Checked before the first paid step so a refused target stops the run before any model call.
+  if (options.writeDb && !options.dryRun) assertSupabaseTarget({ write: true });
 
   console.log(`
 ╔════════════════════════════════════════════════════════════════╗

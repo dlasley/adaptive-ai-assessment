@@ -6,6 +6,8 @@ const { createScriptSupabaseMock, fetchUnitsFromDbMock, stepConvertPdfMock } = v
   stepConvertPdfMock: vi.fn(),
 }));
 
+vi.mock('../src/lib/supabase-target', () => ({ assertSupabaseTarget: vi.fn() }));
+
 vi.mock('../src/lib/db-queries', () => ({
   createScriptSupabase: createScriptSupabaseMock,
 }));

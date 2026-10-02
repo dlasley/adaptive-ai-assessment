@@ -61,7 +61,6 @@ export function runScriptAsync(
   return new Promise((resolve) => {
     const proc = spawn('npx', ['tsx', scriptPath, ...args], {
       stdio: 'inherit',
-      shell: true,
     });
 
     proc.on('close', (code) => {

@@ -4,11 +4,9 @@
  * `lib/supabase-target.ts`, which reads `process.argv` on the child process, not anything the
  * dispatcher parses and re-serializes.
  *
- * Resolves `tsx`'s own CLI entry point and spawns it directly with `node` instead of shelling out
- * through `npx tsx` (the pattern `lib/script-runner.ts` uses for the same purpose): passing an
- * argv array to a real executable needs no shell, so there's nothing for a value containing shell
- * metacharacters to break out of, and Node doesn't emit its `shell: true` args-not-escaped
- * deprecation warning on every command run.
+ * Resolves `tsx`'s own CLI entry point and spawns it directly with `node` instead of going through
+ * `npx tsx`: passing an argv array to a real executable needs no shell, so there's nothing for a
+ * value containing shell metacharacters to break out of.
  */
 
 import { spawn } from 'node:child_process';
