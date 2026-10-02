@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminPassword, createSessionCookie } from '@/lib/admin-session';
 import { checkRateLimit, getClientIp, getRateLimitStore } from '@/lib/rate-limiter';
 import {
+  adminLoginIpLockRetryAfterSeconds,
   adminLoginTightenedRetryAfterSeconds,
   isAdminLoginInTightenedMode,
   recordAdminLoginFailure,
+  recordAdminLoginIpMiss,
 } from '@/lib/admin-lockout-policy';
 import { verifyCsrfProtection } from '@/lib/csrf';
 import { adminLoginSchema } from '@/lib/api-schemas';
@@ -30,6 +32,14 @@ export async function POST(request: NextRequest) {
   // always available here.
   const store = getRateLimitStore()!;
 
+  const ipLockSeconds = await adminLoginIpLockRetryAfterSeconds(store, clientIp);
+  if (ipLockSeconds !== null) {
+    return NextResponse.json(
+      { error: 'Too many failed logins. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(ipLockSeconds) } }
+    );
+  }
+
   if (await isAdminLoginInTightenedMode(store)) {
     return NextResponse.json(
       { error: 'Too many failed logins. Please try again later.' },
@@ -41,19 +51,20 @@ export async function POST(request: NextRequest) {
   try {
     rawBody = await request.json();
   } catch {
-    await recordAdminLoginFailure(store);
+    await recordAdminLoginIpMiss(store, clientIp);
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
   const parsed = adminLoginSchema.safeParse(rawBody);
   if (!parsed.success) {
-    await recordAdminLoginFailure(store);
+    await recordAdminLoginIpMiss(store, clientIp);
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
   try {
     if (!verifyAdminPassword(parsed.data.password)) {
       await recordAdminLoginFailure(store);
+      await recordAdminLoginIpMiss(store, clientIp);
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
 

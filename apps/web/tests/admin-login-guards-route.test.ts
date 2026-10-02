@@ -12,16 +12,26 @@ vi.mock('@/lib/rate-limiter', () => ({
   getRateLimitStore: getRateLimitStoreMock,
 }));
 
-const { isAdminLoginInTightenedModeMock, recordAdminLoginFailureMock, retryAfterMock } = vi.hoisted(() => ({
+const {
+  isAdminLoginInTightenedModeMock,
+  recordAdminLoginFailureMock,
+  retryAfterMock,
+  ipLockMock,
+  recordIpMissMock,
+} = vi.hoisted(() => ({
   isAdminLoginInTightenedModeMock: vi.fn(),
   recordAdminLoginFailureMock: vi.fn(),
   retryAfterMock: vi.fn(),
+  ipLockMock: vi.fn(),
+  recordIpMissMock: vi.fn(),
 }));
 
 vi.mock('@/lib/admin-lockout-policy', () => ({
   isAdminLoginInTightenedMode: isAdminLoginInTightenedModeMock,
   recordAdminLoginFailure: recordAdminLoginFailureMock,
   adminLoginTightenedRetryAfterSeconds: retryAfterMock,
+  adminLoginIpLockRetryAfterSeconds: ipLockMock,
+  recordAdminLoginIpMiss: recordIpMissMock,
 }));
 
 const { verifyAdminPasswordMock, createSessionCookieMock } = vi.hoisted(() => ({
@@ -57,6 +67,9 @@ beforeEach(() => {
   isAdminLoginInTightenedModeMock.mockResolvedValue(false);
   retryAfterMock.mockResolvedValue(180);
   recordAdminLoginFailureMock.mockReset();
+  ipLockMock.mockReset();
+  ipLockMock.mockResolvedValue(null);
+  recordIpMissMock.mockReset();
   verifyAdminPasswordMock.mockReset();
   createSessionCookieMock.mockReset();
   createSessionCookieMock.mockReturnValue({ name: 'admin_session', value: 'token', options: {} });
@@ -106,5 +119,46 @@ describe('POST /api/admin/login global circuit breaker interplay', () => {
     await POST(loginRequest({ password: 'correct' }));
 
     expect(isAdminLoginInTightenedModeMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/admin/login per-IP miss lock', () => {
+  it('answers 429 with the lock wait, ahead of the global breaker and the password check', async () => {
+    ipLockMock.mockResolvedValue(240);
+    verifyAdminPasswordMock.mockReturnValue(true);
+
+    const res = await POST(loginRequest({ password: 'correct' }));
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('240');
+    expect(isAdminLoginInTightenedModeMock).not.toHaveBeenCalled();
+    expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
+  });
+
+  it('counts a wrong password toward the IP and the global breaker', async () => {
+    verifyAdminPasswordMock.mockReturnValue(false);
+
+    const res = await POST(loginRequest({ password: 'wrong' }));
+
+    expect(res.status).toBe(401);
+    expect(recordIpMissMock).toHaveBeenCalledWith(expect.anything(), '127.0.0.1');
+    expect(recordAdminLoginFailureMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts a malformed body toward the IP only', async () => {
+    const res = await POST(loginRequest({ nope: true }));
+
+    expect(res.status).toBe(400);
+    expect(recordIpMissMock).toHaveBeenCalledTimes(1);
+    expect(recordAdminLoginFailureMock).not.toHaveBeenCalled();
+  });
+
+  it('does not count a successful login', async () => {
+    verifyAdminPasswordMock.mockReturnValue(true);
+
+    const res = await POST(loginRequest({ password: 'correct' }));
+
+    expect(res.status).toBe(200);
+    expect(recordIpMissMock).not.toHaveBeenCalled();
   });
 });

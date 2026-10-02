@@ -12,7 +12,8 @@ vi.mock('@/lib/rate-limiter', () => ({
   getRateLimitStore: getRateLimitStoreMock,
 }));
 
-const { isAdminLoginInTightenedModeMock, recordAdminLoginFailureMock, retryAfterMock } = vi.hoisted(() => ({
+const { isAdminLoginInTightenedModeMock, recordAdminLoginFailureMock, retryAfterMock, recordIpMissMock } = vi.hoisted(() => ({
+  recordIpMissMock: vi.fn(),
   isAdminLoginInTightenedModeMock: vi.fn(),
   recordAdminLoginFailureMock: vi.fn(),
   retryAfterMock: vi.fn(),
@@ -22,6 +23,8 @@ vi.mock('@/lib/admin-lockout-policy', () => ({
   isAdminLoginInTightenedMode: isAdminLoginInTightenedModeMock,
   recordAdminLoginFailure: recordAdminLoginFailureMock,
   adminLoginTightenedRetryAfterSeconds: retryAfterMock,
+  adminLoginIpLockRetryAfterSeconds: async () => null,
+  recordAdminLoginIpMiss: recordIpMissMock,
 }));
 
 const { verifyAdminPasswordMock, createSessionCookieMock } = vi.hoisted(() => ({
@@ -57,6 +60,7 @@ beforeEach(() => {
   isAdminLoginInTightenedModeMock.mockResolvedValue(false);
   retryAfterMock.mockResolvedValue(180);
   recordAdminLoginFailureMock.mockReset();
+  recordIpMissMock.mockReset();
   verifyAdminPasswordMock.mockReset();
   createSessionCookieMock.mockReset();
   createSessionCookieMock.mockReturnValue({ name: 'admin_session', value: 'token', options: {} });
@@ -105,19 +109,21 @@ describe('POST /api/admin/login malformed input', () => {
     ['a null password', { password: null }],
     ['a missing password', {}],
     ['an oversized password', { password: 'x'.repeat(201) }],
-  ])('answers 400 for %s and counts it as a failed attempt', async (_name, body) => {
+  ])('answers 400 for %s and counts it against the IP', async (_name, body) => {
     const res = await POST(loginRequest(body));
 
     expect(res.status).toBe(400);
     expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
-    expect(recordAdminLoginFailureMock).toHaveBeenCalledTimes(1);
+    expect(recordIpMissMock).toHaveBeenCalledTimes(1);
+    expect(recordAdminLoginFailureMock).not.toHaveBeenCalled();
   });
 
   it('answers 400 for a body that is not JSON and counts it as a failed attempt', async () => {
     const res = await POST(rawRequest('{not json'));
 
     expect(res.status).toBe(400);
-    expect(recordAdminLoginFailureMock).toHaveBeenCalledTimes(1);
+    expect(recordIpMissMock).toHaveBeenCalledTimes(1);
+    expect(recordAdminLoginFailureMock).not.toHaveBeenCalled();
   });
 
   it('still answers 401 and counts a failure for an empty string password', async () => {
