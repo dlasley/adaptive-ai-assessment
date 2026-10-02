@@ -356,8 +356,8 @@ naming the unit and every mismatched heading if any do not resolve.
 
 ## 7. Exports and utilities
 
-**`db-check-connection`** verifies Supabase connectivity and schema for the core tables. It takes no
-options:
+**`db-check-connection`** checks that the service key can read each core table and view, and
+prints a row count or the error for each. It takes no options and writes nothing:
 
 ```bash
 pipeline db-check-connection
