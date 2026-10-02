@@ -3,8 +3,10 @@
  * Seed study_code_source_words table with adjective/animal word pools.
  *
  * Randomly samples from friendly-words predicates + animals npm package
- * and inserts into the database. The sampled subset is unknown from source,
- * preventing brute-force enumeration of study codes.
+ * and inserts into the database. A study code is two different adjectives and an
+ * animal; the animal shares a first letter with the second adjective. Sampling a
+ * subset of the public word lists raises the cost of guessing a code, but both lists
+ * are public, so it does not hide the scheme or prevent enumeration.
  */
 
 import { createScriptSupabase } from '../lib/db-queries';
@@ -75,13 +77,19 @@ async function main() {
 
   console.log(`Source: friendly-words (${allPredicates.length} predicates) + animals (${allAnimals.length} animals)`);
   console.log(`Sampled: ${adjectives.length} adjectives, ${animals.length} animals`);
-  console.log(`Combination space: ${adjectives.length * animals.length} possible codes`);
 
   // Build rows
   const rows = [
     ...adjectives.map(word => ({ category: 'adjective' as const, word })),
     ...animals.map(word => ({ category: 'animal' as const, word })),
   ];
+
+  // Second adjective + animal pairs that share a first letter. An adjective whose letter has no
+  // animal pairs with any animal instead.
+  const animalsByLetter = new Map<string, number>();
+  for (const animal of animals) animalsByLetter.set(animal[0], (animalsByLetter.get(animal[0]) ?? 0) + 1);
+  const closingPairs = adjectives.reduce((sum, adjective) => sum + (animalsByLetter.get(adjective[0]) ?? animals.length), 0);
+  console.log(`Possible codes: about ${adjectives.length * closingPairs} (${adjectives.length} first adjectives x ${closingPairs} second-adjective and animal pairs)`);
 
   // Letter coverage analysis
   const adjLetters = new Set(adjectives.map(w => w[0]));

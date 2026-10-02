@@ -8,11 +8,17 @@ import { supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('generate-code');
 
-const RATE_LIMIT = { windowMs: 60_000, maxRequests: 10 };
+// Per-IP caps. The per-minute cap lets a class enrol together; the daily cap stops one source from
+// reading the whole word pool out or filling the study_codes table.
+const RATE_LIMIT_PER_MINUTE = { windowMs: 60_000, maxRequests: 30 };
+const RATE_LIMIT_PER_DAY = { windowMs: 24 * 60 * 60 * 1000, maxRequests: 20 };
 const MAX_ATTEMPTS = 10;
+const MAX_FIRST_ADJECTIVE_DRAWS = 5;
+
+type WordCategory = 'adjective' | 'animal';
 
 /** Pick a random row from study_code_source_words by category using count + offset. */
-async function pickRandom(category: 'adjective' | 'animal') {
+async function pickRandom(category: WordCategory) {
   const { count } = await supabaseAdmin!
     .from('study_code_source_words')
     .select('id', { count: 'exact', head: true })
@@ -31,22 +37,55 @@ async function pickRandom(category: 'adjective' | 'animal') {
   return data;
 }
 
+/** Pick an animal that starts with `letter`, or any animal when none does. */
+async function pickAnimalFor(letter: string): Promise<string | null> {
+  const { data: matchingAnimals } = await supabaseAdmin!
+    .from('study_code_source_words')
+    .select('word')
+    .eq('category', 'animal')
+    .eq('first_letter', letter);
+
+  if (matchingAnimals && matchingAnimals.length > 0) {
+    return matchingAnimals[Math.floor(Math.random() * matchingAnimals.length)].word;
+  }
+
+  const fallback = await pickRandom('animal');
+  return fallback?.word ?? null;
+}
+
+/** Pick an adjective different from `excluded`, or null if the pool keeps returning it. */
+async function pickAdjectiveOtherThan(excluded: string): Promise<string | null> {
+  for (let draw = 0; draw < MAX_FIRST_ADJECTIVE_DRAWS; draw++) {
+    const adjective = await pickRandom('adjective');
+    if (!adjective) return null;
+    if (adjective.word !== excluded) return adjective.word;
+  }
+  return null;
+}
+
 /**
- * Generate a new study code server-side.
- * Reads word lists from study_code_source_words (service role only),
- * prefers alliterative pairs, inserts into study_codes with collision retry.
+ * Generate a new study code server-side: two different adjectives and an animal, such as
+ * "brave purple penguin". The second adjective and the animal share a first letter whenever the
+ * pool has such an animal; the first adjective is drawn independently. Words come from
+ * study_code_source_words (service role only). The code is inserted into study_codes with a
+ * collision retry.
  */
 export async function POST(request: NextRequest) {
   const csrfError = verifyCsrfProtection(request);
   if (csrfError) return csrfError;
 
   const ip = getClientIp(request);
-  const rl = await checkRateLimit(`generate-code:${ip}`, RATE_LIMIT);
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please try again later.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } },
-    );
+  for (const [scope, limit] of [
+    ['minute', RATE_LIMIT_PER_MINUTE],
+    ['day', RATE_LIMIT_PER_DAY],
+  ] as const) {
+    const rl = await checkRateLimit(`generate-code-${scope}:${ip}`, limit);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000))) } },
+      );
+    }
   }
 
   if (!isSupabaseAdminAvailable()) {
@@ -55,38 +94,23 @@ export async function POST(request: NextRequest) {
 
   try {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      // 1. Pick a random adjective
-      const adjective = await pickRandom('adjective');
-      if (!adjective) {
+      const secondAdjective = await pickRandom('adjective');
+      if (!secondAdjective) {
         return NextResponse.json({ error: 'No adjectives available' }, { status: 500 });
       }
 
-      // 2. Try alliterative match first
-      let animal: string | null = null;
-
-      const { data: matchingAnimals } = await supabaseAdmin!
-        .from('study_code_source_words')
-        .select('word')
-        .eq('category', 'animal')
-        .eq('first_letter', adjective.first_letter);
-
-      if (matchingAnimals && matchingAnimals.length > 0) {
-        animal = matchingAnimals[Math.floor(Math.random() * matchingAnimals.length)].word;
-      }
-
-      // 3. Fallback: any random animal
-      if (!animal) {
-        const fallback = await pickRandom('animal');
-        animal = fallback?.word ?? null;
-      }
-
+      const animal = await pickAnimalFor(secondAdjective.first_letter);
       if (!animal) {
         return NextResponse.json({ error: 'No animals available' }, { status: 500 });
       }
 
-      const code = `${adjective.word} ${animal}`;
+      const firstAdjective = await pickAdjectiveOtherThan(secondAdjective.word);
+      if (!firstAdjective) {
+        return NextResponse.json({ error: 'Not enough adjectives available' }, { status: 500 });
+      }
 
-      // 4. Insert into study_codes
+      const code = `${firstAdjective} ${secondAdjective.word} ${animal}`;
+
       const { data: inserted, error: insertErr } = await supabaseAdmin!
         .from('study_codes')
         .insert({ code })
@@ -100,7 +124,7 @@ export async function POST(request: NextRequest) {
         return response;
       }
 
-      // Collision (unique constraint violation) — retry with new random pair
+      // Collision (unique constraint violation): retry with a new random draw
       if (insertErr.code === '23505') {
         continue;
       }
