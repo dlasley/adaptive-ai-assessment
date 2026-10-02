@@ -46,10 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (allQuestions.length === 0) {
       return NextResponse.json(
-        {
-          error: 'No questions available',
-          details: 'Please run "npm run generate-questions --sync-db" to populate the question bank'
-        },
+        { error: 'No questions available' },
         { status: 500 }
       );
     }
