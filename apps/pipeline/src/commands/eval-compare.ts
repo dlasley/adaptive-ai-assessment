@@ -214,7 +214,7 @@ export const cli = defineCli(
     description: "Paired comparison of candidate runs against a baseline run, with the non-inferiority verdict and noise floor from any repeats. Falls back to a reference-free stability/agreement report when the set has no approved reference. Dry run by default (report only); --write-db also persists the result into each run's summary. --decide separately records the comparison's decision as an eval_findings row and updates the candidate's experiment status.",
     examples: [
       'npx tsx apps/pipeline/src/commands/eval-compare.ts --runs run-baseline,run-candidate --baseline run-baseline',
-      'npx tsx apps/pipeline/src/commands/eval-compare.ts --runs run-a,run-b,run-c --baseline run-a --out .private/eval/reports/baseline-vs-candidate.md --write-db',
+      'npx tsx apps/pipeline/src/commands/eval-compare.ts --runs run-a,run-b,run-c --baseline run-a --out <report-path>.md --write-db',
       'npx tsx apps/pipeline/src/commands/eval-compare.ts --runs run-baseline,run-candidate --baseline run-baseline --write-db --decide adopt --statement "Sonnet 5 matches baseline recall within tolerance; adopting for audit."',
     ],
   },
@@ -384,7 +384,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
 
   // eval_* tables are service-role only. Real Supabase access is skipped entirely when a store is
   // injected, so a test never needs live credentials or a network connection.
-  const supabase = deps.store ? undefined : createScriptSupabase({ write: true });
+  const supabase = deps.store ? undefined : createScriptSupabase({ write: options.writeDb, serviceRole: true });
   const store = deps.store ?? createSupabaseEvalStore(supabase!);
 
   const runIds = [...new Set([...options.runs.split(',').map((s) => s.trim()).filter(Boolean), options.baseline])];

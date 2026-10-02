@@ -50,10 +50,13 @@ export interface DistributionAnalysis {
  * Create a Supabase client using env vars.
  * Exits the process if credentials are missing.
  *
- * @param opts.write - Use SUPABASE_SECRET_KEY for write access (bypasses RLS).
- *                     Falls back to anon key with a warning if secret key is missing.
+ * @param opts.write - The caller is about to mutate the database: the resolved target must be
+ *                     confirmed first (see `assertSupabaseTarget`).
+ * @param opts.serviceRole - Use SUPABASE_SECRET_KEY (bypasses RLS) for reads of tables the anon key
+ *                     cannot see. A write always uses it. A missing secret key is an error, because
+ *                     the anon key would return zero rows from those tables instead of failing.
  */
-export function createScriptSupabase(opts?: { write?: boolean }): SupabaseClient {
+export function createScriptSupabase(opts?: { write?: boolean; serviceRole?: boolean }): SupabaseClient {
   loadEnv();
   assertSupabaseTarget({ write: !!opts?.write });
 
@@ -66,11 +69,12 @@ export function createScriptSupabase(opts?: { write?: boolean }): SupabaseClient
     process.exit(1);
   }
 
-  if (opts?.write) {
+  if (opts?.write || opts?.serviceRole) {
     if (!secretKey) {
-      logger.warn('SUPABASE_SECRET_KEY not set — using anon key (may fail with RLS)');
+      logger.error('SUPABASE_SECRET_KEY is required for a write or a read of a service-role table.');
+      process.exit(1);
     }
-    return createClient(supabaseUrl, secretKey || anonKey);
+    return createClient(supabaseUrl, secretKey);
   }
 
   return createClient(supabaseUrl, anonKey);

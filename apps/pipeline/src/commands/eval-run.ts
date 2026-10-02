@@ -203,7 +203,7 @@ export function buildEffectiveCallSettings(
 }
 
 /** Permutes `items` deterministically when `shuffleSeed` is given (`--shuffle-groups`); returns
- * them in their original order otherwise, matching every previous eval-run behavior. Exported so
+ * them in their original order otherwise. Exported so
  * --shuffle-groups's determinism is unit-testable without a live Supabase connection. */
 export function orderItemsForRun<T>(items: T[], shuffleSeed: number | undefined): T[] {
   return shuffleSeed !== undefined ? shuffle(items, mulberry32(shuffleSeed)) : items;
@@ -468,7 +468,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
   const callLlmFn = deps.callLlmFn ?? callLlm;
   // eval_* tables are service-role only. Real Supabase access is skipped entirely when a store is
   // injected, so a test never needs live credentials or a network connection.
-  const supabase = deps.store ? undefined : createScriptSupabase({ write: true });
+  const supabase = deps.store ? undefined : createScriptSupabase({ write: options.writeDb, serviceRole: true });
   const store = deps.store ?? createSupabaseEvalStore(supabase!);
 
   const set = await store.getSet(options.set);

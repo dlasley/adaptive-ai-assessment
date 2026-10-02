@@ -31,7 +31,7 @@ import { writeCsv } from '../lib/eval/csv';
 import { buildTranscriptionReferenceExportFiles, buildTranscriptionReferenceReadme } from '../lib/eval/transcription-review';
 import { guardTrackedTreeWrite } from '../lib/eval/paths';
 import { defineCli } from '../lib/options/define-cli';
-import { dbTargetFlags, loggingFlags } from '../lib/options/groups';
+import { loggingFlags } from '../lib/options/groups';
 import { createLogger, levelFromFlags, setLogLevel } from '../lib/logger';
 import { runIfMain } from '../lib/run-if-main';
 
@@ -39,7 +39,6 @@ const logger = createLogger('eval-review-export');
 
 export const cli = defineCli(
   {
-    ...dbTargetFlags,
     ...loggingFlags,
     set: { type: 'string', required: true, help: 'eval_sets id to export' },
     out: { type: 'string', required: true, help: 'Reviewer sheet output path (audit/grading), or a directory (transcription)' },
@@ -61,9 +60,9 @@ export const cli = defineCli(
     name: 'eval-review-export',
     description: "Exports a frozen eval set's items for a reviewer to fill in reference: an .xlsx or .csv sheet for audit/grading, a directory of per-slide markdown files for transcription.",
     examples: [
-      'npx tsx apps/pipeline/src/commands/eval-review-export.ts --set <id> --out .private/eval/references/unit-1-audit-reference.xlsx',
-      'npx tsx apps/pipeline/src/commands/eval-review-export.ts --set <id> --out .private/eval/references/unit-1-audit-reference.csv --format csv',
-      'npx tsx apps/pipeline/src/commands/eval-review-export.ts --set <id> --out .private/eval/references/unit-1-transcription-reference --from-run <baseline-run-id>',
+      'npx tsx apps/pipeline/src/commands/eval-review-export.ts --set <id> --out <reference-sheet>.xlsx',
+      'npx tsx apps/pipeline/src/commands/eval-review-export.ts --set <id> --out <reference-sheet>.csv --format csv',
+      'npx tsx apps/pipeline/src/commands/eval-review-export.ts --set <id> --out <reference-dir> --from-run <baseline-run-id>',
     ],
   },
 );
@@ -136,7 +135,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
 
   // eval_* tables are service-role only, read or write. Real Supabase access is skipped entirely
   // when a store is injected, so a test never needs live credentials or a network connection.
-  const store = deps.store ?? createSupabaseEvalStore(createScriptSupabase({ write: true }));
+  const store = deps.store ?? createSupabaseEvalStore(createScriptSupabase({ write: false, serviceRole: true }));
 
   const set = await store.getSet(options.set);
   if (!set) {

@@ -11,7 +11,7 @@ vi.mock('@supabase/supabase-js', () => ({
 // delete in any checkout that has one.
 vi.mock('../src/lib/env', () => ({ loadEnv: () => {} }));
 
-import { createServiceReadClient } from '../src/lib/db-queries';
+import { createScriptSupabase, createServiceReadClient } from '../src/lib/db-queries';
 
 class ProcessExitError extends Error {
   constructor(public code: number) {
@@ -102,5 +102,64 @@ describe('createServiceReadClient', () => {
     expect(table).not.toHaveProperty('update');
     expect(table).not.toHaveProperty('delete');
     expect(table).not.toHaveProperty('upsert');
+  });
+});
+
+describe('createScriptSupabase', () => {
+  const ORIGINAL_ENV = { ...process.env };
+  const ORIGINAL_ARGV = [...process.argv];
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockCreateClient.mockClear();
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new ProcessExitError(code ?? 0);
+    }) as never);
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://abcdefghijklmnopqrst.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SECRET_KEY = 'service-role-secret';
+    delete process.env.EXPECTED_SUPABASE_REF;
+    process.argv = ORIGINAL_ARGV.filter((arg) => arg !== '--yes-production');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    process.env = { ...ORIGINAL_ENV };
+    process.argv = ORIGINAL_ARGV;
+  });
+
+  it('reads with the anon key by default', () => {
+    createScriptSupabase();
+
+    expect(mockCreateClient).toHaveBeenCalledWith(expect.any(String), 'anon-key');
+  });
+
+  it('reads a service-role table with the secret key without a write confirmation', () => {
+    createScriptSupabase({ write: false, serviceRole: true });
+
+    expect(mockCreateClient).toHaveBeenCalledWith(expect.any(String), 'service-role-secret');
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it('refuses an unconfirmed write target, with or without the service-role option', () => {
+    expect(() => createScriptSupabase({ write: true })).toThrow(ProcessExitError);
+    expect(() => createScriptSupabase({ write: true, serviceRole: true })).toThrow(ProcessExitError);
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a service-role read', { write: false, serviceRole: true }],
+    ['a write', { write: true }],
+  ])('exits when SUPABASE_SECRET_KEY is missing for %s instead of using the anon key', (_name, opts) => {
+    delete process.env.SUPABASE_SECRET_KEY;
+    process.env.EXPECTED_SUPABASE_REF = 'abcdefghijklmnopqrst';
+
+    expect(() => createScriptSupabase(opts)).toThrow(ProcessExitError);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('SUPABASE_SECRET_KEY'));
+    expect(mockCreateClient).not.toHaveBeenCalled();
   });
 });

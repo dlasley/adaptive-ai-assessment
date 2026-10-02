@@ -383,7 +383,7 @@ async function runTranscriptionSetCreate(options: Options, storeOverride?: EvalS
     return;
   }
 
-  const store = storeOverride ?? createSupabaseEvalStore(createScriptSupabase({ write: true })); // eval_* tables are service-role only
+  const store = storeOverride ?? createSupabaseEvalStore(createScriptSupabase({ write: options.writeDb, serviceRole: true })); // eval_* tables are service-role only
   const inputsHash = hashPdfBytes(pdfBytes);
   const setRow = await store.insertSet({
     task: 'transcription',
@@ -427,7 +427,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
   // Full quality_status visibility (pending/flagged included) is needed even for a dry-run
   // preview — the anon key's RLS policy only exposes 'active' questions, which would silently
   // undersample exactly the rows --balance-status and audit reference sampling care about.
-  const supabase = createScriptSupabase({ write: true });
+  const supabase = createScriptSupabase({ write: options.writeDb, serviceRole: true });
   const store = deps.store ?? createSupabaseEvalStore(supabase);
 
   if (options.task === 'audit') {

@@ -63,7 +63,7 @@ export const cli = defineCli(
     examples: [
       'npx tsx apps/pipeline/src/commands/eval-review-import.ts --set <id> --from reviewer.xlsx --reviewer jsmith --rubric-version v1 --write-db',
       'npx tsx apps/pipeline/src/commands/eval-review-import.ts --set <id> --from reviewer.xlsx --reviewer jsmith --rubric-version v1 --policy-labels --write-db',
-      'npx tsx apps/pipeline/src/commands/eval-review-import.ts --set <id> --from .private/eval/references/unit-1-transcription-reference --reviewer jsmith --rubric-version v1 --write-db',
+      'npx tsx apps/pipeline/src/commands/eval-review-import.ts --set <id> --from <reference-dir> --reviewer jsmith --rubric-version v1 --write-db',
     ],
   },
 );
@@ -100,7 +100,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
 
   // eval_items is service-role only, read or write. Real Supabase access is skipped entirely when a
   // store is injected, so a test never needs live credentials or a network connection.
-  const store = deps.store ?? createSupabaseEvalStore(createScriptSupabase({ write: true }));
+  const store = deps.store ?? createSupabaseEvalStore(createScriptSupabase({ write: options.writeDb, serviceRole: true }));
 
   const set = await store.getSet(options.set);
   if (!set) {
