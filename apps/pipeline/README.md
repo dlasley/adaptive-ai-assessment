@@ -366,6 +366,14 @@ Seeds `study_code_source_words` with the adjective and animal word pools used to
 study codes. `--count <n>` sets how many of each category to sample. A dry run unless `--write-db`
 is given. The app cannot issue study codes until this has run.
 
+### db-prune-study-codes
+
+Deletes study codes with no activity for `--inactive-days <n>` days (default 90). A code's activity
+is its last quiz submission, or its creation if it never submitted one. `--no-quizzes-only` limits
+the prune to codes with no `quiz_history` rows. Deleting a code cascades to its quiz history,
+question results and Leitner state. A dry run unless `--write-db`, which prints how many codes
+would go and how many of them have quiz history. The admin stats show the count of inactive codes.
+
 ### db-check-connection
 
 Checks that the service key (`SUPABASE_SECRET_KEY`) can read each core table and view, and prints a

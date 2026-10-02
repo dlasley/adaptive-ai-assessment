@@ -585,7 +585,7 @@ row and column counts.
 shared with `questions-audit.ts`, the grading prompt shared with `evaluate-writing`'s route, the
 mapping prompt and parser shared with `content-suggest-topics --map-existing`, the transcription
 prompt and slide renderer shared with `pdf-conversion.ts`) with the model and settings under test
-injected, rather than a copy that could drift from what production sends. One call covers every
+injected, rather than a copy that could drift from what production sends. The grading prompt is a system message holding the rubric and a user message holding the question, expected answer and student answer in tags; the grading task also derives `isCorrect` from the score and the pass threshold, as the route does. One call covers every
 topic in a mapping set at once, matching the production prompt, so a mapping run is one call per
 variant per repeat. Transcription stays one call per slide but renders each slide's image once per
 invocation and reuses it across every variant and repeat. It never reads the production slide

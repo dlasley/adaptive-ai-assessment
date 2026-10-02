@@ -383,6 +383,18 @@ pipeline db-seed-study-code-words --dry-run    # preview the sample
 pipeline db-seed-study-code-words --count 300 --write-db
 ```
 
+A study code is two different adjectives and an animal. The dry run prints roughly how many codes
+the sampled pools allow.
+
+**`db-prune-study-codes`** deletes study codes with no activity for a number of days. It is a dry
+run until `--write-db`; start with the dry run to see how many codes would go and how many have quiz
+history:
+
+```bash
+pipeline db-prune-study-codes --inactive-days 90 --no-quizzes-only
+pipeline db-prune-study-codes --inactive-days 90 --no-quizzes-only --write-db
+```
+
 ---
 
 ## 8. Troubleshooting

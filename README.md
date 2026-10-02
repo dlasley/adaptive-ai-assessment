@@ -49,7 +49,7 @@ Student answer → Empty check → Exact match → Fuzzy match → Semantic (LLM
 
 The Next.js app (`apps/web/`) has no student accounts. A student enters or generates a study code, and the server answers with a signed session cookie (`student_session`, HMAC-signed, `httpOnly`). Admins log in with a shared password and receive a separately signed cookie (`admin_session`). `src/proxy.ts` redirects unauthenticated `/admin` page requests, and every `/api/admin/*` route verifies the cookie signature itself.
 
-The browser reads only what the anonymous Supabase key can see under RLS: active questions, units, and learning resources. Everything about a student (study codes, quiz history, results, Leitner state) is reached only through `/api/*` routes that check the session and then use the service-role key; the anonymous role has no policies on those tables, and CI fails if code outside `apps/web/src/app/api/` queries them with the anonymous client. State-changing routes check the request's `Origin` or `Referer` against an allow-list and require a JSON `Content-Type` (CSRF). Rate limiting is sliding-window and backed by Upstash Redis, with an in-memory store outside production. Study-code verification adds a per-code lockout and a global circuit breaker, which uses a Cloudflare Turnstile challenge when configured; admin login has its own global circuit breaker.
+The browser reads only what the anonymous Supabase key can see under RLS: learning resources, whose rows are public links. The question bank and units are read by server routes with the service-role key, and CI fails if code queries them with the anonymous client. Everything about a student (study codes, quiz history, results, Leitner state) is reached only through `/api/*` routes that check the session and then use the service-role key; the anonymous role has no policies on those tables, and CI fails if code outside `apps/web/src/app/api/` queries them with the anonymous client. State-changing routes check the request's `Origin` or `Referer` against an allow-list and require a JSON `Content-Type` (CSRF). Rate limiting is sliding-window and backed by Upstash Redis, with an in-memory store outside production. Study-code verification adds a per-IP miss lock, a per-code lockout and a global circuit breaker, which challenges with Cloudflare Turnstile and requires it in production; admin login has its own global circuit breaker, which denies logins until its window ends. Student routes are limited per session, with looser per-IP backstops sized for a classroom behind one address; typed-answer grading by the model also has a global daily cap. A study code is two different adjectives and an animal (for example "brave purple penguin"); the word pools are a sample of two public lists, which raises the cost of guessing a code but does not hide the scheme. The QR code encodes the study code in a URL (`?code=`), so it can appear in browser history and in server or proxy logs; the home page removes it from the address bar after use.
 
 ---
 
@@ -85,7 +85,7 @@ See [`docs/pipeline-architecture.md`](docs/pipeline-architecture.md#evaluation-f
 - Practice and assessment quiz modes
 - Adaptive Leitner spaced-repetition scheduling, per-topic mastery tracking, and quiz history
 - Tiered typed-answer grading: exact match, fuzzy match, then an LLM semantic fallback
-- Anonymous study codes for identity (no accounts, no PII)
+- Anonymous study codes for identity (no accounts; the app collects no names, though an owner can label a code with a name directly in the database)
 
 **Admin**
 - Dashboard (`/admin`): study-code search and bulk delete through `/api/admin/*`, and a CSV export generated in the browser. These are protected by the admin session alone; `NEXT_PUBLIC_ENABLE_ADMIN_PANEL` only shows the "Teacher Dashboard" navigation link
@@ -101,17 +101,18 @@ See [`docs/pipeline-architecture.md`](docs/pipeline-architecture.md#evaluation-f
 
 | Variable | Required | Description |
 |---|---|---|
-| `ADMIN_PASSWORD` | Admin only | Password for admin dashboard login |
-| `ADMIN_SESSION_SECRET` | Admin only | Hex string for HMAC cookie signing |
+| `ADMIN_PASSWORD` | Admin only | Password for admin dashboard login. Must be at least 16 characters; a shorter one is refused (logged once) and nobody can log in |
+| `ADMIN_SESSION_SECRET` | Admin only | Secret for HMAC cookie signing, at least 32 bytes (for example 64 hex characters); a shorter one fails at first use. An admin session lasts up to 24 hours and is revoked only by rotating this secret |
 | `COURSE_NAME` / `COURSE_TITLE` | Yes (deployed) | Course branding read by `packages/shared/src/course.ts`: the app title and header, and the pipeline's prompts. Server-side only. Local development, tests and local builds fall back to "French II" / "French II Practice & Assessment"; a Vercel build or deployment, or a production server, fails without them |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Yes (deployed), one pair | Upstash Redis for durable rate limiting, as set by the Vercel Marketplace integration. Without a pair, the limiter runs in memory in development and tests, and denies requests in production builds (`NODE_ENV=production`, which includes Vercel previews) |
+| `MODEL_GRADING_DAILY_CAP` | No | Most typed answers the model may grade per UTC day, across all students. Default 2000. Past it, answers get a score-50 "automatic grader unavailable" result instead of a model call |
 | `NEXT_PUBLIC_ENABLE_ADMIN_PANEL` | No | Shows the "Teacher Dashboard" navigation link (`true`/`false`). Does not gate `/admin` or `/api/admin/*`, which the admin session protects |
 | `NEXT_PUBLIC_ENABLE_LEITNER` | No | Toggle adaptive question selection |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | No | Cloudflare Turnstile. When both are set, the study-code circuit breaker challenges suspected scanners instead of adding a fixed delay. Use Cloudflare's test keys outside production (see `.env.local.example`) |
-| `OPENROUTER_API_KEY` | Yes | OpenRouter API key for all model calls (generation, validation, audit, evaluation) |
-| `STUDENT_SESSION_SECRET` | Yes | Hex string for signing the student session cookie; students cannot sign in without it |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | Yes (production) | Cloudflare Turnstile. The study-code circuit breaker challenges suspected scanners with it, and a production-mode server (`NODE_ENV=production`, which includes Vercel previews) refuses study-code verification without both keys. Outside production, without them, the breaker answers 429 until its window ends. Use Cloudflare's test keys outside production (see `.env.local.example`); the live site rejects them |
+| `OPENROUTER_API_KEY` | Yes | OpenRouter API key for all model calls (generation, validation, audit, evaluation). Set a hard credit limit on the key in OpenRouter's dashboard; the app's own caps bound spend per student and per day but are not a billing control |
+| `STUDENT_SESSION_SECRET` | Yes | Secret for signing the student session cookie, at least 32 bytes (for example 64 hex characters); students cannot sign in without it |
 | `SUPABASE_ACCESS_TOKEN` | No | Used by the Supabase MCP server for local tooling; the app and scripts do not read it |
 | `SUPABASE_SECRET_KEY` | Yes | Supabase service role key. The web app's server routes and every pipeline write use it |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Alternative | The same Upstash connection under the names some setups provide; either pair works |
