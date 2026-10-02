@@ -86,8 +86,8 @@ describe('categorizeSlide', () => {
   });
 
   it('does not flag a slide whose text layer is just a title (below MIN_COVERAGE_WORDS)', () => {
-    // "point" "depart" are the only 2 qualifying words — well under MIN_COVERAGE_WORDS
-    const result = categorizeSlide(15, 'Point de depart (8)', '## Point de départ\n\nFull lesson content here.');
+    // "carnet" and "bord" are the only 2 qualifying words, well under MIN_COVERAGE_WORDS
+    const result = categorizeSlide(15, 'Carnet de bord (8)', '## Carnet de bord\n\nFull lesson content here.');
     expect(result).toEqual({ kind: 'ok' });
   });
 

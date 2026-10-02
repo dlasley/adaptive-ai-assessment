@@ -15,7 +15,7 @@ vi.mock('../src/lib/learning-materials', async (importOriginal) => ({
 
 import { preflightHeadings } from '../src/commands/content-extract-resources';
 
-const REAL_MARKDOWN = `## Révision: Present Tense of Regular Verbs
+const REAL_MARKDOWN = `## Bilan: Past Tense of Common Verbs
 
 Content about regular verb conjugation.
 `;
@@ -46,7 +46,7 @@ describe('preflightHeadings', () => {
       description: '',
       source_file_stem: null,
       topics: [
-        { name: 'Verb Conjugation', headings: ['révision:', 'present', 'tense', 'regular', 'verbs'] },
+        { name: 'Verb Conjugation', headings: ['bilan:', 'past', 'tense', 'common', 'verbs'] },
       ],
     } as never;
 
@@ -55,7 +55,7 @@ describe('preflightHeadings', () => {
     const errorCalls = (console.error as unknown as { mock: { calls: unknown[][] } }).mock.calls;
     const errorText = errorCalls.map(args => args.join(' ')).join('\n');
     expect(errorText).toContain('unit-1');
-    expect(errorText).toContain('révision:');
+    expect(errorText).toContain('bilan:');
     expect(errorText).toContain('--map-existing');
   });
 
@@ -66,7 +66,7 @@ describe('preflightHeadings', () => {
       description: '',
       source_file_stem: null,
       topics: [
-        { name: 'Verb Conjugation', headings: ['Révision: Present Tense of Regular Verbs'] },
+        { name: 'Verb Conjugation', headings: ['Bilan: Past Tense of Common Verbs'] },
       ],
     } as never;
 

@@ -6,7 +6,7 @@ You are mapping existing topic names to the markdown headings that teach them, f
 
 ## Document Headings (verbatim, with slide numbers)
 - "Warm Up" (slide 1)
-- "Vocabulaire actif" (slide 2)
+- "Mots utiles" (slide 2)
 
 ## Content
 <!-- slide 1 -->
@@ -16,7 +16,7 @@ Greetings content.
 
 <!-- slide 2 -->
 
-## Vocabulaire actif
+## Mots utiles
 Vocabulary content.
 
 

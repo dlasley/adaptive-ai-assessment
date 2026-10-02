@@ -14,7 +14,7 @@ function occ(heading: string, slide: number | null, level = 2): DocumentHeadingO
 
 const DOCUMENT_HEADINGS: DocumentHeadingOccurrence[] = [
   occ('Warm Up', 1),
-  occ('Vocabulaire actif', 1),
+  occ('Mots utiles', 1),
   occ('Grammar: Subjonctif', 2),
   occ('Exercices', 3),
   occ('Exercices', 5), // duplicate text, different slide
@@ -42,7 +42,7 @@ describe('normalizeHeadingForScoring', () => {
 
 describe('headingSetF1', () => {
   it('scores a perfect match as F1 1', () => {
-    const result = headingSetF1(['Warm Up', 'Vocabulaire actif'], ['Warm Up', 'Vocabulaire actif']);
+    const result = headingSetF1(['Warm Up', 'Mots utiles'], ['Warm Up', 'Mots utiles']);
     expect(result).toEqual({ precision: 1, recall: 1, f1: 1, truePositives: 2 });
   });
 
@@ -64,7 +64,7 @@ describe('headingSetF1', () => {
 
   it('computes partial credit when only some headings match', () => {
     // reference has 2, candidate returns 1 correct + 1 wrong: precision 1/2, recall 1/2, f1 1/2.
-    const result = headingSetF1(['Warm Up', 'Vocabulaire actif'], ['Warm Up', 'Made Up Heading']);
+    const result = headingSetF1(['Warm Up', 'Mots utiles'], ['Warm Up', 'Made Up Heading']);
     expect(result.precision).toBeCloseTo(0.5, 10);
     expect(result.recall).toBeCloseTo(0.5, 10);
     expect(result.f1).toBeCloseTo(0.5, 10);

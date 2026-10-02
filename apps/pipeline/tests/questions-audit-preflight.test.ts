@@ -46,13 +46,13 @@ describe('auditHeadingPreflight', () => {
 
   describe('gate 1 — stale stored headings', () => {
     it('exits non-zero naming the unit and mismatched heading for legacy word-token headings', () => {
-      loadUnitMaterialsMock.mockReturnValue('## Révision: Present Tense of Regular Verbs\nContent.\n');
+      loadUnitMaterialsMock.mockReturnValue('## Bilan: Past Tense of Common Verbs\nContent.\n');
       const units = [{
         id: 'unit-1',
         title: 'Unit 1',
         description: '',
         source_file_stem: null,
-        topics: [{ name: 'Verb Conjugation', headings: ['révision:', 'present', 'tense', 'regular', 'verbs'] }],
+        topics: [{ name: 'Verb Conjugation', headings: ['bilan:', 'past', 'tense', 'common', 'verbs'] }],
       }];
 
       expect(() => auditHeadingPreflight([{ unit_id: 'unit-1', topic: 'Verb Conjugation' }], units as never)).toThrow(ProcessExitError);
@@ -60,7 +60,7 @@ describe('auditHeadingPreflight', () => {
       const errorCalls = (console.error as unknown as { mock: { calls: unknown[][] } }).mock.calls;
       const errorText = errorCalls.map((args) => args.join(' ')).join('\n');
       expect(errorText).toContain('unit-1');
-      expect(errorText).toContain('révision:');
+      expect(errorText).toContain('bilan:');
     });
 
     it('validates every distinct unit referenced by the fetched questions, not just the first', () => {
@@ -178,14 +178,14 @@ describe('auditHeadingPreflight', () => {
   });
 
   it('does not exit when every topic (headed or headingless) resolves to real content', () => {
-    loadUnitMaterialsMock.mockReturnValue('## Révision: Present Tense of Regular Verbs\nContent.\n\n## Vocabulary\nmot 1\n');
+    loadUnitMaterialsMock.mockReturnValue('## Bilan: Past Tense of Common Verbs\nContent.\n\n## Vocabulary\nmot 1\n');
     const units = [{
       id: 'unit-1',
       title: 'Unit 1',
       description: '',
       source_file_stem: null,
       topics: [
-        { name: 'Verb Conjugation', headings: ['Révision: Present Tense of Regular Verbs'] },
+        { name: 'Verb Conjugation', headings: ['Bilan: Past Tense of Common Verbs'] },
         { name: 'Vocabulary', headings: [] },
       ],
     }];

@@ -23,7 +23,7 @@ Greetings content.
 
 <!-- slide 2 -->
 
-## Vocabulaire actif
+## Mots utiles
 Vocabulary content.
 `;
 

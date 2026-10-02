@@ -39,7 +39,7 @@ function occ(heading: string, slide: number | null, level = 2): DocumentHeadingO
 
 const DOCUMENT_HEADINGS: DocumentHeadingOccurrence[] = [
   occ('Warm Up', 1),
-  occ('Vocabulaire actif', 1),
+  occ('Mots utiles', 1),
   occ('Grammar: Subjonctif', 2),
   occ('Exercices', 3),
   occ('Exercices', 5), // duplicate text, different slide — the ambiguity case
@@ -47,12 +47,12 @@ const DOCUMENT_HEADINGS: DocumentHeadingOccurrence[] = [
 
 describe('findHeadingMismatches', () => {
   it('reports no mismatches when every bare-string heading is unique in the document', () => {
-    const topics = [{ name: 'Topic A', headings: ['Warm Up', 'Vocabulaire actif'] }];
+    const topics = [{ name: 'Topic A', headings: ['Warm Up', 'Mots utiles'] }];
     expect(findHeadingMismatches(topics, DOCUMENT_HEADINGS)).toEqual([]);
   });
 
   it('matches case- and whitespace-insensitively', () => {
-    const topics = [{ name: 'Topic A', headings: ['  warm   up  ', 'VOCABULAIRE ACTIF'] }];
+    const topics = [{ name: 'Topic A', headings: ['  warm   up  ', 'MOTS UTILES'] }];
     expect(findHeadingMismatches(topics, DOCUMENT_HEADINGS)).toEqual([]);
   });
 
@@ -64,10 +64,10 @@ describe('findHeadingMismatches', () => {
   });
 
   it('flags a paraphrased or combined heading, not just a wholly invented one', () => {
-    const topics = [{ name: 'Topic A', headings: ['Warm Up 08/18; 08/19'] }];
+    const topics = [{ name: 'Topic A', headings: ['Warm Up 03/05; 03/06'] }];
     const mismatches = findHeadingMismatches(topics, DOCUMENT_HEADINGS);
     expect(mismatches).toHaveLength(1);
-    expect(mismatches[0].heading).toBe('Warm Up 08/18; 08/19');
+    expect(mismatches[0].heading).toBe('Warm Up 03/05; 03/06');
     expect(mismatches[0].reason).toBe('not-found');
   });
 
@@ -122,7 +122,7 @@ More content here to pad the section out.
 
 <!-- slide 2 -->
 
-## Vocabulaire actif
+## Mots utiles
 Vocabulary list content.
 `;
 
@@ -132,7 +132,7 @@ Vocabulary list content.
       'content/markdown/Unit 1.md',
       markdown,
       ['Greetings', 'Vocabulary', 'Unmapped Topic'],
-      { Greetings: ['Warm Up'], Vocabulary: ['Vocabulaire actif'], 'Unmapped Topic': [] },
+      { Greetings: ['Warm Up'], Vocabulary: ['Mots utiles'], 'Unmapped Topic': [] },
     );
 
     expect(proposal.unitId).toBe('unit-1');
@@ -194,7 +194,7 @@ describe('mapExistingHeadings (LLM stubbed)', () => {
 ## Warm Up
 Greetings content.
 
-## Vocabulaire actif
+## Mots utiles
 Vocabulary content.
 `;
 
@@ -203,7 +203,7 @@ Vocabulary content.
       text: JSON.stringify({
         topics: {
           Greetings: [{ heading: 'Warm Up', slide: 1 }],
-          Vocabulary: [{ heading: 'Vocabulaire actif', slide: 1 }],
+          Vocabulary: [{ heading: 'Mots utiles', slide: 1 }],
         },
       }),
     });
@@ -211,7 +211,7 @@ Vocabulary content.
     const result = await mapExistingHeadings(['Greetings', 'Vocabulary'], markdown, 'test-session');
 
     // Both headings are unique in this document, so the slide is dropped in the stored form.
-    expect(result).toEqual({ Greetings: ['Warm Up'], Vocabulary: ['Vocabulaire actif'] });
+    expect(result).toEqual({ Greetings: ['Warm Up'], Vocabulary: ['Mots utiles'] });
     expect(callLlmMock).toHaveBeenCalledTimes(1);
   });
 
@@ -220,8 +220,8 @@ Vocabulary content.
       .mockResolvedValueOnce({
         text: JSON.stringify({
           topics: {
-            Greetings: [{ heading: 'Warm Up 08/18', slide: 1 }],
-            Vocabulary: [{ heading: 'Vocabulaire actif', slide: 1 }],
+            Greetings: [{ heading: 'Warm Up 03/05', slide: 1 }],
+            Vocabulary: [{ heading: 'Mots utiles', slide: 1 }],
           },
         }),
       })
@@ -231,7 +231,7 @@ Vocabulary content.
 
     const result = await mapExistingHeadings(['Greetings', 'Vocabulary'], markdown, 'test-session');
 
-    expect(result).toEqual({ Greetings: ['Warm Up'], Vocabulary: ['Vocabulaire actif'] });
+    expect(result).toEqual({ Greetings: ['Warm Up'], Vocabulary: ['Mots utiles'] });
     expect(callLlmMock).toHaveBeenCalledTimes(2);
   });
 

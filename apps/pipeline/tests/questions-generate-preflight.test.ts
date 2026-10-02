@@ -40,7 +40,7 @@ import { generateAllQuestions, cli } from '../src/commands/questions-generate';
  * preflight must stop the run — not let it fall through to a per-topic warning and zero
  * questions written.
  */
-const REAL_MARKDOWN = `## Révision: Present Tense of Regular Verbs
+const REAL_MARKDOWN = `## Bilan: Past Tense of Common Verbs
 
 Content about regular verb conjugation.
 `;
@@ -75,7 +75,7 @@ describe('generateAllQuestions — heading preflight', () => {
             name: 'Verb Conjugation',
             // Legacy shape: lowercased, split-on-whitespace word tokens — never a real heading
             // under exact matching.
-            headings: ['révision:', 'present', 'tense', 'regular', 'verbs'],
+            headings: ['bilan:', 'past', 'tense', 'common', 'verbs'],
           },
         ],
       },
@@ -90,7 +90,7 @@ describe('generateAllQuestions — heading preflight', () => {
     const errorCalls = (console.error as unknown as { mock: { calls: unknown[][] } }).mock.calls;
     const errorText = errorCalls.map(args => args.join(' ')).join('\n');
     expect(errorText).toContain('unit-1');
-    expect(errorText).toContain('révision:');
+    expect(errorText).toContain('bilan:');
     expect(errorText).toContain('--map-existing');
   });
 
@@ -102,7 +102,7 @@ describe('generateAllQuestions — heading preflight', () => {
         description: '',
         source_file_stem: null,
         topics: [
-          { name: 'Verb Conjugation', headings: ['Révision: Present Tense of Regular Verbs'] },
+          { name: 'Verb Conjugation', headings: ['Bilan: Past Tense of Common Verbs'] },
         ],
       },
     ]);

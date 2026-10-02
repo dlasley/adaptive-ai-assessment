@@ -157,12 +157,12 @@ describe('computeTranscriptionDeterministicChecks', () => {
 
 describe('wordSetForScoring', () => {
   it('strips markdown table, emphasis, heading and list syntax and lower-cases', () => {
-    expect([...wordSetForScoring('## Les Fêtes\n| **Noël** | Christmas |\n- un défilé: parade')].sort())
-      .toEqual(['christmas', 'défilé', 'fêtes', 'les', 'noël', 'parade', 'un']);
+    expect([...wordSetForScoring('## Les Saisons\n| **Noël** | Christmas |\n- une rivière: river')].sort())
+      .toEqual(['christmas', 'les', 'noël', 'river', 'rivière', 'saisons', 'une']);
   });
 
   it('keeps accents, so an accent error is a different word', () => {
-    expect(wordSetForScoring('défilé').has('defile')).toBe(false);
+    expect(wordSetForScoring('rivière').has('riviere')).toBe(false);
   });
 
   it('reads an ordered-list marker as its number, so a numbered key and a bulleted key match', () => {
