@@ -11,7 +11,7 @@ const logger = createLogger('generate-code');
 // Per-IP caps. The per-minute cap lets a class enrol together; the daily cap stops one source from
 // reading the whole word pool out or filling the study_codes table.
 const RATE_LIMIT_PER_MINUTE = { windowMs: 60_000, maxRequests: 30 };
-const RATE_LIMIT_PER_DAY = { windowMs: 24 * 60 * 60 * 1000, maxRequests: 20 };
+const RATE_LIMIT_PER_DAY = { windowMs: 24 * 60 * 60 * 1000, maxRequests: 100 };
 const MAX_ATTEMPTS = 10;
 const MAX_FIRST_ADJECTIVE_DRAWS = 5;
 

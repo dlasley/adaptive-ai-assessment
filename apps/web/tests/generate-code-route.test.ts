@@ -161,7 +161,7 @@ describe('POST /api/generate-code rate limits', () => {
     await POST(validRequest());
 
     expect(checkRateLimit).toHaveBeenCalledWith('generate-code-minute:203.0.113.7', { windowMs: 60_000, maxRequests: 30 });
-    expect(checkRateLimit).toHaveBeenCalledWith('generate-code-day:203.0.113.7', { windowMs: 86_400_000, maxRequests: 20 });
+    expect(checkRateLimit).toHaveBeenCalledWith('generate-code-day:203.0.113.7', { windowMs: 86_400_000, maxRequests: 100 });
   });
 
   it('answers 429 with Retry-After once the daily cap is spent, without issuing a code', async () => {
