@@ -5,9 +5,9 @@ import type { RateLimitStore } from './rate-limit-store';
 /**
  * Fixed-window counter backed by Upstash Redis: INCR the key, and on the
  * first increment of a window set its TTL so the key expires on its own.
- * Not perfectly atomic (a crash between INCR and EXPIRE could leave a key
- * without a TTL), but that failure mode only ever widens a window, never
- * narrows the rate limit below its configured value.
+ * INCR and EXPIRE are separate calls, so a failure between them can leave a
+ * key without a TTL; a later increment that finds no TTL sets it again, so
+ * the counter never outlives its window.
  */
 export class UpstashRateLimitStore implements RateLimitStore {
   constructor(private readonly redis: Redis) {}
@@ -22,7 +22,11 @@ export class UpstashRateLimitStore implements RateLimitStore {
     }
 
     const ttlMs = await this.redis.pttl(key);
-    return { count, resetAt: Date.now() + Math.max(ttlMs, 0) };
+    if (ttlMs < 0) {
+      await this.redis.expire(key, windowSeconds);
+      return { count, resetAt: Date.now() + windowMs };
+    }
+    return { count, resetAt: Date.now() + ttlMs };
   }
 
   async peek(key: string): Promise<number> {
