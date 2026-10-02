@@ -6,19 +6,7 @@ import { getAccuracyColor, getMasteryColor, getMasteryBgColor } from '@/lib/colo
 import LiveRegion from '@/components/live-region';
 import { ActionFeedbackToast } from '@/components/action-feedback-toast';
 import { DeleteConfirmModal } from '@/components/delete-confirm-modal';
-
-// Format date and time in PST timezone
-function formatDateTimePST(dateString: string): string {
-  return new Date(dateString).toLocaleString('en-US', {
-    timeZone: 'America/Los_Angeles',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-}
+import { formatDateTimePST } from '@/lib/format-date';
 
 export interface StudyCodeDetailPanelProps {
   detail: StudyCodeDetailedProgress;
@@ -99,7 +87,7 @@ export function StudyCodeDetailPanel({
                     type="text"
                     value={labelValue}
                     onChange={(e) => setLabelValue(e.target.value)}
-                    placeholder="e.g., Student name, seat number, etc."
+                    placeholder="e.g., Period 3, group A"
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:border-indigo-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 dark:bg-gray-700 dark:text-white"
                   />
                   <button

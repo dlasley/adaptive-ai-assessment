@@ -5,19 +5,7 @@ import { getAccuracyColor } from '@/lib/color-utils';
 import LiveRegion from '@/components/live-region';
 import { ActionFeedbackToast } from '@/components/action-feedback-toast';
 import { DeleteConfirmModal } from '@/components/delete-confirm-modal';
-
-// Format date and time in PST timezone
-function formatDateTimePST(dateString: string): string {
-  return new Date(dateString).toLocaleString('en-US', {
-    timeZone: 'America/Los_Angeles',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-}
+import { formatDateTimePST } from '@/lib/format-date';
 
 export interface StudyCodeTableProps {
   stats: ClasswideStats | null;
