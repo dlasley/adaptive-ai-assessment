@@ -44,7 +44,6 @@ describe('createStudentSessionCookie / verifyStudentSessionToken', () => {
   it.each([
     ['studyCodeId', 'a-different-study-code-id'],
     ['sessionEpoch', 999],
-    ['issuedAt', 0],
     ['expiresAt', Date.now() + 365 * 24 * 60 * 60 * 1000],
   ])('rejects a token with %s tampered', (field, value) => {
     const cookie = createStudentSessionCookie('study-code-id', 1);

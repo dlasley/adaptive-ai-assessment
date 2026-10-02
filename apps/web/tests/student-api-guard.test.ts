@@ -65,12 +65,22 @@ describe('requireStudentSession', () => {
     expect((result as NextResponse).status).toBe(401);
   });
 
-  it('rejects when the study_codes row cannot be found', async () => {
-    singleMock.mockResolvedValue({ data: null, error: { message: 'not found' } });
+  it('rejects with 401 when the study_codes row cannot be found', async () => {
+    singleMock.mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'no rows' } });
     const cookie = createStudentSessionCookie('study-id', 1);
 
     const result = await requireStudentSession(requestWithCookie(cookie.value));
 
-    expect(result).toBeInstanceOf(NextResponse);
+    expect((result as NextResponse).status).toBe(401);
+  });
+
+  it('answers 503, not 401, when the database errors, so a blip does not sign the student out', async () => {
+    singleMock.mockResolvedValue({ data: null, error: { code: '08006', message: 'connection failure' } });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const cookie = createStudentSessionCookie('study-id', 1);
+
+    const result = await requireStudentSession(requestWithCookie(cookie.value));
+
+    expect((result as NextResponse).status).toBe(503);
   });
 });

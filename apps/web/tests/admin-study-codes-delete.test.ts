@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { eqMock, deleteMock, fromMock } = vi.hoisted(() => {
-  const eqMock = vi.fn();
+const { eqMock, selectRowsMock, deleteMock, fromMock } = vi.hoisted(() => {
+  const selectRowsMock = vi.fn();
+  const eqMock = vi.fn(() => ({ select: selectRowsMock }));
   const deleteMock = vi.fn(() => ({ eq: eqMock }));
   const fromMock = vi.fn(() => ({ delete: deleteMock }));
-  return { eqMock, deleteMock, fromMock };
+  return { eqMock, selectRowsMock, deleteMock, fromMock };
 });
 
 vi.mock('@/lib/supabase-admin', () => ({
@@ -24,7 +25,8 @@ const PROD_URL = 'french-1.vercel.app';
 beforeEach(() => {
   process.env.VERCEL_PROJECT_PRODUCTION_URL = PROD_URL;
   delete process.env.VERCEL_URL;
-  eqMock.mockReset();
+  eqMock.mockClear();
+  selectRowsMock.mockReset();
   deleteMock.mockClear();
   fromMock.mockClear();
 });
@@ -47,7 +49,7 @@ describe('DELETE /api/admin/study-codes/[code]', () => {
   });
 
   it('deletes the study code when the origin is allowed', async () => {
-    eqMock.mockResolvedValue({ error: null });
+    selectRowsMock.mockResolvedValue({ data: [{ id: 'row-id' }], error: null });
 
     const res = await DELETE(deleteRequest(), {
       params: Promise.resolve({ code: 'curious-otter' }),
@@ -57,5 +59,15 @@ describe('DELETE /api/admin/study-codes/[code]', () => {
     expect(res.status).toBe(200);
     expect(body).toEqual({ success: true });
     expect(eqMock).toHaveBeenCalledWith('code', 'curious-otter');
+  });
+
+  it('404s when the study code does not exist', async () => {
+    selectRowsMock.mockResolvedValue({ data: [], error: null });
+
+    const res = await DELETE(deleteRequest(), {
+      params: Promise.resolve({ code: 'unknown-code' }),
+    });
+
+    expect(res.status).toBe(404);
   });
 });

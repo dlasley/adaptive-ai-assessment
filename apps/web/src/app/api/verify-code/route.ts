@@ -13,7 +13,7 @@ import {
 import { isTurnstileConfigured, verifyTurnstileToken } from '@/lib/turnstile';
 import { verifyCodeSchema } from '@/lib/api-schemas';
 import { createLogger } from '@/lib/logger';
-import { supabaseErrorFields } from '@/lib/supabase-error';
+import { isNoRowsError, supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('verify-code');
 
@@ -58,16 +58,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Code is required' }, { status: 400 });
   }
 
-  const store = getRateLimitStore();
-  if (!store) {
-    // checkRateLimit above would already have failed closed in this
-    // scenario (no durable store in production); this is unreachable in
-    // practice, kept only so the lockout helpers below get a non-null store.
-    return NextResponse.json(
-      { error: 'Too many requests. Please try again later.' },
-      { status: 429 },
-    );
-  }
+  // Reaching this point means checkRateLimit found a store (its fail-closed policy would otherwise
+  // have already returned above), so the store is always available here.
+  const store = getRateLimitStore()!;
 
   if (await isCodeLockedOut(store, code)) {
     return NextResponse.json(
@@ -105,7 +98,13 @@ export async function POST(request: NextRequest) {
       .eq('code', code)
       .single();
 
-    if (error || !data) {
+    if (error && !isNoRowsError(error)) {
+      // The database could not answer; that says nothing about the code, so it is not counted as a failed guess.
+      logger.error('verify-code lookup failed', supabaseErrorFields(error));
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
+
+    if (!data) {
       await recordCodeLookupFailure(store, code);
       await recordGlobalLookupFailure(store);
       return NextResponse.json({ exists: false });

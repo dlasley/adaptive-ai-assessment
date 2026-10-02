@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 
 const { singleMock, updateEqMock, updateMock, fromMock } = vi.hoisted(() => {
   const singleMock = vi.fn();
-  const updateEqMock = vi.fn().mockResolvedValue({ error: null });
+  const updateEqMock = vi.fn(() => ({ select: vi.fn().mockResolvedValue({ data: [{ id: 'row-id' }], error: null }) }));
   const updateMock = vi.fn(() => ({ eq: updateEqMock }));
   const fromMock = vi.fn(() => ({
     select: vi.fn(() => ({ eq: vi.fn(() => ({ single: singleMock })) })),
@@ -55,7 +55,7 @@ describe('PATCH /api/admin/study-codes/[code] forceLogout', () => {
   });
 
   it('404s when the study code does not exist', async () => {
-    singleMock.mockResolvedValue({ data: null, error: { message: 'not found' } });
+    singleMock.mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'no rows' } });
 
     const res = await PATCH(patchRequest({ forceLogout: true }), {
       params: Promise.resolve({ code: 'unknown-code' }),
@@ -90,5 +90,29 @@ describe('PATCH /api/admin/study-codes/[code] forceLogout', () => {
 
     expect(res.status).toBe(403);
     expect(fromMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('PATCH /api/admin/study-codes/[code] missing or unreachable rows', () => {
+  it('404s a field update for a study code that does not exist', async () => {
+    updateEqMock.mockReturnValueOnce({ select: vi.fn().mockResolvedValue({ data: [], error: null }) });
+
+    const res = await PATCH(patchRequest({ adminLabel: 'x' }), {
+      params: Promise.resolve({ code: 'unknown-code' }),
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('answers 503, not 404, when the database errors while looking up the code for forceLogout', async () => {
+    singleMock.mockResolvedValue({ data: null, error: { code: '08006', message: 'connection failure' } });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await PATCH(patchRequest({ forceLogout: true }), {
+      params: Promise.resolve({ code: 'curious-otter' }),
+    });
+
+    expect(res.status).toBe(503);
+    expect(updateMock).not.toHaveBeenCalled();
   });
 });

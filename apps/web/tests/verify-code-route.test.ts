@@ -170,3 +170,27 @@ describe('POST /api/verify-code with Turnstile in tightened mode', () => {
     expect(body.exists).toBe(true);
   });
 });
+
+describe('POST /api/verify-code database errors', () => {
+  it('answers 503 for a database error and counts nothing against the code or the site', async () => {
+    single.mockResolvedValue({ data: null, error: { code: '08006', message: 'connection failure' } });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const response = await POST(makeRequest({ code: 'happy elephant' }));
+
+    expect(response.status).toBe(503);
+    expect(recordCodeLookupFailure).not.toHaveBeenCalled();
+    expect(recordGlobalLookupFailure).not.toHaveBeenCalled();
+  });
+
+  it('answers exists:false and counts a failure when the code is not found', async () => {
+    single.mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'no rows' } });
+
+    const response = await POST(makeRequest({ code: 'happy elephant' }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ exists: false });
+    expect(recordCodeLookupFailure).toHaveBeenCalledTimes(1);
+    expect(recordGlobalLookupFailure).toHaveBeenCalledTimes(1);
+  });
+});

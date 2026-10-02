@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 
 const { singleMock, updateEqMock, updateMock, fromMock } = vi.hoisted(() => {
   const singleMock = vi.fn();
-  const updateEqMock = vi.fn().mockResolvedValue({ error: null });
+  const updateEqMock = vi.fn(() => ({ select: vi.fn().mockResolvedValue({ data: [{ id: 'row-id' }], error: null }) }));
   const updateMock = vi.fn(() => ({ eq: updateEqMock }));
   const fromMock = vi.fn(() => ({
     select: vi.fn(() => ({ eq: vi.fn(() => ({ single: singleMock })) })),

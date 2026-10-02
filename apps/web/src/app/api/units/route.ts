@@ -8,8 +8,8 @@ const logger = createLogger('units');
 export async function GET() {
   if (!isSupabaseAvailable()) {
     return NextResponse.json(
-      { error: 'Supabase not configured' },
-      { status: 500 },
+      { error: 'Service unavailable' },
+      { status: 503 },
     );
   }
 

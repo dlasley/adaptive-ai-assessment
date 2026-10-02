@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireStudentSession } from '@/lib/student-api-guard';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 import { createLogger } from '@/lib/logger';
-import { supabaseErrorFields } from '@/lib/supabase-error';
+import { isNoRowsError, supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('check-superuser');
 
@@ -27,10 +27,6 @@ export async function GET(request: NextRequest) {
   const session = await requireStudentSession(request);
   if (session instanceof NextResponse) return session;
 
-  if (!isSupabaseAdminAvailable()) {
-    return NextResponse.json({ isSuperuser: false, wrongAnswerCountdown: null });
-  }
-
   try {
     const { data, error } = await supabaseAdmin!
       .from('study_codes')
@@ -38,7 +34,12 @@ export async function GET(request: NextRequest) {
       .eq('id', session.studyCodeId)
       .single();
 
-    if (error || !data) {
+    if (error && !isNoRowsError(error)) {
+      logger.error('Error checking superuser status', supabaseErrorFields(error));
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
+
+    if (!data) {
       return NextResponse.json({ isSuperuser: false, wrongAnswerCountdown: null });
     }
 
@@ -48,6 +49,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     logger.error('Error checking superuser status', supabaseErrorFields(error));
-    return NextResponse.json({ isSuperuser: false });
+    return NextResponse.json({ error: 'Failed to check superuser status' }, { status: 500 });
   }
 }

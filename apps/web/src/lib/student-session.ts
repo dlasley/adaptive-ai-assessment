@@ -16,7 +16,6 @@ function getSecret(): string {
 export interface StudentSessionPayload {
   studyCodeId: string;
   sessionEpoch: number;
-  issuedAt: number;
   expiresAt: number;
 }
 
@@ -41,7 +40,6 @@ export function createStudentSessionCookie(
   const payload: StudentSessionPayload = {
     studyCodeId,
     sessionEpoch,
-    issuedAt: now,
     expiresAt: now + SESSION_DURATION_MS,
   };
 

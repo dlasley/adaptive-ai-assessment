@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireStudentSession } from '@/lib/student-api-guard';
 import { createLogger } from '@/lib/logger';
-import { supabaseErrorFields } from '@/lib/supabase-error';
+import { isNoRowsError, supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('student/dashboard');
 
@@ -17,10 +17,6 @@ export async function GET(request: NextRequest) {
   const session = await requireStudentSession(request);
   if (session instanceof NextResponse) return session;
 
-  if (!isSupabaseAdminAvailable()) {
-    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
-  }
-
   try {
     const { data: studyCode, error: studyCodeError } = await supabaseAdmin!
       .from('study_codes')
@@ -28,11 +24,16 @@ export async function GET(request: NextRequest) {
       .eq('id', session.studyCodeId)
       .single();
 
-    if (studyCodeError || !studyCode) {
+    if (studyCodeError && !isNoRowsError(studyCodeError)) {
+      logger.error('Error fetching study code', supabaseErrorFields(studyCodeError));
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
+
+    if (!studyCode) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const [{ data: quizHistory }, { data: conceptMastery }, { data: weakTopics }] = await Promise.all([
+    const [quizHistory, conceptMastery, weakTopics] = await Promise.all([
       supabaseAdmin!
         .from('quiz_history')
         .select('*')
@@ -51,6 +52,12 @@ export async function GET(request: NextRequest) {
         .order('mastery_percentage', { ascending: true }),
     ]);
 
+    const failedRead = [quizHistory, conceptMastery, weakTopics].find((result) => result.error);
+    if (failedRead) {
+      logger.error('Error fetching dashboard data', supabaseErrorFields(failedRead.error));
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
+
     return NextResponse.json({
       profile: {
         code: studyCode.code,
@@ -60,9 +67,9 @@ export async function GET(request: NextRequest) {
         totalQuestions: studyCode.total_questions,
         correctAnswers: studyCode.correct_answers,
       },
-      quizHistory: quizHistory || [],
-      conceptMastery: conceptMastery || [],
-      weakTopics: weakTopics || [],
+      quizHistory: quizHistory.data || [],
+      conceptMastery: conceptMastery.data || [],
+      weakTopics: weakTopics.data || [],
     });
   } catch (error) {
     logger.error('student/dashboard error', supabaseErrorFields(error));

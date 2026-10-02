@@ -66,3 +66,9 @@ export function supabaseErrorFields(error: unknown): SafeErrorFields {
 
   return {};
 }
+
+/** True for PostgREST's "no rows" error from `.single()`: the lookup worked and found nothing. Any
+ * other error means the database could not answer, which is not the same as "not found". */
+export function isNoRowsError(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { code?: unknown }).code === 'PGRST116';
+}

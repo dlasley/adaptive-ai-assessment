@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireStudentSession } from '@/lib/student-api-guard';
 import { verifyCsrfProtection } from '@/lib/csrf';
 import { leitnerUpdateSchema } from '@/lib/api-schemas';
@@ -15,10 +15,6 @@ export async function POST(request: NextRequest) {
 
   const session = await requireStudentSession(request);
   if (session instanceof NextResponse) return session;
-
-  if (!isSupabaseAdminAvailable()) {
-    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
-  }
 
   let rawBody: unknown;
   try {
