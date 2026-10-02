@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-route-guard';
 import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
 import { verifyCsrfProtection } from '@/lib/csrf';
+import { bulkDeleteSchema } from '@/lib/api-schemas';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
 
@@ -15,19 +16,25 @@ export async function POST(request: NextRequest) {
   if (authError) return authError;
 
   if (!isSupabaseAdminAvailable()) {
-    return NextResponse.json({ error: 'Database not available' }, { status: 503 });
+    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
   }
 
   try {
-    const { codes } = await request.json();
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
 
-    if (!Array.isArray(codes) || codes.length === 0) {
-      return NextResponse.json({ error: 'No codes provided' }, { status: 400 });
+    const parsed = bulkDeleteSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
     // Deduped up front so a repeated code in the request is counted once, both in the
     // deleted/failed totals and in the query itself.
-    const uniqueCodes = [...new Set(codes as string[])];
+    const uniqueCodes = [...new Set(parsed.data.codes)];
 
     // A single statement deleting every matching row at once, rather than one
     // round trip per code: `.select()` after `.delete()` returns the rows

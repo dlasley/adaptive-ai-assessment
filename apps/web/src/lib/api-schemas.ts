@@ -6,9 +6,9 @@
 
 import { z } from 'zod';
 import { DIFFICULTIES } from '@adaptive/shared/enums';
+import { QUIZ_MODES, type QuizMode } from './quiz-modes';
 
-/** Per-quiz question cap, shared with routes outside this schema (e.g. study-guide's
- * incorrect-questions bound) that need the same ceiling without a zod dependency. */
+/** Per-quiz question cap. */
 export const MAX_QUESTIONS = 100;
 const MAX_ANSWER_LENGTH = 2000;
 
@@ -63,4 +63,34 @@ export const studyCodePatchSchema = z.object({
   adminLabel: z.string().max(200).optional(),
   wrongAnswerCountdown: z.number().int().min(0).max(3600).nullable().optional(),
   forceLogout: z.boolean().optional(),
+});
+
+export const generateQuestionsSchema = z.object({
+  unitId: z.string().min(1).max(100).optional(),
+  topic: z.string().max(200).optional(),
+  numQuestions: z.number().int().min(1).max(MAX_QUESTIONS),
+  difficulty: difficultySchema.optional(),
+  mode: z.enum(Object.keys(QUIZ_MODES) as [QuizMode, ...QuizMode[]]).default('practice'),
+  leitnerMode: z.boolean().optional(),
+});
+
+export const studyGuideSchema = z.object({
+  incorrectQuestions: z
+    .array(
+      z.object({
+        topic: z.string().min(1).max(200),
+        unitId: z.string().min(1).max(100),
+      }),
+    )
+    .max(MAX_QUESTIONS),
+});
+
+const MAX_BULK_DELETE_CODES = 500;
+
+export const bulkDeleteSchema = z.object({
+  codes: z.array(z.string().min(1).max(MAX_CODE_LENGTH)).min(1).max(MAX_BULK_DELETE_CODES),
+});
+
+export const adminLoginSchema = z.object({
+  password: z.string().max(200),
 });

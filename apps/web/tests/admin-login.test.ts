@@ -89,3 +89,43 @@ describe('POST /api/admin/login', () => {
     expect(isAdminLoginInTightenedModeMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('POST /api/admin/login malformed input', () => {
+  function rawRequest(body: string): NextRequest {
+    return new NextRequest('https://example.com/api/admin/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: `https://${PROD_URL}` },
+      body,
+    });
+  }
+
+  it.each([
+    ['a numeric password', { password: 123 }],
+    ['an object password', { password: { a: 1 } }],
+    ['a null password', { password: null }],
+    ['a missing password', {}],
+    ['an oversized password', { password: 'x'.repeat(201) }],
+  ])('answers 400 for %s and counts it as a failed attempt', async (_name, body) => {
+    const res = await POST(loginRequest(body));
+
+    expect(res.status).toBe(400);
+    expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
+    expect(recordAdminLoginFailureMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers 400 for a body that is not JSON and counts it as a failed attempt', async () => {
+    const res = await POST(rawRequest('{not json'));
+
+    expect(res.status).toBe(400);
+    expect(recordAdminLoginFailureMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('still answers 401 and counts a failure for an empty string password', async () => {
+    verifyAdminPasswordMock.mockReturnValue(false);
+
+    const res = await POST(loginRequest({ password: '' }));
+
+    expect(res.status).toBe(401);
+    expect(recordAdminLoginFailureMock).toHaveBeenCalledTimes(1);
+  });
+});

@@ -1,39 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadAllQuestions, selectQuestions } from '@/lib/question-loader';
-import { getModeConfig, QuizMode } from '@/lib/quiz-modes';
+import { getModeConfig } from '@/lib/quiz-modes';
+import { generateQuestionsSchema } from '@/lib/api-schemas';
+import { verifyCsrfProtection } from '@/lib/csrf';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 import { FEATURES } from '@/lib/feature-flags';
-import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireStudentSession } from '@/lib/student-api-guard';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('generate-questions');
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const {
-      unitId,
-      topic,
-      numQuestions,
-      difficulty,
-      mode = 'practice' as QuizMode,
-      leitnerMode,
-    } = body;
+// Rate limit: 30 requests per minute per IP. Each request reads the whole question bank.
+const GENERATE_RATE_LIMIT = { windowMs: 60 * 1000, maxRequests: 30 };
 
-    // Leitner weighting is scoped to the caller's own session — a request
-    // with no valid session simply skips adaptive weighting rather than
-    // failing the whole route, since most quiz generation isn't adaptive.
+export async function POST(request: NextRequest) {
+  const csrfError = verifyCsrfProtection(request);
+  if (csrfError) return csrfError;
+
+  const rateLimitResult = await checkRateLimit(`generate-questions:${getClientIp(request)}`, GENERATE_RATE_LIMIT);
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait before trying again.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)) },
+      },
+    );
+  }
+
+  try {
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+
+    const parsed = generateQuestionsSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const { unitId, topic, numQuestions, difficulty, mode, leitnerMode } = parsed.data;
+
+    // Leitner weighting is scoped to the caller's own session. A request with no valid session
+    // skips adaptive weighting rather than failing the whole route, since most quiz generation
+    // is not adaptive.
     const session = leitnerMode ? await requireStudentSession(request) : null;
     const studyCodeId = session && !(session instanceof NextResponse) ? session.studyCodeId : null;
-
-    // Validate inputs
-    if (!numQuestions) {
-      return NextResponse.json(
-        { error: 'Missing required parameters' },
-        { status: 400 }
-      );
-    }
 
     // Get mode configuration
     const modeConfig = getModeConfig(mode);
@@ -53,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     // Load Leitner state for weighted selection if adaptive mode is active
     let leitnerWeights: Map<string, number> | undefined;
-    if (leitnerMode && studyCodeId && FEATURES.LEITNER_MODE && isSupabaseAdminAvailable()) {
+    if (leitnerMode && studyCodeId && FEATURES.LEITNER_MODE) {
       const { data, error } = await supabaseAdmin!
         .from('leitner_state')
         .select('question_id, box')
@@ -70,7 +85,7 @@ export async function POST(request: NextRequest) {
       unitId: unitId || 'all',
       topic,
       difficulty,
-      numQuestions: parseInt(numQuestions),
+      numQuestions,
       allowedTypes: modeConfig.allowedTypes,
       typeDistribution: modeConfig.typeDistribution,
       leitnerWeights,

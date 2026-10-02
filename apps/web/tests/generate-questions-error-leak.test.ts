@@ -34,7 +34,7 @@ import { POST } from '@/app/api/generate-questions/route';
 function makeRequest(body: unknown): NextRequest {
   return new NextRequest('https://example.com/api/generate-questions', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify(body),
   });
 }

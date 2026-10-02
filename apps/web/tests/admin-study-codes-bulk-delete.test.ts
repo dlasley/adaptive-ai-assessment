@@ -90,3 +90,28 @@ describe('POST /api/admin/study-codes/bulk-delete', () => {
     expect(body).toEqual({ success: true, deleted: 2, failed: [] });
   });
 });
+
+describe('POST /api/admin/study-codes/bulk-delete input validation', () => {
+  it.each([
+    ['a non-array', { codes: 'curious-otter' }],
+    ['an empty list', { codes: [] }],
+    ['a missing list', {}],
+    ['non-string entries', { codes: ['curious-otter', 5] }],
+    ['an empty-string entry', { codes: [''] }],
+    ['an oversized entry', { codes: ['x'.repeat(201)] }],
+    ['more codes than one request may carry', { codes: Array.from({ length: 501 }, (_, i) => `code-${i}`) }],
+  ])('answers 400 for %s without touching the database', async (_name, body) => {
+    const res = await POST(bulkDeleteRequest(body));
+
+    expect(res.status).toBe(400);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it('accepts a list at the cap', async () => {
+    selectMock.mockResolvedValue({ data: [], error: null });
+
+    const res = await POST(bulkDeleteRequest({ codes: Array.from({ length: 500 }, (_, i) => `code-${i}`) }));
+
+    expect(res.status).toBe(200);
+  });
+});

@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseAvailable } from '@/lib/supabase';
-import { MAX_QUESTIONS } from '@/lib/api-schemas';
+import { studyGuideSchema } from '@/lib/api-schemas';
+import { verifyCsrfProtection } from '@/lib/csrf';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('study-guide');
 
-interface IncorrectQuestion {
-  topic: string;
-  unitId: string;
-}
+// Rate limit: 30 requests per minute per IP
+const STUDY_GUIDE_RATE_LIMIT = { windowMs: 60 * 1000, maxRequests: 30 };
 
 interface TopicRecommendation {
   topic: string;
@@ -18,32 +18,50 @@ interface TopicRecommendation {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const { incorrectQuestions } = await request.json() as { incorrectQuestions: IncorrectQuestion[] };
+  const csrfError = verifyCsrfProtection(request);
+  if (csrfError) return csrfError;
 
-    if (!incorrectQuestions || incorrectQuestions.length === 0) {
+  const rateLimitResult = await checkRateLimit(`study-guide:${getClientIp(request)}`, STUDY_GUIDE_RATE_LIMIT);
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait before trying again.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)) },
+      },
+    );
+  }
+
+  try {
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+
+    // The list is derived from one quiz's questions, so the schema bounds it to the per-quiz cap.
+    const parsed = studyGuideSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const { incorrectQuestions } = parsed.data;
+
+    if (incorrectQuestions.length === 0) {
       return NextResponse.json({ recommendations: [] });
     }
 
-    // Bounded to the same per-quiz question cap enforced on quiz submission —
-    // this list is derived from one quiz's questions, so it can never
-    // legitimately exceed that ceiling.
-    if (!Array.isArray(incorrectQuestions) || incorrectQuestions.length > MAX_QUESTIONS) {
-      return NextResponse.json({ error: 'Too many incorrect questions' }, { status: 400 });
-    }
-
-    // Group incorrect questions by topic
-    const topicCounts: Record<string, { count: number; unitId: string }> = {};
+    // Group incorrect questions by topic. A Map keeps a topic named "__proto__" an ordinary key.
+    const topicCounts = new Map<string, { count: number; unitId: string }>();
 
     for (const q of incorrectQuestions) {
-      if (!topicCounts[q.topic]) {
-        topicCounts[q.topic] = { count: 0, unitId: q.unitId };
-      }
-      topicCounts[q.topic].count++;
+      const entry = topicCounts.get(q.topic) ?? { count: 0, unitId: q.unitId };
+      entry.count++;
+      topicCounts.set(q.topic, entry);
     }
 
     // Sort topics by number of incorrect answers (descending)
-    const sortedTopics = Object.entries(topicCounts)
+    const sortedTopics = [...topicCounts.entries()]
       .sort(([, a], [, b]) => b.count - a.count)
       .slice(0, 5); // Top 5 topics to focus on
 

@@ -7,6 +7,7 @@ import {
   ADMIN_LOGIN_TIGHTENED_MODE_DELAY_MS,
 } from '@/lib/admin-lockout-policy';
 import { verifyCsrfProtection } from '@/lib/csrf';
+import { adminLoginSchema } from '@/lib/api-schemas';
 
 const LOGIN_RATE_LIMIT = { windowMs: 60 * 1000, maxRequests: 5 };
 
@@ -33,10 +34,22 @@ export async function POST(request: NextRequest) {
     await new Promise((resolve) => setTimeout(resolve, ADMIN_LOGIN_TIGHTENED_MODE_DELAY_MS));
   }
 
+  let rawBody: unknown;
   try {
-    const { password } = await request.json();
+    rawBody = await request.json();
+  } catch {
+    await recordAdminLoginFailure(store);
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
 
-    if (!password || !verifyAdminPassword(password)) {
+  const parsed = adminLoginSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    await recordAdminLoginFailure(store);
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
+  try {
+    if (!verifyAdminPassword(parsed.data.password)) {
       await recordAdminLoginFailure(store);
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }

@@ -26,7 +26,7 @@ describe('POST /api/generate-questions with an empty question bank', () => {
     const res = await POST(
       new NextRequest('https://example.com/api/generate-questions', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
         body: JSON.stringify({ unitId: 'all', numQuestions: 1, difficulty: 'beginner' }),
       })
     );

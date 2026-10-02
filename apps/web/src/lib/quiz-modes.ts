@@ -56,5 +56,5 @@ export function getDefaultMode(): QuizMode {
  * Get mode configuration by ID
  */
 export function getModeConfig(mode: QuizMode): QuizModeConfig {
-  return QUIZ_MODES[mode] || QUIZ_MODES.practice;
+  return Object.hasOwn(QUIZ_MODES, mode) ? QUIZ_MODES[mode] : QUIZ_MODES.practice;
 }

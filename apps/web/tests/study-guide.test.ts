@@ -1,12 +1,22 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+
+const { checkRateLimitMock } = vi.hoisted(() => ({ checkRateLimitMock: vi.fn() }));
+
+vi.mock('@/lib/rate-limiter', () => ({
+  checkRateLimit: checkRateLimitMock,
+  getClientIp: () => '203.0.113.9',
+}));
+
 import { POST } from '@/app/api/study-guide/route';
 import { MAX_QUESTIONS } from '@/lib/api-schemas';
 
-function studyGuideRequest(incorrectQuestions: unknown): NextRequest {
+const PROD_URL = 'quiz.example.com';
+
+function studyGuideRequest(incorrectQuestions: unknown, headers: Record<string, string> = {}): NextRequest {
   return new NextRequest('https://example.com/api/study-guide', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: `https://${PROD_URL}`, ...headers },
     body: JSON.stringify({ incorrectQuestions }),
   });
 }
@@ -16,8 +26,16 @@ function makeQuestions(count: number) {
 }
 
 beforeEach(() => {
+  process.env.VERCEL_PROJECT_PRODUCTION_URL = PROD_URL;
+  delete process.env.VERCEL_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  checkRateLimitMock.mockReset();
+  checkRateLimitMock.mockResolvedValue({ allowed: true, remaining: 10, resetAt: Date.now() + 60_000 });
+});
+
+afterEach(() => {
+  delete (Object.prototype as Record<string, unknown>).count;
 });
 
 describe('POST /api/study-guide', () => {
@@ -41,5 +59,44 @@ describe('POST /api/study-guide', () => {
 
     expect(res.status).toBe(200);
     expect(body.recommendations).toEqual([]);
+  });
+
+  it('counts a "__proto__" topic as an ordinary topic and leaves Object.prototype alone', async () => {
+    const res = await POST(
+      studyGuideRequest([
+        { topic: '__proto__', unitId: 'u' },
+        { topic: 'constructor', unitId: 'u' },
+        { topic: '__proto__', unitId: 'u' },
+      ]),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.recommendations).toEqual([
+      { topic: '__proto__', count: 2, resources: [] },
+      { topic: 'constructor', count: 1, resources: [] },
+    ]);
+    expect(({} as Record<string, unknown>).count).toBeUndefined();
+  });
+
+  it.each([
+    ['a non-array', 'topics'],
+    ['entries that are not objects', ['a']],
+    ['a non-string topic', [{ topic: 5, unitId: 'u' }]],
+    ['a topic over the length cap', [{ topic: 'x'.repeat(201), unitId: 'u' }]],
+  ])('rejects %s with 400', async (_name, payload) => {
+    const res = await POST(studyGuideRequest(payload));
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a request from a foreign origin', async () => {
+    const res = await POST(studyGuideRequest(makeQuestions(1), { origin: 'https://evil.example.org' }));
+    expect(res.status).toBe(403);
+  });
+
+  it('answers 429 once the per-IP limit is spent', async () => {
+    checkRateLimitMock.mockResolvedValue({ allowed: false, remaining: 0, resetAt: Date.now() + 30_000 });
+    const res = await POST(studyGuideRequest(makeQuestions(1)));
+    expect(res.status).toBe(429);
   });
 });

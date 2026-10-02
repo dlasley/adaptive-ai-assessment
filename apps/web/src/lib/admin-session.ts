@@ -36,10 +36,9 @@ export function verifyAdminPassword(password: string): boolean {
   const adminPassword = process.env.ADMIN_PASSWORD;
   if (!adminPassword) return false;
 
-  const a = Buffer.from(password);
-  const b = Buffer.from(adminPassword);
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+  // Hashing both sides gives equal-length buffers, so the comparison time does not reveal the length.
+  const digest = (value: string) => crypto.createHash('sha256').update(value).digest();
+  return crypto.timingSafeEqual(digest(password), digest(adminPassword));
 }
 
 export function createSessionCookie(): { name: string; value: string; options: Record<string, unknown> } {
