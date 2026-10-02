@@ -50,3 +50,47 @@ describe('getClientIp with no client IP', () => {
     expect(getClientIp(makeRequest({ 'x-real-ip': '203.0.113.5' }))).toBe('203.0.113.5');
   });
 });
+
+describe('getClientIp with TRUSTED_PROXY_IP_HEADER', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('ignores a forwarding header when the variable is unset', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => getClientIp(makeRequest({ 'x-forwarded-for': '198.51.100.7' }))).toThrow(
+      'Client IP unavailable'
+    );
+  });
+
+  it('uses the last value of the named header, the entry the proxy appended', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('TRUSTED_PROXY_IP_HEADER', 'x-forwarded-for');
+
+    expect(getClientIp(makeRequest({ 'x-forwarded-for': '1.2.3.4, 198.51.100.7' }))).toBe('198.51.100.7');
+  });
+
+  it('reads a single-value header such as cf-connecting-ip', () => {
+    vi.stubEnv('TRUSTED_PROXY_IP_HEADER', 'cf-connecting-ip');
+
+    expect(getClientIp(makeRequest({ 'cf-connecting-ip': '198.51.100.9' }))).toBe('198.51.100.9');
+  });
+
+  it('prefers x-real-ip from the platform over the named header', () => {
+    vi.stubEnv('TRUSTED_PROXY_IP_HEADER', 'x-forwarded-for');
+
+    expect(
+      getClientIp(makeRequest({ 'x-real-ip': '203.0.113.5', 'x-forwarded-for': '198.51.100.7' }))
+    ).toBe('203.0.113.5');
+  });
+
+  it('still fails closed in production when the named header is absent', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('TRUSTED_PROXY_IP_HEADER', 'x-forwarded-for');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => getClientIp(makeRequest({}))).toThrow('Client IP unavailable');
+  });
+});

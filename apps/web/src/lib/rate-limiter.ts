@@ -83,6 +83,21 @@ export function getRateLimitStore(): RateLimitStore | null {
 }
 
 /**
+ * When TRUSTED_PROXY_IP_HEADER names a header (for example x-forwarded-for),
+ * the client address is the last comma-separated value of that header, which
+ * is the entry the operator's own reverse proxy appended. Unset, no
+ * forwarding header is read.
+ */
+function trustedProxyIp(request: Request): string | null {
+  const headerName = process.env.TRUSTED_PROXY_IP_HEADER?.trim();
+  if (!headerName) return null;
+  const value = request.headers.get(headerName);
+  if (!value) return null;
+  const last = value.split(',').at(-1)?.trim();
+  return last || null;
+}
+
+/**
  * Vercel overwrites X-Forwarded-For at the edge and does not forward
  * client-supplied values (except for Enterprise projects with a trusted
  * proxy configured), so ipAddress() is safe to trust as the true client IP
@@ -94,7 +109,7 @@ export function getRateLimitStore(): RateLimitStore | null {
  * the loopback address.
  */
 export function getClientIp(request: Request): string {
-  const ip = ipAddress(request);
+  const ip = ipAddress(request) ?? trustedProxyIp(request);
   if (ip) return ip;
   if (isProductionMode()) {
     logger.error('No client IP on the request; refusing to share one rate-limit bucket across clients');

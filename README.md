@@ -105,7 +105,7 @@ See [`docs/pipeline-architecture.md`](docs/pipeline-architecture.md#evaluation-f
 | `ADMIN_SESSION_SECRET` | Admin only | Secret for HMAC cookie signing, at least 32 bytes (for example 64 hex characters); a shorter one fails at first use. An admin session lasts up to 24 hours and is revoked only by rotating this secret |
 | `COURSE_NAME` / `COURSE_TITLE` | Yes (deployed) | Course branding read by `packages/shared/src/course.ts`: the app title and header, and the pipeline's prompts. Server-side only. Local development, tests and local builds fall back to "French II" / "French II Practice & Assessment"; a Vercel build or deployment, or a production server, fails without them |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Yes (deployed), one pair | Upstash Redis for durable rate limiting, as set by the Vercel Marketplace integration. Without a pair, the limiter runs in memory in development and tests, and denies requests in production builds (`NODE_ENV=production`, which includes Vercel previews) |
-| `MODEL_GRADING_DAILY_CAP` | No | Most typed answers the model may grade per UTC day, across all students. Default 2000. Past it, answers get a score-50 "automatic grader unavailable" result instead of a model call |
+| `MODEL_GRADING_DAILY_CAP` | No | Most model calls for typed answers per UTC day, across all students; a retry after an unreadable reply counts as a second call. The count is kept per deployment environment (production, preview and development each get their own), so the OpenRouter credit limit is the only cap across all of them. Default 2000. Past it, answers get a score-50 "automatic grader unavailable until tomorrow" result instead of a model call |
 | `NEXT_PUBLIC_ENABLE_ADMIN_PANEL` | No | Shows the "Teacher Dashboard" navigation link (`true`/`false`). Does not gate `/admin` or `/api/admin/*`, which the admin session protects |
 | `NEXT_PUBLIC_ENABLE_LEITNER` | No | Toggle adaptive question selection |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
@@ -114,7 +114,8 @@ See [`docs/pipeline-architecture.md`](docs/pipeline-architecture.md#evaluation-f
 | `OPENROUTER_API_KEY` | Yes | OpenRouter API key for all model calls (generation, validation, audit, evaluation). Set a hard credit limit on the key in OpenRouter's dashboard; the app's own caps bound spend per student and per day but are not a billing control |
 | `STUDENT_SESSION_SECRET` | Yes | Secret for signing the student session cookie, at least 32 bytes (for example 64 hex characters); students cannot sign in without it |
 | `SUPABASE_ACCESS_TOKEN` | No | Used by the Supabase MCP server for local tooling; the app and scripts do not read it |
-| `SUPABASE_SECRET_KEY` | Yes | Supabase service role key. The web app's server routes and every pipeline write use it |
+| `SUPABASE_SECRET_KEY` | Yes | Supabase service role key. The web app's server routes and every pipeline command use it |
+| `TRUSTED_PROXY_IP_HEADER` | Self-hosted behind a proxy | Name of the request header your own reverse proxy sets to the client address (for example `x-forwarded-for` or `cf-connecting-ip`). The last comma-separated value is used. Without it, a production-mode server takes the client address only from `x-real-ip`, which Vercel sets, and answers 500 on rate-limited routes when that header is missing. Leave it unset on Vercel; set it only when the proxy overwrites the header on every request |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Alternative | The same Upstash connection under the names some setups provide; either pair works |
 
 Pipeline-only variables, including `EXPECTED_SUPABASE_REF` for the write-target guard, are documented in [`apps/pipeline/README.md`](apps/pipeline/README.md#environment).
