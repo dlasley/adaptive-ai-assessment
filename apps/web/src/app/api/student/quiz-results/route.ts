@@ -54,6 +54,9 @@ async function updateStudyCodeStats(studyCodeId: string): Promise<void> {
 // writing) are graded by the evaluation step, whose result the client reports back.
 const SERVER_GRADED_TYPES = new Set(['multiple-choice', 'true-false']);
 
+/** The quiz route's unit id for a quiz drawn from every unit. */
+const ALL_UNITS_ID = 'all';
+
 export async function POST(request: NextRequest) {
   const csrfError = verifyCsrfProtection(request);
   if (csrfError) return csrfError;
@@ -77,6 +80,22 @@ export async function POST(request: NextRequest) {
   const studyCodeId = session.studyCodeId;
 
   try {
+    // A quiz covers one unit or all of them; any other unit id is not a unit the app serves.
+    if (result.unitId !== ALL_UNITS_ID) {
+      const { count, error: unitError } = await supabaseAdmin!
+        .from('units')
+        .select('id', { count: 'exact', head: true })
+        .eq('id', result.unitId);
+
+      if (unitError) {
+        logger.error('Error checking unit id', supabaseErrorFields(unitError));
+        return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+      }
+      if (!count) {
+        return NextResponse.json({ error: 'Unknown unit' }, { status: 400 });
+      }
+    }
+
     const { data: quizData, error: quizError } = await supabaseAdmin!
       .from('quiz_history')
       .insert({
@@ -124,8 +143,8 @@ export async function POST(request: NextRequest) {
           quiz_history_id: quizHistoryId,
           study_code_id: studyCodeId,
           question_id: question.id,
-          topic: question.topic,
-          difficulty: question.difficulty,
+          topic: dbQuestion.topic,
+          difficulty: dbQuestion.difficulty,
           is_correct: isCorrect,
           user_answer: result.userAnswers[question.id] || null,
           correct_answer: dbQuestion.correctAnswer,

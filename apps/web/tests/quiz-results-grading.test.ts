@@ -42,6 +42,9 @@ const { singleMock, insertQuestionResultsMock, studyCodesUpdateMock, fromMock } 
         select: vi.fn(() => countQuery({ all: 7, correct: 7 })),
       };
     }
+    if (table === 'units') {
+      return { select: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ count: 1, error: null }) })) };
+    }
     if (table === 'study_codes') {
       return { update: studyCodesUpdateMock };
     }
@@ -249,5 +252,60 @@ describe('POST /api/student/quiz-results study code totals', () => {
     expect(res.status).toBe(200);
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Error updating study code totals'), expect.anything());
     errorSpy.mockRestore();
+  });
+});
+
+describe('POST /api/student/quiz-results fields taken from the stored question and unit', () => {
+  const unitsCountMock = vi.fn();
+
+  it('stores topic and difficulty from the stored question, not the request body', async () => {
+    const res = await quizResultsPost(
+      makeRequest({
+        ...BASE,
+        questions: [{ id: QUESTION_ID, topic: 'any 200 characters the student chose', difficulty: 'advanced' }],
+        userAnswers: { [QUESTION_ID]: 'Bonjour' },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(insertQuestionResultsMock).toHaveBeenCalledWith([
+      expect.objectContaining({ question_id: QUESTION_ID, topic: 'greetings', difficulty: 'beginner' }),
+    ]);
+  });
+
+  it('rejects a unit id that matches no unit, before saving anything', async () => {
+    fromMock.mockImplementationOnce((table: string) => {
+      expect(table).toBe('units');
+      return { select: () => ({ eq: unitsCountMock.mockResolvedValue({ count: 0, error: null }) }) } as never;
+    });
+
+    const res = await quizResultsPost(
+      makeRequest({
+        ...BASE,
+        unitId: 'not-a-unit',
+        questions: [{ id: QUESTION_ID, topic: 'greetings', difficulty: 'beginner' }],
+        userAnswers: { [QUESTION_ID]: 'Bonjour' },
+      })
+    );
+
+    expect(res.status).toBe(400);
+    expect(unitsCountMock).toHaveBeenCalledWith('id', 'not-a-unit');
+    expect(singleMock).not.toHaveBeenCalled();
+    expect(insertQuestionResultsMock).not.toHaveBeenCalled();
+  });
+
+  it('accepts the all-units id without looking it up', async () => {
+    fromMock.mockClear();
+    const res = await quizResultsPost(
+      makeRequest({
+        ...BASE,
+        unitId: 'all',
+        questions: [{ id: QUESTION_ID, topic: 'greetings', difficulty: 'beginner' }],
+        userAnswers: { [QUESTION_ID]: 'Bonjour' },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(fromMock).not.toHaveBeenCalledWith('units');
   });
 });

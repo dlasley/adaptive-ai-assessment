@@ -46,6 +46,9 @@ const { MARKER, fromMock, singleMock, insertQuestionResultsMock } = vi.hoisted((
         select: vi.fn(() => countQuery()),
       };
     }
+    if (table === 'units') {
+      return { select: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ count: 1, error: null }) })) };
+    }
     if (table === 'study_codes') {
       return { update: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })) };
     }
