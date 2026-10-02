@@ -817,12 +817,43 @@ export async function generateAllQuestions(options: ReturnType<typeof cli.parse>
   // Git info (records provenance for batch config)
   const gitInfo = getGitInfo();
 
-  // Initialize Supabase if syncing to database
-  let supabaseClient: SupabaseClient | null = null;
+  // Fetch units from database
+  const dbClient = options.writeDb ? createScriptSupabase({ write: true }) : createScriptSupabase();
+  const units = await fetchUnitsFromDb(dbClient);
+
+  // Filter units based on CLI options
+  const unitsToProcess = options.unit
+    ? units.filter(u => u.id === options.unit)
+    : units;
+
+  if (units.length === 0) {
+    logger.error('No units found in the units table.');
+    process.exit(1);
+  }
+  if (unitsToProcess.length === 0) {
+    logger.error(`Unit not found: ${options.unit}`, { availableUnits: units.map(u => u.id) });
+    process.exit(1);
+  }
+
+  // Preflight: every topic with stored headings must resolve against its unit's current
+  // markdown before any model call. A topic whose headings don't validate would otherwise
+  // silently generate zero questions (extractTopicContent returns empty, and generation skips
+  // it with a per-topic warning) — this turns that into a hard failure naming the unit.
+  for (const unit of unitsToProcess) {
+    const materials = loadUnitMaterials(unit.id, units);
+    const mismatches = findUnitHeadingMismatches(materials, unit.topics);
+    if (mismatches.length > 0) {
+      logger.error(formatHeadingPreflightError(unit.id, mismatches));
+      process.exit(1);
+    }
+  }
+
+  // Initialize Supabase if syncing to database. The batch record is created only after the unit
+  // and its headings have validated, so a refused run leaves no orphan row.
+  const supabaseClient: SupabaseClient | null = options.writeDb ? dbClient : null;
   let existingHashes = new Set<string>();
 
-  if (options.writeDb) {
-    supabaseClient = createScriptSupabase({ write: true });
+  if (supabaseClient) {
     console.log('📡 Fetching existing content hashes for deduplication...');
     existingHashes = await fetchExistingHashes(supabaseClient);
     console.log(`   Found ${existingHashes.size} existing question hashes\n`);
@@ -876,10 +907,6 @@ export async function generateAllQuestions(options: ReturnType<typeof cli.parse>
     console.log(`📦 Batch record created: ${options.batchId}`);
   }
 
-  // Fetch units from database
-  const dbClient = supabaseClient || createScriptSupabase();
-  const units = await fetchUnitsFromDb(dbClient);
-
   const allQuestions: Question[] = [];
   let totalGenerated = 0;
   let totalAttempted = 0;
@@ -889,29 +916,6 @@ export async function generateAllQuestions(options: ReturnType<typeof cli.parse>
   let dryRunEstimatedTotal = 0;
   const aggregateStats: GenerationStats = { ...EMPTY_STATS };
   const aggregateUsage = { generation: emptyStageUsage(), validation: emptyStageUsage() };
-
-  // Filter units based on CLI options
-  const unitsToProcess = options.unit
-    ? units.filter(u => u.id === options.unit)
-    : units;
-
-  if (unitsToProcess.length === 0) {
-    logger.error(`Unit not found: ${options.unit}`, { availableUnits: units.map(u => u.id) });
-    process.exit(1);
-  }
-
-  // Preflight: every topic with stored headings must resolve against its unit's current
-  // markdown before any model call. A topic whose headings don't validate would otherwise
-  // silently generate zero questions (extractTopicContent returns empty, and generation skips
-  // it with a per-topic warning) — this turns that into a hard failure naming the unit.
-  for (const unit of unitsToProcess) {
-    const materials = loadUnitMaterials(unit.id, units);
-    const mismatches = findUnitHeadingMismatches(materials, unit.topics);
-    if (mismatches.length > 0) {
-      logger.error(formatHeadingPreflightError(unit.id, mismatches));
-      process.exit(1);
-    }
-  }
 
   for (const unit of unitsToProcess) {
     console.log(`\n📚 Processing ${unit.title}...`);

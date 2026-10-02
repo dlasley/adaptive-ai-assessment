@@ -116,3 +116,96 @@ describe('generateAllQuestions — heading preflight', () => {
     await expect(generateAllQuestions(options)).resolves.toBeUndefined();
   });
 });
+
+/**
+ * `--write-db` records a `batches` row for the run. That row must not exist for a run that is
+ * refused because the unit is unknown, the units table is empty, or a unit's headings do not
+ * validate.
+ */
+describe('generateAllQuestions: no batch row for a refused run', () => {
+  const batchInserts: unknown[] = [];
+
+  function writeClient() {
+    const query = {
+      select: vi.fn(() => query),
+      not: vi.fn(() => Promise.resolve({ data: [], error: null })),
+      insert: vi.fn((row: unknown) => {
+        batchInserts.push(row);
+        return Promise.resolve({ error: null });
+      }),
+    };
+    return { from: vi.fn(() => query) };
+  }
+
+  const UNIT = {
+    id: 'unit-1',
+    title: 'Unit 1',
+    description: '',
+    source_file_stem: null,
+    topics: [{ name: 'Verb Conjugation', headings: ['Bilan: Past Tense of Common Verbs'] }],
+  };
+
+  function errorText(): string {
+    return (console.error as unknown as { mock: { calls: unknown[][] } }).mock.calls
+      .map((args) => args.join(' '))
+      .join('\n');
+  }
+
+  beforeEach(() => {
+    batchInserts.length = 0;
+    vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new ProcessExitError(code ?? 0);
+    }) as unknown as typeof process.exit);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    createScriptSupabaseMock.mockReturnValue(writeClient() as never);
+    loadUnitMaterialsMock.mockReturnValue(REAL_MARKDOWN);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fetchUnitsFromDbMock.mockReset();
+    loadUnitMaterialsMock.mockReset();
+    createScriptSupabaseMock.mockReset();
+    createScriptSupabaseMock.mockReturnValue({});
+  });
+
+  it('creates no batch row for an unknown unit id', async () => {
+    fetchUnitsFromDbMock.mockResolvedValue([UNIT]);
+
+    await expect(generateAllQuestions(cli.parse(['--unit', 'unti-1', '--write-db']))).rejects.toThrow(ProcessExitError);
+
+    expect(batchInserts).toHaveLength(0);
+    expect(errorText()).toContain('Unit not found: unti-1');
+  });
+
+  it('creates no batch row, and says the table is empty, when there are no units', async () => {
+    fetchUnitsFromDbMock.mockResolvedValue([]);
+
+    await expect(generateAllQuestions(cli.parse(['--write-db']))).rejects.toThrow(ProcessExitError);
+
+    expect(batchInserts).toHaveLength(0);
+    expect(errorText()).not.toContain('undefined');
+    expect(errorText()).toMatch(/no units/i);
+  });
+
+  it('creates no batch row when a unit fails the heading preflight', async () => {
+    fetchUnitsFromDbMock.mockResolvedValue([
+      { ...UNIT, topics: [{ name: 'Verb Conjugation', headings: ['bilan:', 'past'] }] },
+    ]);
+
+    await expect(generateAllQuestions(cli.parse(['--unit', 'unit-1', '--write-db']))).rejects.toThrow(ProcessExitError);
+
+    expect(batchInserts).toHaveLength(0);
+  });
+
+  it('creates the batch row for a valid unit', async () => {
+    fetchUnitsFromDbMock.mockResolvedValue([UNIT]);
+
+    // The run goes on to call the model, which is not mocked to answer; only the insert matters here.
+    await generateAllQuestions(cli.parse(['--unit', 'unit-1', '--write-db', '--dry-run'])).catch(() => {});
+
+    expect(batchInserts).toHaveLength(1);
+  });
+});
