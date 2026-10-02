@@ -25,7 +25,6 @@ const APPROVED_HOSTNAMES = [
   'french-1.vercel.app',
   'adaptive-ai-assessment-davids-projects-518494f9.vercel.app',
   'adaptive-ai-assessment-git-main-davids-projects-518494f9.vercel.app',
-  'adaptive-ai-assessment-git-openrouter-davids-projects-518494f9.vercel.app',
   'localhost',
   '127.0.0.1',
 ];

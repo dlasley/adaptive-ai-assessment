@@ -88,7 +88,7 @@ describe('verifyCsrfProtection', () => {
 });
 
 describe('verifyCsrfProtection branch alias', () => {
-  const BRANCH_URL = 'adaptive-ai-assessment-git-openrouter-davids-projects-518494f9.vercel.app';
+  const BRANCH_URL = 'example-app-git-feature-example-team.vercel.app';
 
   it('accepts the branch alias origin when VERCEL_BRANCH_URL is set', () => {
     process.env.VERCEL_BRANCH_URL = BRANCH_URL;
