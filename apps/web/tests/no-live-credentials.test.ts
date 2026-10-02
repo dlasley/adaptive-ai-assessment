@@ -62,13 +62,13 @@ describe('applyCredentialGuard', () => {
     expect(() => applyCredentialGuard(fakeEnv)).toThrow(/EXPECTED_SUPABASE_REF/);
   });
 
-  it('has already stripped every tracked credential from process.env by the time this test runs', () => {
+  it.skipIf(process.env.RUN_DB_TESTS === '1')('has already stripped every tracked credential from process.env by the time this test runs', () => {
     for (const name of CREDENTIAL_ENV_VARS) {
       expect(process.env[name]).toBeUndefined();
     }
   });
 
-  it('leaves the app with no configured Supabase client in the default (non-DB) test run', () => {
+  it.skipIf(process.env.RUN_DB_TESTS === '1')('leaves the app with no configured Supabase client in the default (non-DB) test run', () => {
     expect(isSupabaseAvailable()).toBe(false);
     expect(isSupabaseAdminAvailable()).toBe(false);
   });

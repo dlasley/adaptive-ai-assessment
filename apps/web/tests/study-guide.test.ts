@@ -26,15 +26,14 @@ function makeQuestions(count: number) {
 }
 
 beforeEach(() => {
-  process.env.VERCEL_PROJECT_PRODUCTION_URL = PROD_URL;
-  delete process.env.VERCEL_URL;
-  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-  delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', PROD_URL);
+  vi.stubEnv('VERCEL_URL', '');
   checkRateLimitMock.mockReset();
   checkRateLimitMock.mockResolvedValue({ allowed: true, remaining: 10, resetAt: Date.now() + 60_000 });
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   delete (Object.prototype as Record<string, unknown>).count;
 });
 
