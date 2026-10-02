@@ -18,6 +18,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Logger } from './logger';
+import { chunk } from './array-utils';
 
 /** Rows per upsert statement; a larger apply is split into chunks of this size. */
 const MAX_UPSERT_CHUNK_SIZE = 500;
@@ -41,12 +42,6 @@ export interface ApplyAuditWritesResult {
   /** Ids actually confirmed written with `quality_status: 'flagged'`. */
   flaggedIds: string[];
   errorCount: number;
-}
-
-function chunk<T>(items: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
-  return chunks;
 }
 
 /**

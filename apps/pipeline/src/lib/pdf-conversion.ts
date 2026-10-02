@@ -18,6 +18,8 @@ import { classifySlideContent } from './slide-content-classifier';
 import { createLogger } from './logger';
 import { PROMPTS_DIR, PDF_SLIDE_CACHE_DIR } from './paths';
 import { emptyUsageTotals, formatUsageSummary, recordCall, type UsageTotals } from './usage-tracking';
+import { sleep } from './sleep';
+import { hashText } from './text-hash';
 
 const logger = createLogger('pdf-conversion');
 
@@ -27,7 +29,7 @@ export const TRANSCRIPTION_PROMPT = renderCoursePrompt(
 );
 
 /** sha256 (16 hex) of the rendered transcription prompt, stored in the conversion report for provenance. */
-export const TRANSCRIPTION_PROMPT_HASH = crypto.createHash('sha256').update(TRANSCRIPTION_PROMPT).digest('hex').substring(0, 16);
+export const TRANSCRIPTION_PROMPT_HASH = hashText(TRANSCRIPTION_PROMPT);
 
 /** `maxTokens` for one slide's transcription call — production's own value (see `transcribeSlide`),
  * exported so any other caller of the transcription prompt sends an identical call. */
@@ -91,7 +93,7 @@ export function checkPdfTools(): { ok: boolean; missing: string[] } {
 }
 
 /** Total slide count via pdfinfo — one PDF page is one slide. */
-export function getSlideCount(pdfPath: string): number {
+function getSlideCount(pdfPath: string): number {
   const output = execFileSync('pdfinfo', [pdfPath], { encoding: 'utf-8' });
   const match = output.match(/^Pages:\s+(\d+)/m);
   if (!match) {
@@ -331,7 +333,7 @@ async function callLlmWithRateLimitBackoff(slideNum: number, options: LlmCallOpt
       logger.warn(`Slide ${slideNum} rate-limited, backing off ${delay}ms before retrying`, {
         attempt: attempt + 1,
       });
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await sleep(delay);
     }
   }
 }

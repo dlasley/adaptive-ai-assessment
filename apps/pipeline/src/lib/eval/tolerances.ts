@@ -11,7 +11,7 @@ import type { EvalTask } from './types';
 /** Whether a task's primary metric is better when higher (recall, pass rate, F1) or lower
  * (false-negative rate, edit distance) — the direction a non-inferior candidate must not regress
  * past its tolerance. */
-export type ToleranceDirection = 'higher-is-better' | 'lower-is-better';
+type ToleranceDirection = 'higher-is-better' | 'lower-is-better';
 
 export interface TaskTolerance {
   /** The metric this task's non-inferiority verdict is judged on. */
@@ -81,8 +81,8 @@ export const TASK_TOLERANCES: Record<EvalTask, TaskTolerance> = {
  * (every task resolves it against `TRANSCRIPTION_MAX_SLIDE_DROP`, only meaningful for
  * transcription), but is carried on `ResolvedTolerance` regardless of task so one resolved object
  * always has every field a caller might need. */
-export const DECISION_RULE_NUMERIC_KEYS = ['tolerance', 'precisionTolerance', 'maxSlideDrop'] as const;
-export type DecisionRuleNumericKey = (typeof DECISION_RULE_NUMERIC_KEYS)[number];
+const DECISION_RULE_NUMERIC_KEYS = ['tolerance', 'precisionTolerance', 'maxSlideDrop'] as const;
+type DecisionRuleNumericKey = (typeof DECISION_RULE_NUMERIC_KEYS)[number];
 /** Every key a `decision_rule` object may carry: the three numeric overrides plus `description`.
  * Exported so a caller validating a `decision_rule` before it's written (`eval-experiment-create`)
  * checks against this list instead of a second, divergent copy of it. */

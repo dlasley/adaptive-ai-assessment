@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { renderCoursePrompt } from '@adaptive/shared/course';
 import type { LlmContentPart } from '@adaptive/shared/llm';
-import { hashText } from './tasks/shared';
+import { hashText } from '../text-hash';
 import { PROMPTS_DIR } from '../paths';
 
 export const JUDGE_PROMPT = renderCoursePrompt(
@@ -17,7 +17,7 @@ export const JUDGE_PROMPT = renderCoursePrompt(
 /** sha256 (16 hex) of the rendered judge prompt, stamped onto both judged runs as judge_prompt_hash. */
 export const JUDGE_PROMPT_HASH = hashText(JUDGE_PROMPT);
 
-export type JudgeWinner = 'A' | 'B' | 'tie';
+type JudgeWinner = 'A' | 'B' | 'tie';
 
 export interface JudgeVerdict {
   winner: JudgeWinner;

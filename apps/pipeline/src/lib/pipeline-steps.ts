@@ -21,6 +21,7 @@ import {
 } from './unit-discovery';
 import { createLogger } from './logger';
 import { EXPORTS_DIR } from './paths';
+import { sleep } from './sleep';
 import { estimateUnitQuestionCount } from './pipeline-config';
 
 const logger = createLogger('pipeline-steps');
@@ -227,7 +228,7 @@ export async function stepConvertPdf(
 
         // Small delay between API calls
         if (needsConversion.indexOf(pdfPath) < needsConversion.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await sleep(2000);
         }
       } catch (error: any) {
         logger.error(`Failed to convert ${pdfName}`, { message: error.message });

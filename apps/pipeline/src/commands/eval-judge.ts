@@ -48,6 +48,7 @@ import { defineCli } from '../lib/options/define-cli';
 import { dbTargetFlags, loggingFlags } from '../lib/options/groups';
 import { createLogger, levelFromFlags, setLogLevel } from '../lib/logger';
 import { runIfMain } from '../lib/run-if-main';
+import { resultByItem } from '../lib/eval/compare/shared';
 
 const logger = createLogger('eval-judge');
 
@@ -125,10 +126,6 @@ function describeExistingEntries(entryListsPerItem: JudgeVerdictEntry[][], judge
   const repeatParts = [...repeats].sort((x, y) => x[0] - y[0]).map(([repeat, items]) => `repeat ${repeat} on ${items} item(s)`);
   lines.push(`This run (${judgeModel}) takes ${repeatParts.join(', ')}.`);
   return lines.join('\n');
-}
-
-function resultByItem(results: EvalResultRow[]): Map<string, EvalResultRow> {
-  return new Map(results.map((r) => [r.item_id, r]));
 }
 
 /** The transcript text a result row carries, or undefined when the call errored or produced no

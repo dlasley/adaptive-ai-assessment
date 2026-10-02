@@ -14,7 +14,8 @@ import { planInterleavedCalls } from '../runner';
 import { headingSetF1, computeMappingDeterministicChecks, buildMappingRunSummary, type MappingDeterministicChecks, type MappingItemOutcome, type MappingRunSummary } from '../mapping-scoring';
 import { withRateLimitRetry } from '../run-loop';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
-import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, hashText, resolveEffectiveSamplingSettings } from './shared';
+import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, resolveEffectiveSamplingSettings } from './shared';
+import { hashText } from '../../text-hash';
 import { variantKey, type EvalTaskDefinition } from './types';
 
 const logger = createLogger('eval-run');

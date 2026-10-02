@@ -18,7 +18,9 @@
  */
 
 import { loadEnv } from '../lib/env';
-import crypto from 'crypto';
+import { hashText } from '../lib/text-hash';
+import { sleep } from '../lib/sleep';
+import { chunk } from '../lib/array-utils';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { createScriptSupabase, fetchAllPages, type QuestionRow } from '../lib/db-queries';
@@ -44,7 +46,6 @@ import {
   auditGroupWithRetry,
   buildFallbackSessionId,
   callMistralAuditGroup,
-  chunk,
   createSupabaseBatchJobStore,
   EMPTY_AUDIT_RESULTS_SUMMARY,
   fetchQuestionsByIds,
@@ -93,11 +94,6 @@ const MAX_BACKOFF_MS = 60_000;
 // The Mistral audit's own system prompt is loaded and rendered by mistral-audit.ts instead, since
 // callMistralAuditGroup() needs it too.
 const RAW_SONNET_PROMPT = readFileSync(join(PROMPTS_DIR, 'audit-sonnet.md'), 'utf-8');
-
-/** sha256 (16 hex) of a rendered prompt — stored in audit_metadata.prompt_hash for provenance. */
-function hashPrompt(text: string): string {
-  return crypto.createHash('sha256').update(text).digest('hex').substring(0, 16);
-}
 
 export const cli = defineCli(
   {
@@ -152,10 +148,6 @@ export const cli = defineCli(
 );
 
 type Options = ReturnType<typeof cli.parse>;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 /**
  * Two-gate preflight, run before any model call: fails loudly rather than letting
@@ -266,7 +258,7 @@ async function auditMistralBatch(questions: AuditQuestionRow[], units: Unit[], s
 }
 
 async function runMistralAudit(options: Options, units: Unit[]): Promise<void> {
-  const promptHash = hashPrompt(renderedMistralAuditSystemPrompt());
+  const promptHash = hashText(renderedMistralAuditSystemPrompt());
   const filters = [
     options.unit && `unit=${options.unit}`,
     options.difficulty && `difficulty=${options.difficulty}`,
@@ -584,7 +576,7 @@ async function runResume(options: Options, units: Unit[]): Promise<void> {
   const jobId = options.llmBatchResume!;
   const store = createSupabaseBatchJobStore(supabase);
   const fallbackSessionId = buildFallbackSessionId(jobId);
-  const promptHash = hashPrompt(renderedMistralAuditSystemPrompt());
+  const promptHash = hashText(renderedMistralAuditSystemPrompt());
 
   const outcome = await resumeAuditJob(jobId, {
     store,
@@ -768,7 +760,7 @@ Correct answer: ${q.correct_answer}`;
 }
 
 async function runSonnetAudit(options: Options, units: Unit[]): Promise<void> {
-  const promptHash = hashPrompt(renderCoursePrompt(RAW_SONNET_PROMPT));
+  const promptHash = hashText(renderCoursePrompt(RAW_SONNET_PROMPT));
   const filters = [
     options.unit && `unit=${options.unit}`,
     options.difficulty && `difficulty=${options.difficulty}`,

@@ -5,7 +5,7 @@
  * `eval-run.ts` supplies real data; tests supply fixtures.
  */
 
-import { chunk } from '../mistral-audit';
+import { chunk } from '../array-utils';
 import type { GradingLabelClass } from './set-builder';
 
 // ── Interleaving and grouping ────────────────────────────────────────────────
@@ -164,7 +164,7 @@ interface ProvisionalDesignLabelBucket {
   typoMarkedCorrectRate: number | null;
 }
 
-export type ByDesignLabel = Partial<Record<GradingLabelClass, DesignLabelBucket>> & { provisional: ProvisionalDesignLabelBucket };
+type ByDesignLabel = Partial<Record<GradingLabelClass, DesignLabelBucket>> & { provisional: ProvisionalDesignLabelBucket };
 
 /**
  * Marked-correct rate per seeded `labelClass`, independent of reviewed reference — every item

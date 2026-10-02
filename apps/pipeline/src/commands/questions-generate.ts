@@ -1,7 +1,7 @@
 /**
  * Script to pre-generate all assessment questions
  *
- * Run with: npm run generate-questions
+ * Run with: npx --no -- pipeline questions-generate
  *
  * Hybrid Model Generation:
  *   By default, uses Haiku for MCQ/T-F and Sonnet for fill-in-blank/writing.
@@ -47,6 +47,8 @@ import { createLogger } from '../lib/logger';
 import { bootstrapCommand } from '../lib/command-bootstrap';
 import { PROMPTS_DIR } from '../lib/paths';
 import { runIfMain } from '../lib/run-if-main';
+import { sleep } from '../lib/sleep';
+import { hashText } from '../lib/text-hash';
 import {
   addStageUsageTotals,
   addUsageTotals,
@@ -172,7 +174,7 @@ export const cli = defineCli(
     count: {
       type: 'number',
       min: 1,
-      help: `Questions per topic/difficulty (default: auto — a per-topic cap computed from content length, ${MIN_QUESTIONS_PER_TOPIC_DIFFICULTY}-${MAX_QUESTIONS_PER_TOPIC_DIFFICULTY})`,
+      help: `Questions per topic/difficulty (default: auto, a per-topic cap computed from content length, ${MIN_QUESTIONS_PER_TOPIC_DIFFICULTY}-${MAX_QUESTIONS_PER_TOPIC_DIFFICULTY})`,
     },
     'dry-run': {
       type: 'boolean',
@@ -431,10 +433,7 @@ export function renderGenerationPrompt(params: {
  * every call and would make every batch's hash unique regardless of prompt wording.
  */
 export function computeGenerationPromptHash(): string {
-  return crypto.createHash('sha256')
-    .update(renderCoursePrompt(GENERATION_PROMPT_TEMPLATE) + renderValidationPrompt())
-    .digest('hex')
-    .substring(0, 16);
+  return hashText(renderCoursePrompt(GENERATION_PROMPT_TEMPLATE) + renderValidationPrompt());
 }
 
 interface ValidationResult {
@@ -1043,7 +1042,7 @@ export async function generateAllQuestions(options: ReturnType<typeof cli.parse>
           }
 
           // Small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await sleep(1000);
         }
 
         if (difficultyQuestionsGenerated === 0) zeroQuestionCombos++;

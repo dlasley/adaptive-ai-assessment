@@ -20,7 +20,7 @@ export interface ValidationError {
   message: string;
 }
 
-export interface ValidatedRow<G> {
+interface ValidatedRow<G> {
   itemId: string;
   reference: G;
 }

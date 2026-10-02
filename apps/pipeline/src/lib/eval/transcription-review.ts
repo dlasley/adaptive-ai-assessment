@@ -57,7 +57,7 @@ export function buildTranscriptionReferenceReadme(
   return lines.join('\n') + '\n';
 }
 
-export interface TranscriptionReferenceValidationError {
+interface TranscriptionReferenceValidationError {
   itemId: string;
   message: string;
 }

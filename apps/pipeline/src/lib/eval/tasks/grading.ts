@@ -13,7 +13,8 @@ import { planInterleavedCalls, buildGradingRunSummary, GRADING_PASS_SCORE_THRESH
 import { withRateLimitRetry } from '../run-loop';
 import { seededLabelClass, type GradingLabelClass } from '../set-builder';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
-import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, hashText, resolveEffectiveSamplingSettings } from './shared';
+import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, resolveEffectiveSamplingSettings } from './shared';
+import { hashText } from '../../text-hash';
 import { variantKey, type EvalTaskDefinition } from './types';
 
 const logger = createLogger('eval-run');

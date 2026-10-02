@@ -10,7 +10,7 @@ import { percentile } from './runner';
 import { meanAndCi95, type MeanCi95 } from './scoring';
 import { TRANSCRIPTION_CATEGORIES, type TranscriptionCategory } from './set-builder';
 
-export { computeTextCoverage, NO_CONTENT_MARKER };
+export { NO_CONTENT_MARKER };
 
 /**
  * Normalizes a transcript for scoring: unifies line endings, then collapses every run of

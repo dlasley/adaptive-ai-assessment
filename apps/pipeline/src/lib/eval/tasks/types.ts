@@ -33,7 +33,7 @@ export interface EffectiveCallSettings {
 
 /** Everything `prepareContext` needs, resolved once per `eval-run` invocation before any task-call
  * runs. Every task reads only the subset it needs (grading reads none of it). */
-export interface TaskPrepareDeps {
+interface TaskPrepareDeps {
   set: EvalSetRow;
   /** Items in run order (after `--shuffle-groups`), already filtered to runnable (non-rejected). */
   items: EvalItemRow[];
@@ -73,7 +73,7 @@ export interface ModelSamplingConstraints {
   fallbackReasoningEffort: string;
 }
 
-export interface TaskRunCallParams<TContext> {
+interface TaskRunCallParams<TContext> {
   call: InterleavedCall<EvalItemRow, Variant>;
   context: TContext;
   run: EvalRunRow;

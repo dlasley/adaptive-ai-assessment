@@ -2,7 +2,6 @@
  * Small helpers shared by every task module in this directory.
  */
 
-import crypto from 'crypto';
 import { LlmError, type LlmCallOptions } from '@adaptive/shared/llm';
 import type { ModelSamplingConstraints } from './types';
 
@@ -17,11 +16,6 @@ export function wholeTokens(value: number | undefined | null): number | null {
 
 export function isEmptyContentError(err: unknown): boolean {
   return err instanceof LlmError && /^(empty|missing) content/.test(err.message);
-}
-
-/** sha256 (16 hex) — same convention as questions-audit.ts's prompt hashing. */
-export function hashText(text: string): string {
-  return crypto.createHash('sha256').update(text).digest('hex').substring(0, 16);
 }
 
 export interface EffectiveSamplingSettings {

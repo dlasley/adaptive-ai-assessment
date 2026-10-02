@@ -12,6 +12,7 @@ import {
   buildRequestKnobs,
   fetchOrNetworkError,
 } from '@adaptive/shared/llm';
+import { sleep } from './sleep';
 
 const OPENROUTER_BATCH_URL = 'https://openrouter.ai/api/v1/batches';
 
@@ -252,10 +253,6 @@ export type PollOutcome =
   | { outcome: 'completed'; result: PollBatchResult }
   | { outcome: 'still_running'; result: PollBatchResult }
   | { outcome: 'failed' | 'expired' | 'cancelled'; result: PollBatchResult };
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export async function pollUntilDone(options: PollUntilDoneOptions): Promise<PollOutcome> {
   const maxWaitMs = options.maxWaitMs ?? 60 * 60 * 1000;

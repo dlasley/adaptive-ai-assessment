@@ -11,9 +11,9 @@ import path from 'path';
 import { callLlm, responseMetaFromLlmResult, type LlmCallOptions, type LlmContentPart, type LlmUsage } from '@adaptive/shared/llm';
 import { renderCoursePrompt } from '@adaptive/shared/course';
 import { PROMPTS_DIR } from './paths';
-import { hashText } from './eval/tasks/shared';
+import { hashText } from './text-hash';
 
-export const CLASSIFY_PROMPT = renderCoursePrompt(
+const CLASSIFY_PROMPT = renderCoursePrompt(
   fs.readFileSync(path.join(PROMPTS_DIR, 'content-classify-slide.md'), 'utf-8')
 );
 

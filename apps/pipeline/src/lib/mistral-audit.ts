@@ -17,6 +17,7 @@ import { isDifficulty } from '@adaptive/shared/enums';
 import { AUDIT_GROUP_SIZE } from './pipeline-config';
 import { buildAuditMaterialsBlock, type MaterialsUnit } from './learning-materials';
 import { applyAuditWrites } from './audit-write';
+import { chunk } from './array-utils';
 import { createLogger } from './logger';
 import { PROMPTS_DIR } from './paths';
 import { emptyUsageTotals, type UsageTotals } from './usage-tracking';
@@ -409,14 +410,6 @@ export function parseAuditResponse(content: string, questions: QuestionRow[]): M
 
     return buildResultFromRaw(q, r);
   });
-}
-
-export function chunk<T>(items: T[], size: number): T[][] {
-  const groups: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    groups.push(items.slice(i, i + size));
-  }
-  return groups;
 }
 
 /**

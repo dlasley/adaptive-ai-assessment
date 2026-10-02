@@ -18,7 +18,7 @@ export interface TierContext {
 }
 
 /** Tier 1: reject an empty or too-short answer without any comparison against the correct one. */
-export function emptyCheckTier(ctx: TierContext): EvaluationResult | null {
+function emptyCheckTier(ctx: TierContext): EvaluationResult | null {
   if (ctx.userAnswer.trim().length >= 2) return null;
 
   const result: EvaluationResult = {

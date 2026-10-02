@@ -16,7 +16,6 @@ import {
   buildFallbackSessionId,
   buildPassthroughResults,
   callMistralAuditGroup,
-  chunk,
   createSupabaseBatchJobStore,
   EMPTY_AUDIT_RESULTS_SUMMARY,
   mergeAuditResultsSummaries,
@@ -608,16 +607,6 @@ describe('buildFallbackSessionId', () => {
   it('derives one session id per job id, distinct from the sync CLI path\'s own session ids', () => {
     expect(buildFallbackSessionId('job-1')).toBe('job-1:audit-fallback');
     expect(buildFallbackSessionId('job-2')).toBe('job-2:audit-fallback');
-  });
-});
-
-describe('chunk', () => {
-  it('groups items into fixed-size chunks, with a smaller final chunk', () => {
-    expect(chunk([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
-  });
-
-  it('returns an empty array for an empty input', () => {
-    expect(chunk([], 5)).toEqual([]);
   });
 });
 

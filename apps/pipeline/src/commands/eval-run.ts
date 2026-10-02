@@ -61,6 +61,7 @@ import { dbTargetFlags, loggingFlags } from '../lib/options/groups';
 import { createLogger, levelFromFlags, setLogLevel } from '../lib/logger';
 import { runIfMain } from '../lib/run-if-main';
 import { installSigintFlag } from '../lib/sigint';
+import { sleep } from '../lib/sleep';
 
 const logger = createLogger('eval-run');
 
@@ -96,12 +97,12 @@ export const cli = defineCli(
     ...loggingFlags,
     set: { type: 'string', required: true, help: 'eval_sets id to run against' },
     task: { type: 'string', choices: ['audit', 'grading', 'mapping', 'transcription'] as const, required: true, help: 'Must match the set\'s own task' },
-    models: { type: 'string', required: true, help: 'Comma-separated OpenRouter model slugs — one variant each' },
+    models: { type: 'string', required: true, help: 'Comma-separated OpenRouter model slugs, one variant each' },
     provider: { type: 'string', help: 'Provider tag to pin every variant to (single upstream, fallbacks disabled)' },
     reasoning: { type: 'string', choices: REASONING_CHOICES, help: "'off' disables reasoning; otherwise an effort tier, for every variant" },
     temperature: { type: 'number', help: "Overrides the task's production temperature for every variant" },
     repeat: { type: 'number', default: 1, min: 1, help: 'Repeats of each model, each its own eval_runs row (repeat_index)' },
-    experiment: { type: 'string', help: 'eval_experiments id or slug to attribute these runs to — resolved and stamped as experiment_id on each eval_runs row' },
+    experiment: { type: 'string', help: 'eval_experiments id or slug to attribute these runs to, resolved and stamped as experiment_id on each eval_runs row' },
     label: { type: 'string', help: 'Label recorded on each run as <label>:<model slug>; defaults to the experiment slug when --experiment is given, else the task name' },
     'max-cost': { type: 'number', min: 0, help: `Refuses to start any single variant whose projected cost exceeds this (default: $${BUDGET_CAPS_USD.candidateRun})` },
     'allow-unpriced': { type: 'boolean', default: false, help: 'Run a variant even when its model has no listed price, so its cost cannot be projected or capped' },
@@ -749,7 +750,7 @@ export async function main(deps: { argv?: string[]; store?: EvalStore; callLlmFn
     const throttleIfMistral = async (model: string): Promise<void> => {
       if (!model.startsWith('mistralai/')) return;
       const wait = MISTRAL_MIN_INTERVAL_MS - (Date.now() - lastMistralCallAt);
-      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      if (wait > 0) await sleep(wait);
       lastMistralCallAt = Date.now();
     };
 

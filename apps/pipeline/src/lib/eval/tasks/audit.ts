@@ -10,7 +10,8 @@ import { callMistralAuditGroup, auditGroupWithRetry, renderedMistralAuditSystemP
 import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { planAuditGroupCalls, buildAuditRunSummary, AUDIT_GATE_CRITERIA, type AuditItemOutcome, type AuditGateCriterion, type AuditRunSummary } from '../runner';
 import { createLogger } from '../../logger';
-import { MODEL_CALL_RETRY, wholeTokens, hashText, resolveEffectiveSamplingSettings } from './shared';
+import { MODEL_CALL_RETRY, wholeTokens, resolveEffectiveSamplingSettings } from './shared';
+import { hashText } from '../../text-hash';
 import { variantKey, type EvalTaskDefinition } from './types';
 
 const logger = createLogger('eval-run');
