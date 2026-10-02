@@ -16,7 +16,6 @@ export const dbTargetFlags = {
   'write-db': {
     type: 'boolean',
     default: false,
-    deprecatedAliases: ['sync-db', 'mark-db'],
     help: 'Write results to the database (uses the secret key, bypasses RLS)',
     group: 'Database target',
   },

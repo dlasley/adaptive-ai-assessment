@@ -46,7 +46,6 @@ describe('defineCli', () => {
     'write-db': {
       type: 'boolean',
       default: false,
-      deprecatedAliases: ['sync-db'],
       help: 'Write to DB',
     },
     difficulty: {
@@ -100,11 +99,10 @@ describe('defineCli', () => {
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('--count must be at least 1'));
   });
 
-  it('resolves a deprecated alias to the canonical field and warns once', () => {
+  it('rejects the retired --sync-db spelling as an unknown option', () => {
     const cli = defineCli(baseSpecs, { name: 'test-script', description: 'A test script' });
-    const options = cli.parse(['--sync-db']);
-    expect(options.writeDb).toBe(true);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('--sync-db is deprecated'));
+    expectExit(() => cli.parse(['--sync-db']), 1);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown option: --sync-db'));
   });
 
   it('hard-errors on an unknown flag by default, naming it and pointing to --help', () => {
@@ -128,15 +126,6 @@ describe('defineCli', () => {
     expectExit(() => cli.parse(['--count', '-5']), 1);
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('--count must be at least 1'));
     expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('Unknown option'));
-  });
-
-  it('allows unknown flags when allowUnknown is set', () => {
-    const cli = defineCli(baseSpecs, {
-      name: 'test-script',
-      description: 'A test script',
-      allowUnknown: true,
-    });
-    expect(() => cli.parse(['--bogus-flag'])).not.toThrow();
   });
 
   it('prints help and exits 0 on --help or -h', () => {

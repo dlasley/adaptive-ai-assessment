@@ -90,11 +90,6 @@ describe('questions-audit CLI', () => {
     expect(options.llmBatchResume).toBe('job-123');
   });
 
-  it('--sync-db still works as a deprecated alias for --write-db', () => {
-    const options = cli.parse(['--sync-db']);
-    expect(options.writeDb).toBe(true);
-  });
-
   it('--allow-missing-material defaults to false and is parseable', () => {
     expect(cli.parse([]).allowMissingMaterial).toBe(false);
     expect(cli.parse(['--allow-missing-material']).allowMissingMaterial).toBe(true);

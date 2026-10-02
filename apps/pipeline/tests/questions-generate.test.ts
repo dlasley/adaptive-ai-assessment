@@ -159,13 +159,7 @@ describe('questions-generate.ts CLI', () => {
     expect(() => cli.parse(['--unti', 'unit-2'])).toThrow(ProcessExitError);
   });
 
-  it('--sync-db: deprecated alias for --write-db, applies it and warns', () => {
-    const next = cli.parse(['--sync-db']);
-    expect(next.writeDb).toBe(true);
-  });
-
-  it('--mark-db: also works as a deprecated alias for --write-db', () => {
-    const next = cli.parse(['--mark-db']);
-    expect(next.writeDb).toBe(true);
+  it('--sync-db: retired spelling, hard-errors', () => {
+    expect(() => cli.parse(['--sync-db'])).toThrow(ProcessExitError);
   });
 });

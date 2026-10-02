@@ -1,9 +1,8 @@
 /**
- * Parses `process.argv` against a declarative `OptionSpecs` schema: validation, defaults,
- * `--help` generation, and canonical/deprecated-alias resolution in one place instead of a
- * hand-rolled `for`/`switch` loop per script.
+ * Parses `process.argv` against a declarative `OptionSpecs` schema: validation, defaults, and
+ * `--help` generation in one place instead of a hand-rolled `for`/`switch` loop per script.
  *
- * Flag-name recognition (unknown-flag detection, alias resolution) is done directly against argv
+ * Flag-name recognition (unknown-flag detection) is done directly against argv
  * before handing known flags to `node:util`'s `parseArgs`, which does the actual tokenizing
  * (`--flag value`, `--flag=value`, boolean vs. string). That split keeps this module's own logic
  * limited to schema — defaults, choices, cross-field checks, help text — while the lexing (which
@@ -43,19 +42,6 @@ export function defineCli<S extends OptionSpecs>(specs: S, config: CliConfig<S>)
   }
   const positionalsBySlot = [...positionalSlots.entries()].sort(([a], [b]) => a - b);
 
-  // Every recognized spelling (canonical, alias, or deprecated alias) resolves to its canonical
-  // flag name here, so lookups don't need to check three separate lists at each call site.
-  const nameToCanonical = new Map<string, string>();
-  const deprecatedNames = new Set<string>();
-  for (const name of canonicalNames) {
-    nameToCanonical.set(name, name);
-    for (const alias of specs[name].aliases ?? []) nameToCanonical.set(alias, name);
-    for (const alias of specs[name].deprecatedAliases ?? []) {
-      nameToCanonical.set(alias, name);
-      deprecatedNames.add(alias);
-    }
-  }
-
   function help(): string {
     const lines: string[] = [];
     if (config.banner) lines.push(config.banner);
@@ -82,9 +68,6 @@ export function defineCli<S extends OptionSpecs>(specs: S, config: CliConfig<S>)
       if (spec.choices) notes.push(`(${spec.choices.join('|')})`);
       if (spec.required) notes.push('(required)');
       if (spec.default !== undefined) notes.push(`(default: ${JSON.stringify(spec.default)})`);
-      if (spec.deprecatedAliases?.length) {
-        notes.push(`(deprecated alias: ${spec.deprecatedAliases.map((a) => `--${a}`).join(', ')})`);
-      }
       const suffix = notes.length ? ` ${notes.join(' ')}` : '';
       groupedEntries.get(group)!.push(`  ${flagLabel.padEnd(28)} ${spec.help}${suffix}`);
     }
@@ -112,8 +95,8 @@ export function defineCli<S extends OptionSpecs>(specs: S, config: CliConfig<S>)
       process.exit(0);
     }
     const nodeOptions: Record<string, { type: 'string' | 'boolean' }> = {};
-    for (const [name, canonical] of nameToCanonical) {
-      nodeOptions[name] = { type: specs[canonical].type === 'boolean' ? 'boolean' : 'string' };
+    for (const name of canonicalNames) {
+      nodeOptions[name] = { type: specs[name].type === 'boolean' ? 'boolean' : 'string' };
     }
 
     // Tokenizing first means a value that starts with a dash (`--tolerance "-5pp"`,
@@ -140,11 +123,9 @@ export function defineCli<S extends OptionSpecs>(specs: S, config: CliConfig<S>)
       process.exit(0);
     }
 
-    if (!config.allowUnknown) {
-      for (const name of optionNames) {
-        if (!nameToCanonical.has(name)) {
-          fail(`Unknown option: --${name} (see --help for usage)`);
-        }
+    for (const name of optionNames) {
+      if (!canonicalNames.includes(name)) {
+        fail(`Unknown option: --${name} (see --help for usage)`);
       }
     }
 
@@ -155,16 +136,6 @@ export function defineCli<S extends OptionSpecs>(specs: S, config: CliConfig<S>)
       const field = toCamelCase(name);
 
       let raw: unknown = values[name];
-      if (raw === undefined) {
-        for (const alias of [...(spec.aliases ?? []), ...(spec.deprecatedAliases ?? [])]) {
-          if (values[alias] === undefined) continue;
-          raw = values[alias];
-          if (deprecatedNames.has(alias)) {
-            console.warn(`Warning: --${alias} is deprecated; use --${name} instead.`);
-          }
-          break;
-        }
-      }
 
       if (raw === undefined && spec.positional !== undefined) {
         const slot = spec.positional === true ? 1 : spec.positional;

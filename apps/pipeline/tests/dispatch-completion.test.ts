@@ -19,7 +19,6 @@ const FIXTURE_COMMANDS: CommandMeta[] = [
       'write-db': {
         type: 'boolean',
         default: false,
-        deprecatedAliases: ['sync-db'],
         help: "Write it's results to the DB",
       },
     },
@@ -65,10 +64,6 @@ describe('generateZshCompletion', () => {
   it('completes --unit against the PDF-derived unit list variable, not the literal word "units"', () => {
     expect(script).toContain('--unit[Unit id]:unit:($units)');
     expect(script).toContain("units=('introduction' 'unit-1' 'unit-2')");
-  });
-
-  it('does not advertise a deprecated alias as a completable flag', () => {
-    expect(script).not.toContain('--sync-db[');
   });
 
   it('escapes an embedded single quote in a flag help string', () => {

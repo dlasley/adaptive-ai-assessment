@@ -37,8 +37,6 @@ function commandArgumentsBlock(command: CommandMeta, unitsVarRef: string): strin
     // A bespoke command with no defineCli() call — nothing to complete beyond --help.
     return "      _arguments '--help[Show this help]'";
   }
-  // Deprecated aliases (e.g. --sync-db) aren't offered — completion advertises the canonical
-  // flag name only.
   const lines = Object.entries(command.specs).map(
     ([flagName, spec]) => `        ${flagArgumentSpec(flagName, spec, unitsVarRef)} \\`,
   );

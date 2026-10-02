@@ -30,13 +30,6 @@ interface FlagSpec<T extends FlagType = FlagType> {
    * most one flag per spec object may claim a given position.
    */
   positional?: true | number;
-  /** Alternate spellings treated identically to the canonical name — no warning. */
-  aliases?: string[];
-  /**
-   * Alternate spellings accepted for backward compatibility. Using one prints a one-line stderr
-   * warning naming the canonical flag, then behaves exactly like the canonical flag.
-   */
-  deprecatedAliases?: string[];
   /** One-line description, composed into the generated --help output. */
   help: string;
   /** Section heading in generated --help only; does not affect parsing. */
@@ -86,11 +79,6 @@ export interface CliConfig<S extends OptionSpecs> {
    * Return a string to fail with that message (exit 1); return void/undefined to pass.
    */
   validate?: (options: ParsedOptions<S>) => string | void;
-  /**
-   * Default false. Unknown flags are a hard error (`Unknown option: --xyz`, exit 1) unless a
-   * script explicitly opts out.
-   */
-  allowUnknown?: boolean;
   /**
    * Default false. When true, an empty argv also prints help and exits 0 — for a script like
    * `pipeline-run.ts` where running with zero arguments has never meant "run with defaults" the

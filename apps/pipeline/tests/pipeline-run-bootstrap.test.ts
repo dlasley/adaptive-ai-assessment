@@ -31,12 +31,7 @@ const UNITS = [
   },
 ];
 
-/**
- * `main()` previously parsed argv twice: once via its own `parseArgs()`, once again inside
- * `bootstrapCommand()`. A deprecated-alias warning is emitted from inside `cli.parse()`, so it's
- * a direct observable of that double-parse — it printed twice, and a second Supabase client was
- * created alongside it.
- */
+/** `main()` parses argv once; a second parse would create a second Supabase client. */
 describe('pipeline-run main() — single-parse bootstrap', () => {
   const originalArgv = process.argv;
 
@@ -46,7 +41,7 @@ describe('pipeline-run main() — single-parse bootstrap', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     fetchUnitsFromDbMock.mockResolvedValue(UNITS);
     stepConvertPdfMock.mockResolvedValue({ success: true, markdownPath: 'fake.md' });
-    process.argv = ['node', 'pipeline-run.ts', 'unit-1', '--sync-db', '--convert-only'];
+    process.argv = ['node', 'pipeline-run.ts', 'unit-1', '--write-db', '--convert-only'];
   });
 
   afterEach(() => {
@@ -55,14 +50,6 @@ describe('pipeline-run main() — single-parse bootstrap', () => {
     fetchUnitsFromDbMock.mockReset();
     stepConvertPdfMock.mockReset();
     process.argv = originalArgv;
-  });
-
-  it('warns about a deprecated alias exactly once', async () => {
-    await main();
-
-    const warnCalls = (console.warn as unknown as { mock: { calls: unknown[][] } }).mock.calls
-      .filter((args) => String(args[0]).includes('--sync-db is deprecated'));
-    expect(warnCalls).toHaveLength(1);
   });
 
   it('creates exactly one Supabase client per run', async () => {
