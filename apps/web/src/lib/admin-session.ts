@@ -8,6 +8,9 @@
 import 'server-only';
 import crypto from 'crypto';
 import { requireSecret, signPayload, verifyPayload } from './signed-session';
+import { createLogger } from './logger';
+
+const logger = createLogger('admin-session');
 
 const COOKIE_NAME = 'admin_session';
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -32,9 +35,21 @@ function verify(token: string): SessionPayload | null {
   return payload;
 }
 
+export const ADMIN_PASSWORD_MIN_LENGTH = 16;
+
+let loggedShortPassword = false;
+
 export function verifyAdminPassword(password: string): boolean {
   const adminPassword = process.env.ADMIN_PASSWORD;
   if (!adminPassword) return false;
+
+  if (adminPassword.length < ADMIN_PASSWORD_MIN_LENGTH) {
+    if (!loggedShortPassword) {
+      loggedShortPassword = true;
+      logger.error(`ADMIN_PASSWORD is shorter than ${ADMIN_PASSWORD_MIN_LENGTH} characters; admin login is refused`);
+    }
+    return false;
+  }
 
   // Hashing both sides gives equal-length buffers, so the comparison time does not reveal the length.
   const digest = (value: string) => crypto.createHash('sha256').update(value).digest();

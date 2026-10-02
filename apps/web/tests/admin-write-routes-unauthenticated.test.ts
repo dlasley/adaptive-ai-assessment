@@ -21,7 +21,7 @@ const PROD_URL = 'french-1.vercel.app';
 
 beforeEach(() => {
   process.env.VERCEL_PROJECT_PRODUCTION_URL = PROD_URL;
-  process.env.ADMIN_SESSION_SECRET = 'test-admin-secret';
+  process.env.ADMIN_SESSION_SECRET = 'test-admin-secret-0123456789abcdef0123456789';
   delete process.env.VERCEL_URL;
   fromMock.mockClear();
 });

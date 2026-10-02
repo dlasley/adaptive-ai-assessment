@@ -26,7 +26,7 @@ function requestWithCookie(cookieValue?: string): NextRequest {
 }
 
 beforeEach(() => {
-  process.env.STUDENT_SESSION_SECRET = 'test-secret';
+  process.env.STUDENT_SESSION_SECRET = 'test-student-secret-0123456789abcdef012345';
   singleMock.mockReset();
   eqMock.mockClear();
   selectMock.mockClear();

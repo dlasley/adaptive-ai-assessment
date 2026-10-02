@@ -4,7 +4,7 @@ import { createStudentSessionCookie, getStudentCookieName } from '@/lib/student-
 import { GET } from '@/app/api/student/session/route';
 
 beforeEach(() => {
-  process.env.STUDENT_SESSION_SECRET = 'test-secret';
+  process.env.STUDENT_SESSION_SECRET = 'test-student-secret-0123456789abcdef012345';
 });
 
 function requestWithCookie(cookieValue?: string): NextRequest {

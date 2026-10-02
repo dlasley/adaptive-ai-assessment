@@ -7,9 +7,14 @@
 import 'server-only';
 import crypto from 'crypto';
 
+const MIN_SECRET_BYTES = 32;
+
 export function requireSecret(envVarName: string): string {
   const secret = process.env[envVarName];
   if (!secret) throw new Error(`${envVarName} not configured`);
+  if (Buffer.byteLength(secret) < MIN_SECRET_BYTES) {
+    throw new Error(`${envVarName} must be at least ${MIN_SECRET_BYTES} bytes`);
+  }
   return secret;
 }
 

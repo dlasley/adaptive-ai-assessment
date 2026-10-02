@@ -7,7 +7,7 @@ import {
 } from '@/lib/student-session';
 
 beforeEach(() => {
-  process.env.STUDENT_SESSION_SECRET = 'test-secret';
+  process.env.STUDENT_SESSION_SECRET = 'test-student-secret-0123456789abcdef012345';
   vi.useRealTimers();
 });
 
@@ -50,6 +50,16 @@ describe('createStudentSessionCookie / verifyStudentSessionToken', () => {
     const tampered = tamperField(cookie.value, field, value);
 
     expect(verifyStudentSessionToken(tampered)).toBeNull();
+  });
+
+  it('throws when the secret is shorter than 32 bytes', () => {
+    process.env.STUDENT_SESSION_SECRET = 'secret';
+    expect(() => createStudentSessionCookie('study-code-id', 1)).toThrow(/at least 32 bytes/);
+  });
+
+  it('accepts a secret of exactly 32 bytes', () => {
+    process.env.STUDENT_SESSION_SECRET = 'a'.repeat(32);
+    expect(() => createStudentSessionCookie('study-code-id', 1)).not.toThrow();
   });
 
   it('throws loudly when STUDENT_SESSION_SECRET is unset', () => {

@@ -4,7 +4,7 @@ import { createSessionCookie, getAdminCookieName } from '@/lib/admin-session';
 import { requireAdmin } from '@/lib/admin-route-guard';
 
 beforeEach(() => {
-  process.env.ADMIN_SESSION_SECRET = 'test-admin-secret';
+  process.env.ADMIN_SESSION_SECRET = 'test-admin-secret-0123456789abcdef0123456789';
 });
 
 function requestWithCookie(cookieValue?: string): NextRequest {
