@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireStudentSession } from '@/lib/student-api-guard';
+import { checkRateLimit } from '@/lib/rate-limiter';
+import { tooManyRequestsResponse } from '@/lib/rate-limit-response';
 import { createLogger } from '@/lib/logger';
 import { isNoRowsError, supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('student/dashboard');
+
+const RATE_LIMIT = { windowMs: 60_000, maxRequests: 30 };
 
 const QUIZ_HISTORY_LIMIT = 50;
 
@@ -16,6 +20,9 @@ const QUIZ_HISTORY_LIMIT = 50;
 export async function GET(request: NextRequest) {
   const session = await requireStudentSession(request);
   if (session instanceof NextResponse) return session;
+
+  const rl = await checkRateLimit(`student-dashboard:${session.studyCodeId}`, RATE_LIMIT);
+  if (!rl.allowed) return tooManyRequestsResponse('Too many requests. Please try again later.', rl.resetAt);
 
   try {
     const { data: studyCode, error: studyCodeError } = await supabaseAdmin!

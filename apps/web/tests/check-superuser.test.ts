@@ -57,3 +57,26 @@ describe('GET /api/check-superuser', () => {
     expect(eqMock).not.toHaveBeenCalledWith('id', 'other-id');
   });
 });
+
+describe('GET /api/check-superuser rate limit', () => {
+  const call = () => GET(new NextRequest('https://example.com/api/check-superuser'));
+
+  it('limits each session to 30 requests a minute, and another session is unaffected', async () => {
+    singleMock.mockResolvedValue({ data: { is_superuser: false, wrong_answer_countdown: null }, error: null });
+    requireStudentSessionMock.mockResolvedValue({ studyCodeId: 'busy-session' });
+
+    for (let i = 0; i < 30; i++) expect((await call()).status).toBe(200);
+    const limited = await call();
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get('Retry-After')).toBeTruthy();
+
+    requireStudentSessionMock.mockResolvedValue({ studyCodeId: 'other-session' });
+    expect((await call()).status).toBe(200);
+  });
+
+  it('does not count a request that fails authentication', async () => {
+    requireStudentSessionMock.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
+
+    for (let i = 0; i < 40; i++) expect((await call()).status).toBe(401);
+  });
+});

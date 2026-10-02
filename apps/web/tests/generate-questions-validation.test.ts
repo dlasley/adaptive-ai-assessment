@@ -83,14 +83,31 @@ describe('POST /api/generate-questions input validation', () => {
     expect(res.status).toBe(403);
   });
 
-  it('answers 429 once the per-IP limit is spent', async () => {
+  it('answers 429 once the per-IP backstop is spent', async () => {
     checkRateLimitMock.mockResolvedValue({ allowed: false, remaining: 0, resetAt: Date.now() + 30_000 });
     const res = await POST(makeRequest(VALID));
     expect(res.status).toBe(429);
     expect(res.headers.get('Retry-After')).toBeTruthy();
     expect(checkRateLimitMock).toHaveBeenCalledWith(
-      'generate-questions:203.0.113.9',
-      expect.objectContaining({ maxRequests: expect.any(Number) }),
+      'generate-questions-ip:203.0.113.9',
+      expect.objectContaining({ maxRequests: 120 }),
     );
+  });
+
+  it('keys a request without a session on its IP, with a small budget', async () => {
+    await POST(makeRequest(VALID));
+    expect(checkRateLimitMock).toHaveBeenCalledWith(
+      'generate-questions:anon:203.0.113.9',
+      expect.objectContaining({ maxRequests: 10 }),
+    );
+  });
+
+  it('answers 429 once the per-caller budget is spent, with the IP backstop still open', async () => {
+    checkRateLimitMock
+      .mockResolvedValueOnce({ allowed: true, remaining: 100, resetAt: Date.now() + 60_000 })
+      .mockResolvedValueOnce({ allowed: false, remaining: 0, resetAt: Date.now() + 30_000 });
+    const res = await POST(makeRequest(VALID));
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBeTruthy();
   });
 });

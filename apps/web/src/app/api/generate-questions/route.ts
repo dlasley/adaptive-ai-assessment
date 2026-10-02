@@ -7,28 +7,32 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 import { FEATURES } from '@/lib/feature-flags';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireStudentSession } from '@/lib/student-api-guard';
+import { getStudentCookieName, verifyStudentSessionToken } from '@/lib/student-session';
+import { tooManyRequestsResponse } from '@/lib/rate-limit-response';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('generate-questions');
 
-// Rate limit: 30 requests per minute per IP. Each request reads the whole question bank.
-const GENERATE_RATE_LIMIT = { windowMs: 60 * 1000, maxRequests: 30 };
+// Each request reads the whole question bank. A session (or, with none, an IP) gets a small budget;
+// the per-IP backstop is sized so a classroom behind one address fits under it.
+const GENERATE_SESSION_LIMIT = { windowMs: 60 * 1000, maxRequests: 10 };
+const GENERATE_IP_BACKSTOP = { windowMs: 60 * 1000, maxRequests: 120 };
+const RATE_LIMITED_MESSAGE = 'Too many requests. Please wait before trying again.';
 
 export async function POST(request: NextRequest) {
   const csrfError = verifyCsrfProtection(request);
   if (csrfError) return csrfError;
 
-  const rateLimitResult = await checkRateLimit(`generate-questions:${getClientIp(request)}`, GENERATE_RATE_LIMIT);
-  if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please wait before trying again.' },
-      {
-        status: 429,
-        headers: { 'Retry-After': String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)) },
-      },
-    );
-  }
+  const ip = getClientIp(request);
+  const ipLimit = await checkRateLimit(`generate-questions-ip:${ip}`, GENERATE_IP_BACKSTOP);
+  if (!ipLimit.allowed) return tooManyRequestsResponse(RATE_LIMITED_MESSAGE, ipLimit.resetAt);
+
+  // Signature and expiry only: a rate-limit key needs no database round trip.
+  const sessionId = verifyStudentSessionToken(request.cookies.get(getStudentCookieName())?.value)?.studyCodeId;
+  const callerKey = sessionId ? `session:${sessionId}` : `anon:${ip}`;
+  const callerLimit = await checkRateLimit(`generate-questions:${callerKey}`, GENERATE_SESSION_LIMIT);
+  if (!callerLimit.allowed) return tooManyRequestsResponse(RATE_LIMITED_MESSAGE, callerLimit.resetAt);
 
   try {
     let rawBody: unknown;

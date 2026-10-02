@@ -68,7 +68,7 @@ function jsonRequest(url: string, body?: unknown, cookie?: string): NextRequest 
 }
 
 const validQuizResultsBody = {
-  unitId: 'unit-1',
+  unitId: 'all',
   difficulty: 'beginner' as const,
   totalQuestions: 1,
   correctAnswers: 1,
@@ -85,6 +85,20 @@ beforeEach(() => {
   singleMock.mockResolvedValue({
     data: { id: 'quiz-history-id' },
     error: null,
+  });
+});
+
+describe('GET /api/student/dashboard rate limit', () => {
+  it('limits each session to 30 requests a minute', async () => {
+    requireStudentSessionMock.mockResolvedValue({ studyCodeId: 'dashboard-rate-session' });
+    singleMock.mockResolvedValue({ data: null, error: null });
+
+    let last = 0;
+    for (let i = 0; i < 31; i++) {
+      last = (await dashboardGet(new NextRequest('https://example.com/api/student/dashboard'))).status;
+    }
+
+    expect(last).toBe(429);
   });
 });
 
