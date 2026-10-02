@@ -32,10 +32,10 @@ export const MODELS = {
  * the field entirely rather than send one. System configuration: the eval model registry
  * (`eval_models`) has no temperature field yet, so this is the only home for it; whether reasoning
  * is mandatory, and which effort tier to fall back to, come from the registry row's `reasoning`
- * column instead (`eval_models_current.reasoning`), not from this map. `eval-run` is the only
- * consumer today (`apps/pipeline/src/lib/eval/tasks/shared.ts`'s `resolveEffectiveSamplingSettings`);
- * production callers (pdf conversion, audit, grading) are unaffected and keep sending their own
- * settings as written.
+ * column instead (`eval_models_current.reasoning`), not from this map. Only the eval commands
+ * read it (`apps/pipeline/src/commands/eval-run.ts`); the production callers (pdf conversion,
+ * audit, grading) send their own settings as written. Entries are keyed by model slug and need not
+ * appear in `MODELS`: a candidate model under evaluation has constraints before it has a role.
  */
 export const MODEL_CONSTRAINTS: Record<string, { fixedTemperature?: true }> = {
   'anthropic/claude-sonnet-5.5': { fixedTemperature: true },

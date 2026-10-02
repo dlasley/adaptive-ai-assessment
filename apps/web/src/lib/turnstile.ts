@@ -33,7 +33,7 @@ const APPROVED_HOSTNAMES = [
  * Cloudflare's published dummy secret keys (see
  * https://developers.cloudflare.com/turnstile/troubleshooting/testing/).
  * Their siteverify responses report a fixed placeholder hostname
- * ("example.com", confirmed by calling siteverify directly) rather than the
+ * ("example.com") rather than the
  * real request host, since the widget never runs a real challenge for them.
  * Preview and Development are configured with one of these, so hostname
  * validation is skipped in that branch only — Production's secret is never

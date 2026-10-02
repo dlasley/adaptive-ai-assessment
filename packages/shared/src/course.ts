@@ -2,11 +2,9 @@
  * Single source of truth for which course this deployment serves.
  *
  * The app title, header, and every question-generation and audit prompt derive
- * from this file. The display name and title are configured via server-side
- * env vars (COURSE_NAME, COURSE_TITLE) so a non-web client (e.g. a future iOS
- * app) can read them through the API instead of having them baked into a
- * client bundle. Switching the deployment to a new course's branding means
- * setting those two env vars; switching its curriculum scope (`level` below)
+ * from this file. The display name and title come from server-side env vars
+ * (COURSE_NAME, COURSE_TITLE). Switching the deployment to a new course's
+ * branding means setting those two env vars; switching its curriculum scope (`level` below)
  * or grading feedback (`feedback` below) means editing this file — nothing
  * else in `apps/web/`, `apps/pipeline/`, or `packages/shared/` should
  * hard-code a course name, title, level, or grading feedback message.
@@ -175,10 +173,9 @@ let cachedCourse: Course | undefined;
 
 /**
  * Returns this deployment's course identity, reading and validating COURSE_NAME/COURSE_TITLE on
- * first call. Memoized after a successful read — a later env change has no effect within the same
- * process, the same way the module-level singleton this replaces behaved. A failed read (missing
- * env vars in a context that requires them) is not cached, so a retry after fixing the environment
- * succeeds normally.
+ * first call. Memoized after a successful read, so a later env change has no effect within the same
+ * process. A failed read (missing env vars in a context that requires them) is not cached, so a
+ * retry after fixing the environment succeeds normally.
  */
 export function getCourse(): Course {
   if (!cachedCourse) {

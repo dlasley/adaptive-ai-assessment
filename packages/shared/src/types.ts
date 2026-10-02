@@ -21,8 +21,8 @@ export interface Unit {
   description: string;
   topics: Topic[];
   // Kept snake_case (not sourceFileStem) because it's read directly off the
-  // Supabase row — see the fetchUnitsFromDb comment in apps/pipeline/lib/units-db.ts.
-  /** Filename stem (no extension, e.g. "Unit 3") of this unit's source PDF/markdown in PDF/ and learnings/. Null until the pipeline discovers and upserts the unit. */
+  // Supabase row — see the fetchUnitsFromDb comment in apps/pipeline/src/lib/units-db.ts.
+  /** Filename stem (no extension, e.g. "Unit 3") of this unit's source PDF and markdown in apps/pipeline/content/pdf and apps/pipeline/content/markdown. Null until the pipeline discovers and upserts the unit. */
   source_file_stem?: string | null;
 }
 

@@ -5,9 +5,9 @@
  *
  * The prompt text below is English-language-evaluation-generic in structure but currently names
  * "French" and French-specific typography (the space before `? ! ; :`) explicitly rather than
- * through `@adaptive/shared/course`'s `COURSE_CONTENT`/`getCourse()` — unchanged from the route's
- * prior inline copy. A future multi-course deployment would need to route those mentions through
- * `course.ts` the way `apps/pipeline`'s audit and generation prompts already do.
+ * through `@adaptive/shared/course`'s `COURSE_CONTENT`/`getCourse()`. A multi-course deployment
+ * would need to route those mentions through `course.ts` the way `apps/pipeline`'s audit and
+ * generation prompts already do.
  */
 
 export interface BuildEvaluationPromptParams {
