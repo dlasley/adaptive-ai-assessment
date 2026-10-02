@@ -149,10 +149,56 @@ export function fuzzyTier(ctx: TierContext): EvaluationResult | null {
   return fuzzyResult;
 }
 
-/** Tiers 1-3, in the order the route tries them before falling back to the Semantic API (tier 4,
+/** Answers of at least this many characters are also checked for a high share of symbols. */
+const NOISE_RATIO_MIN_LENGTH = 20;
+/** Symbols per letter above which a long answer is treated as noise. */
+const NOISE_SYMBOL_TO_LETTER_RATIO = 0.5;
+
+/**
+ * True for an answer that cannot be prose in the course language: it has no Latin-script letter
+ * (French is written in Latin script), or it is long and mostly punctuation, braces and other
+ * symbols. Short answers are judged on letters alone so a legitimate "A-t-il ?" is not caught.
+ */
+export function isNoiseAnswer(answer: string): boolean {
+  const letters = answer.match(/\p{Script=Latin}/gu)?.length ?? 0;
+  if (letters === 0) return true;
+  if (answer.length < NOISE_RATIO_MIN_LENGTH) return false;
+  const symbols = answer.match(/[\p{P}\p{S}]/gu)?.length ?? 0;
+  return symbols / letters > NOISE_SYMBOL_TO_LETTER_RATIO;
+}
+
+/** Tier 3b: grade an answer that is not text in the course language as 0 without a model call. */
+export function noiseCheckTier(ctx: TierContext): EvaluationResult | null {
+  if (!isNoiseAnswer(ctx.userAnswer)) return null;
+
+  const result: EvaluationResult = {
+    isCorrect: false,
+    score: 0,
+    hasCorrectAccents: false,
+    feedback: courseFeedback.answerTooShort,
+    corrections: {
+      suggestions: [courseFeedback.answerTooShortSuggestion]
+    }
+  };
+
+  if (ctx.includeSuperuserMetadata) {
+    result.metadata = {
+      difficulty: ctx.difficulty,
+      evaluationTier: 'noise_check',
+      usedClaudeAPI: false,
+      matchedAgainst: 'none',
+      evaluationReason: 'Answer has no letters or is mostly symbols; not sent to the model'
+    };
+  }
+
+  return result;
+}
+
+/** Tiers 1-3b, in the order the route tries them before falling back to the Semantic API (tier 4,
  * `model-grading.ts`). Named so `logOutcome` can record which one resolved a request. */
-export const EVALUATION_TIERS: { name: 'empty_check' | 'exact_match' | 'fuzzy_logic'; run: (ctx: TierContext) => EvaluationResult | null }[] = [
+export const EVALUATION_TIERS: { name: 'empty_check' | 'exact_match' | 'fuzzy_logic' | 'noise_check'; run: (ctx: TierContext) => EvaluationResult | null }[] = [
   { name: 'empty_check', run: emptyCheckTier },
   { name: 'exact_match', run: exactMatchTier },
   { name: 'fuzzy_logic', run: fuzzyTier },
+  { name: 'noise_check', run: noiseCheckTier },
 ];

@@ -15,6 +15,7 @@ export const EVALUATION_TIER_LABELS: Record<EvaluationTier, string> = {
   empty_check: '1 - Empty Check',
   exact_match: '2 - Exact Match',
   fuzzy_logic: '3 - Fuzzy Logic',
+  noise_check: '3b - Noise Check',
   claude_api: '4 - Semantic API',
 };
 

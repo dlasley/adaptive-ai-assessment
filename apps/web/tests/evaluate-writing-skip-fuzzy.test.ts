@@ -22,6 +22,12 @@ vi.mock('@adaptive/shared/llm', async (importOriginal) => ({
   callLlm: callLlmMock,
 }));
 
+// The in-memory limiter would count every request in the file against one session.
+vi.mock('@/lib/rate-limiter', () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 100, resetAt: Date.now() + 60_000 }),
+  getClientIp: () => '203.0.113.9',
+}));
+
 const QUESTION_ID = '11111111-1111-4111-8111-111111111111';
 
 const { loadQuestionsByIdsMock } = vi.hoisted(() => ({

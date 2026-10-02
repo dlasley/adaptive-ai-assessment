@@ -9,9 +9,16 @@ import { verifyCsrfProtection } from '@/lib/csrf';
 import { evaluateWritingSchema } from '@/lib/api-schemas';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
+import { COURSE_CONTENT } from '@adaptive/shared/course';
 import { isSuperuser } from '@/lib/evaluate-writing/superuser-check';
 import { EVALUATION_TIERS, type TierContext } from '@/lib/evaluate-writing/tiers';
-import { evaluateWithModel, type GradingCallUsage } from '@/lib/evaluate-writing/model-grading';
+import {
+  evaluateWithModel,
+  gradingUnavailableResult,
+  GRADING_PROMPT_HASH,
+  type GradingCallUsage,
+} from '@/lib/evaluate-writing/model-grading';
+import { reserveModelGrading } from '@/lib/evaluate-writing/daily-cap';
 import type { EvaluationResult } from '@/lib/evaluate-writing/types';
 
 const logger = createLogger('evaluate-writing');
@@ -21,8 +28,11 @@ const logger = createLogger('evaluate-writing');
 // Vercel Fluid Compute's higher default.
 export const maxDuration = 60;
 
-// Rate limit: 15 requests per minute per IP
-const EVALUATE_RATE_LIMIT = { windowMs: 60 * 1000, maxRequests: 15 };
+// A student cannot type faster than the per-session limits. The per-IP backstop is sized so a
+// classroom behind one address fits under it.
+const EVALUATE_SESSION_PER_MINUTE = { windowMs: 60 * 1000, maxRequests: 10 };
+const EVALUATE_SESSION_PER_DAY = { windowMs: 24 * 60 * 60 * 1000, maxRequests: 150 };
+const EVALUATE_IP_BACKSTOP = { windowMs: 60 * 1000, maxRequests: 90 };
 
 export async function POST(request: NextRequest) {
   const csrfError = verifyCsrfProtection(request);
@@ -32,19 +42,24 @@ export async function POST(request: NextRequest) {
   if (session instanceof NextResponse) return session;
 
   const clientIp = getClientIp(request);
-  const rateLimitResult = await checkRateLimit(`evaluate:${clientIp}`, EVALUATE_RATE_LIMIT);
-
-  if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please wait before submitting again.' },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
-          'X-RateLimit-Remaining': '0',
-        },
-      }
-    );
+  for (const [key, limit] of [
+    [`evaluate-ip:${clientIp}`, EVALUATE_IP_BACKSTOP],
+    [`evaluate:${session.studyCodeId}`, EVALUATE_SESSION_PER_MINUTE],
+    [`evaluate-day:${session.studyCodeId}`, EVALUATE_SESSION_PER_DAY],
+  ] as const) {
+    const rateLimitResult = await checkRateLimit(key, limit);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait before submitting again.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000))),
+            'X-RateLimit-Remaining': '0',
+          },
+        }
+      );
+    }
   }
 
   try {
@@ -100,6 +115,7 @@ export async function POST(request: NextRequest) {
         questionType,
         difficulty,
         durationMs: Date.now() - startedAt,
+        ...(tier === 'claude_api' ? { prompt_hash: GRADING_PROMPT_HASH } : {}),
         ...(meta?.parseFailure ? { parse_failure: true } : {}),
         ...(meta?.usage?.costUsd !== undefined ? { cost_usd: meta.usage.costUsd } : {}),
         ...(meta?.usage?.servedModel !== undefined ? { served_model: meta.usage.servedModel } : {}),
@@ -129,6 +145,13 @@ export async function POST(request: NextRequest) {
         logOutcome(tier.name, result.isCorrect, result.score);
         return NextResponse.json<EvaluationResult>(result);
       }
+    }
+
+    // Tier 4 spends model credit, so it is bounded by a global per-day allowance. Once it is spent
+    // the model is skipped and the answer gets the same score-50 fallback as a model failure.
+    if (!(await reserveModelGrading())) {
+      logOutcome('daily_cap', false, 50);
+      return NextResponse.json<EvaluationResult>(gradingUnavailableResult(COURSE_CONTENT.feedback.evaluationDailyLimit));
     }
 
     // Tier 4: AI Evaluation with the configured writing-evaluation model (for accuracy or as fallback)

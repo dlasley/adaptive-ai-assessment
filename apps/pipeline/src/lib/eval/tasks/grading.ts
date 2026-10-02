@@ -5,7 +5,7 @@
  * runs before the first one.
  */
 
-import { buildEvaluationPrompt, parseEvaluationResponse, EvaluationParseError, GRADING_CALL_SETTINGS } from '@adaptive/shared/grading-prompt';
+import { buildEvaluationMessages, finalizeEvaluation, gradingPromptHash, parseEvaluationResponse, EvaluationParseError, GRADING_CALL_SETTINGS } from '@adaptive/shared/grading-prompt';
 import { responseMetaFromLlmResult } from '@adaptive/shared/llm';
 import type { EvalItemRow, EvalResultRow, NewEvalResultRow } from '../db';
 import { createLogger } from '../../logger';
@@ -14,7 +14,6 @@ import { withRateLimitRetry } from '../run-loop';
 import { seededLabelClass, type GradingLabelClass } from '../set-builder';
 import { usageFromLlmResult, type ResultUsage } from '../usage';
 import { MODEL_CALL_RETRY, wholeTokens, isEmptyContentError, resolveEffectiveSamplingSettings } from './shared';
-import { hashText } from '../../text-hash';
 import { variantKey, type EvalTaskDefinition } from './types';
 
 const logger = createLogger('eval-run');
@@ -53,14 +52,7 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome, Grad
   task: 'grading',
 
   promptHash() {
-    return hashText(buildEvaluationPrompt({
-      question: '',
-      userAnswer: '',
-      correctAnswer: undefined,
-      questionType: '',
-      difficulty: '',
-      correctnessThreshold: GRADING_PASS_SCORE_THRESHOLD,
-    }));
+    return gradingPromptHash(GRADING_PASS_SCORE_THRESHOLD);
   },
 
   planCalls(items, variants, { blockSize }) {
@@ -82,7 +74,7 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome, Grad
       await throttleIfMistral(call.variant.model);
       const startedAt = Date.now();
       const p = item.payload;
-      const prompt = buildEvaluationPrompt({
+      const messages = buildEvaluationMessages({
         question: String(p.question),
         userAnswer: String(p.submitted_answer ?? ''),
         correctAnswer: String(p.correct_answer),
@@ -109,14 +101,14 @@ export const gradingTask: EvalTaskDefinition<undefined, GradingItemOutcome, Grad
           reasoning,
           provider: callSettings.provider,
           sessionId: run.id,
-          messages: [{ role: 'user', content: prompt }],
+          messages,
         }), {
           ...MODEL_CALL_RETRY,
           onRateLimited: (attempt, backoffMs) => logger.warn(`Rate limited (429) on item ${item.item_key} for ${key}. Retry ${attempt + 1}/${MODEL_CALL_RETRY.maxRetries} in ${backoffMs / 1000}s...`),
         });
         usage = usageFromLlmResult(result);
         responseMeta = responseMetaFromLlmResult(result);
-        const parsed = parseEvaluationResponse(result.text);
+        const parsed = finalizeEvaluation(parseEvaluationResponse(result.text), GRADING_PASS_SCORE_THRESHOLD);
         output = { isCorrect: parsed.isCorrect, score: parsed.score };
       } catch (err) {
         if (err instanceof EvaluationParseError) error = 'parse';

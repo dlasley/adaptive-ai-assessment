@@ -3,7 +3,9 @@ import { COURSE_CONTENT } from '@adaptive/shared/course';
 import { callLlm, LlmError, parseUsage, type LlmResult, type OpenRouterResponseBody } from '@adaptive/shared/llm';
 import { MODELS } from '@adaptive/shared/models';
 import {
-  buildEvaluationPrompt,
+  buildEvaluationMessages,
+  finalizeEvaluation,
+  gradingPromptHash,
   parseEvaluationResponse,
   EvaluationParseError,
   GRADING_CALL_SETTINGS,
@@ -30,9 +32,24 @@ export interface GradingCallUsage {
   error?: boolean;
 }
 
+/** Identifies the grading prompt in the structured log, so a prompt change can be lined up with a shift in outcomes. */
+export const GRADING_PROMPT_HASH = gradingPromptHash(CORRECTNESS_THRESHOLDS.SEMANTIC_API_PASS);
+
+/** The score-50 result returned when the model cannot or may not grade an answer. */
+export function gradingUnavailableResult(feedback: string): EvaluationResult {
+  return {
+    isCorrect: false,
+    score: 50,
+    hasCorrectAccents: false,
+    feedback,
+    corrections: {}
+  };
+}
+
 /**
  * Evaluate answer using the configured writing-evaluation model (`MODELS.writingEvaluation`)
- * Returns both the evaluation result and the model's confidence score
+ * Returns both the evaluation result and the model's confidence score. `isCorrect` and the score
+ * come from the model's score and the correctness threshold, not from the model's own boolean.
  */
 export async function evaluateWithModel(
   question: string,
@@ -41,13 +58,14 @@ export async function evaluateWithModel(
   questionType: string,
   difficulty: string
 ): Promise<{ evaluation: EvaluationResult; modelConfidence?: number; parseFailure?: boolean; usage: GradingCallUsage }> {
-  const prompt = buildEvaluationPrompt({
+  const correctnessThreshold = CORRECTNESS_THRESHOLDS.SEMANTIC_API_PASS;
+  const messages = buildEvaluationMessages({
     question,
     userAnswer,
     correctAnswer,
     questionType,
     difficulty,
-    correctnessThreshold: CORRECTNESS_THRESHOLDS.SEMANTIC_API_PASS,
+    correctnessThreshold,
   });
 
   const usage: GradingCallUsage = {};
@@ -79,14 +97,11 @@ export async function evaluateWithModel(
     const result = await callLlm({
       model: MODELS.writingEvaluation,
       ...GRADING_CALL_SETTINGS,
-      messages: [{
-        role: 'user',
-        content: prompt
-      }]
+      messages,
     });
     // Cost is incurred whether or not the response parses, so it's recorded before parsing.
     recordUsage(result);
-    return parseEvaluationResponse(result.text);
+    return finalizeEvaluation(parseEvaluationResponse(result.text), correctnessThreshold);
   };
 
   try {
@@ -121,13 +136,7 @@ export async function evaluateWithModel(
 
     // Fallback evaluation
     return {
-      evaluation: {
-        isCorrect: false,
-        score: 50,
-        hasCorrectAccents: false,
-        feedback: courseFeedback.evaluationApiFailed,
-        corrections: {}
-      },
+      evaluation: gradingUnavailableResult(courseFeedback.evaluationApiFailed),
       modelConfidence: undefined,
       parseFailure: error instanceof EvaluationParseError,
       usage

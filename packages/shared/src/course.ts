@@ -67,6 +67,9 @@ export interface CourseFeedback {
   /** Server-side fallback when the AI evaluation call fails. English for the same reason as
    * evaluationRequestFailed. */
   evaluationApiFailed: string;
+  /** Server-side fallback when the day's allowance of AI evaluations is spent. English for the
+   * same reason as evaluationRequestFailed. */
+  evaluationDailyLimit: string;
 }
 
 export interface Course {
@@ -141,6 +144,7 @@ export const COURSE_CONTENT: {
     fuzzyBelowThreshold: 'Vous êtes sur la bonne voie, mais il y a plusieurs erreurs.',
     evaluationRequestFailed: 'Unable to evaluate. Please try again.',
     evaluationApiFailed: 'Unable to evaluate automatically. Please try again or ask your teacher for feedback.',
+    evaluationDailyLimit: 'The automatic grader is unavailable right now. Ask your teacher for feedback on this answer.',
   },
 };
 

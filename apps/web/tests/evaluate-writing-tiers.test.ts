@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exactMatchTier, fuzzyTier, type TierContext } from '@/lib/evaluate-writing/tiers';
+import { exactMatchTier, fuzzyTier, isNoiseAnswer, noiseCheckTier, type TierContext } from '@/lib/evaluate-writing/tiers';
 
 /** A near-miss ("Bonjor" vs "Bonjour") that's close enough to clear the beginner fuzzy-logic
  * threshold (70%) and the beginner-pass correctness band (85%+), so it resolves at Tier 3
@@ -73,5 +73,40 @@ describe('exactMatchTier', () => {
     expect(result!.isCorrect).toBe(true);
     expect(result!.score).toBe(98);
     expect(result!.hasCorrectAccents).toBe(false);
+  });
+});
+
+describe('isNoiseAnswer', () => {
+  it.each(['?!?!', '12345', '   ', '...', '{}', '你好', '[[[[[[[[[[[[[[[[[[[[[[a]]]]]]]]]]]]]]]]]]]]]]'])(
+    'flags %j',
+    (answer) => {
+      expect(isNoiseAnswer(answer)).toBe(true);
+    }
+  );
+
+  it.each([
+    'Bonjour',
+    "Je m'appelle Paul.",
+    'A-t-il ?',
+    "Qu'est-ce que c'est ?",
+    "L'été, c'est l'été !",
+    'Où est la bibliothèque ?',
+    'Élève',
+  ])('passes the French answer %j on to the later tiers', (answer) => {
+    expect(isNoiseAnswer(answer)).toBe(false);
+  });
+});
+
+describe('noiseCheckTier', () => {
+  it('scores noise 0 with the too-short feedback and no model call, and adds metadata only for a superuser', () => {
+    const base = { ...fuzzyMatchContext(), userAnswer: '{}{}{}' };
+
+    expect(noiseCheckTier(base)).toMatchObject({ isCorrect: false, score: 0 });
+    expect(noiseCheckTier(base)?.metadata).toBeUndefined();
+    expect(noiseCheckTier({ ...base, includeSuperuserMetadata: true })?.metadata?.evaluationTier).toBe('noise_check');
+  });
+
+  it('returns null for an answer that is text', () => {
+    expect(noiseCheckTier(fuzzyMatchContext())).toBeNull();
   });
 });

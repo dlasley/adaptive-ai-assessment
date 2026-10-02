@@ -12,6 +12,7 @@ describe('getEvaluationTierLabel', () => {
     expect(getEvaluationTierLabel('empty_check')).toBe('1 - Empty Check');
     expect(getEvaluationTierLabel('exact_match')).toBe('2 - Exact Match');
     expect(getEvaluationTierLabel('fuzzy_logic')).toBe('3 - Fuzzy Logic');
+    expect(getEvaluationTierLabel('noise_check')).toBe('3b - Noise Check');
     expect(getEvaluationTierLabel('claude_api')).toBe('4 - Semantic API');
   });
 
@@ -19,9 +20,9 @@ describe('getEvaluationTierLabel', () => {
     expect(getEvaluationTierLabel('unknown_tier')).toBe('unknown_tier');
   });
 
-  it('every entry in the tier map uses the same "N - Label" format', () => {
+  it('every entry in the tier map uses the same "N - Label" format (a letter may follow the number)', () => {
     for (const label of Object.values(EVALUATION_TIER_LABELS)) {
-      expect(label).toMatch(/^\d - .+$/);
+      expect(label).toMatch(/^\d[a-z]? - .+$/);
     }
   });
 });

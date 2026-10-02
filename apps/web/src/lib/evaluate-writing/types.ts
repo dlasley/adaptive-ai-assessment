@@ -21,7 +21,7 @@ export interface EvaluationResult {
   // Superuser metadata (only included when is_superuser=true)
   metadata?: {
     difficulty: string;
-    evaluationTier: 'empty_check' | 'exact_match' | 'fuzzy_logic' | 'claude_api';
+    evaluationTier: 'empty_check' | 'exact_match' | 'fuzzy_logic' | 'noise_check' | 'claude_api';
     levenshteinSimilarity?: number; // 0-100, similarity score from Levenshtein distance
     levenshteinThreshold?: number; // 0-100, threshold for this difficulty
     modelConfidence?: number; // 0-100, the model's self-reported confidence (only for claude_api tier)
