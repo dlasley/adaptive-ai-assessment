@@ -167,7 +167,7 @@ export function selectQuestions(
     /** Allowed question types (if not specified, all types allowed) */
     allowedTypes?: Question['type'][];
     /** Distribution ratios for each type (should sum to 1.0) */
-    typeDistribution?: Partial<Record<Question['type'], number>>;
+    typeDistribution: Partial<Record<Question['type'], number>>;
     /** Leitner box weights for adaptive selection (questionId -> box number) */
     leitnerWeights?: Map<string, number>;
   }
@@ -215,34 +215,7 @@ export function selectQuestions(
     logger.debug(`After difficulty filter: ${filtered.length} total (${writingAfterDifficulty} writing)`);
   }
 
-  // Use type distribution if provided, otherwise use default behavior
-  let finalSelection: Question[];
-
-  if (criteria.typeDistribution) {
-    // Select questions based on specified distribution
-    finalSelection = selectByDistribution(filtered, criteria.numQuestions, criteria.typeDistribution, warnings, criteria.leitnerWeights);
-  } else {
-    // Legacy behavior: 30% writing, 70% traditional
-    const writingQuestions = filtered.filter(q => q.type === 'writing');
-    const traditionalQuestions = filtered.filter(q => q.type !== 'writing');
-
-    const desiredWritingCount = Math.min(
-      Math.ceil(criteria.numQuestions * 0.3),
-      writingQuestions.length
-    );
-    const desiredTraditionalCount = criteria.numQuestions - desiredWritingCount;
-
-    const shuffleOrWeight = (qs: Question[]) =>
-      criteria.leitnerWeights ? weightedShuffle(qs, criteria.leitnerWeights) : [...qs].sort(() => Math.random() - 0.5);
-
-    const shuffledWriting = shuffleOrWeight(writingQuestions);
-    const shuffledTraditional = shuffleOrWeight(traditionalQuestions);
-
-    const selectedWriting = shuffledWriting.slice(0, desiredWritingCount);
-    const selectedTraditional = shuffledTraditional.slice(0, desiredTraditionalCount);
-
-    finalSelection = [...selectedWriting, ...selectedTraditional].sort(() => Math.random() - 0.5);
-  }
+  const finalSelection = selectByDistribution(filtered, criteria.numQuestions, criteria.typeDistribution, warnings, criteria.leitnerWeights);
 
   // Check if we got fewer questions than requested
   if (finalSelection.length < criteria.numQuestions) {
