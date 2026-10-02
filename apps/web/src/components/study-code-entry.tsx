@@ -32,6 +32,7 @@ export function StudyCodeEntry({
   const [isValidating, setIsValidating] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [codeToSwapTo, setCodeToSwapTo] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   // If a pending QR code was passed in, go straight to swap confirmation
   useEffect(() => {
@@ -44,8 +45,9 @@ export function StudyCodeEntry({
 
   const handleNewStudent = async () => {
     setMode('creating');
+    setBusy(false);
     try {
-      const code = await createStudyCode();
+      const code = await createStudyCode(() => setBusy(true));
       if (code) {
         setSkipChoice(rememberMe);
         onCodeEstablished(code);
@@ -133,7 +135,9 @@ export function StudyCodeEntry({
     return (
       <div className="max-w-md mx-auto bg-linear-to-br from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-8 border-2 border-indigo-200 dark:border-indigo-800 text-center">
         <LoadingSpinner size="md" className="mx-auto mb-4" />
-        <p className="text-gray-600 dark:text-gray-300">Creating your study code...</p>
+        <p className="text-gray-600 dark:text-gray-300">
+          {busy ? 'Busy, trying again...' : 'Creating your study code...'}
+        </p>
       </div>
     );
   }
@@ -192,7 +196,7 @@ export function StudyCodeEntry({
                 setInputValue(e.target.value);
                 setError(null);
               }}
-              placeholder="e.g. happy elephant"
+              placeholder="e.g. brave purple penguin"
               autoFocus
               className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-indigo-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 dark:bg-gray-700 dark:text-white text-lg font-mono"
             />

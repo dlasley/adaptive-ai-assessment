@@ -42,6 +42,7 @@ export default function TypedAnswerQuestion({
     setUserAnswer,
     isEvaluating,
     evaluation,
+    notice,
     submitAnswer,
     resetAnswer
   } = useQuestionEvaluation({ onSubmit });
@@ -62,11 +63,13 @@ export default function TypedAnswerQuestion({
   // isEvaluating and evaluation are set in the same batched update once
   // evaluateWritingAnswer resolves (see useQuestionEvaluation.submitAnswer),
   // so this never announces a stale "Evaluating..." on top of a result.
-  const liveMessage = isEvaluating
-    ? EVALUATING_ANNOUNCEMENT
-    : evaluation
-      ? getEvaluationAnnouncement(evaluation.isCorrect)
-      : '';
+  const liveMessage = notice
+    ? notice
+    : isEvaluating
+      ? EVALUATING_ANNOUNCEMENT
+      : evaluation
+        ? getEvaluationAnnouncement(evaluation.isCorrect)
+        : '';
 
   // Determine input variant based on question type
   const inputVariant = question.type === 'fill-in-blank' ? 'single-line' : 'multi-line';
@@ -117,6 +120,7 @@ export default function TypedAnswerQuestion({
           onSubmit={handleSubmit}
           disabled={disabled}
           isEvaluating={isEvaluating}
+          notice={notice}
           variant={inputVariant}
           placeholder={getPlaceholder()}
           rows={question.hasCompleteSentenceRequirement ? 3 : 2}

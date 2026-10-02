@@ -14,6 +14,8 @@ interface AnswerInputProps {
   onSubmit: () => void;
   disabled?: boolean;
   isEvaluating: boolean;
+  /** Status line shown under the input, such as a rate-limit message. */
+  notice?: string | null;
   variant?: 'single-line' | 'multi-line';
   placeholder?: string;
   rows?: number;
@@ -26,6 +28,7 @@ export function AnswerInput({
   onSubmit,
   disabled = false,
   isEvaluating,
+  notice,
   variant = 'multi-line',
   placeholder = `Type your answer in ${COURSE_CONTENT.language}...`,
   rows = 2,
@@ -109,6 +112,10 @@ export function AnswerInput({
           className={`${inputClassName} resize-none`}
           rows={rows}
         />
+      )}
+
+      {notice && (
+        <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{notice}</p>
       )}
 
       <div className="flex items-center justify-between mt-2">

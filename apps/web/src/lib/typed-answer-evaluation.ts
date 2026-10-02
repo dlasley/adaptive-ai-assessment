@@ -7,6 +7,7 @@ import { getFuzzyLogicThreshold, CORRECTNESS_THRESHOLDS } from './feature-flags'
 import type { Difficulty } from '@adaptive/shared/enums';
 import { COURSE_CONTENT } from '@adaptive/shared/course';
 import type { EvaluationResult } from '@/lib/evaluate-writing/types';
+import { fetchWithRetryAfter } from './retry-after';
 
 // Not destructured to `feedback` — fuzzyEvaluateAnswer already has a local
 // `feedback` variable for the string it's building up.
@@ -257,20 +258,31 @@ export function fuzzyEvaluateAnswer(
  * Evaluate a writing answer using the API. Grading inputs (correct answer,
  * difficulty, acceptable variations) are looked up server-side from
  * questionId — this only sends what the server can't already know.
+ *
+ * A 429 is retried once after the server's Retry-After delay (`onBusy` runs before the wait).
+ * Returns null when the server is still rate-limiting after that: the answer was not graded and
+ * must not be recorded as one.
  */
 export async function evaluateWritingAnswer(
   questionId: string,
-  userAnswer: string
-): Promise<EvaluationResult> {
+  userAnswer: string,
+  onBusy?: () => void
+): Promise<EvaluationResult | null> {
   try {
-    const response = await fetch('/api/evaluate-writing', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        questionId,
-        userAnswer,
-      })
-    });
+    const response = await fetchWithRetryAfter(
+      '/api/evaluate-writing',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId,
+          userAnswer,
+        })
+      },
+      onBusy
+    );
+
+    if (response.status === 429) return null;
 
     if (!response.ok) {
       throw new Error('Evaluation API request failed');

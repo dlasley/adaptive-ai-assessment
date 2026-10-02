@@ -11,6 +11,7 @@
 
 import { QuizHistory, ConceptMastery } from './supabase';
 import { STORAGE_KEYS } from './storage-keys';
+import { fetchWithRetryAfter } from './retry-after';
 
 // Local storage key for study code
 export const STUDY_CODE_KEY = STORAGE_KEYS.studyCode;
@@ -89,16 +90,18 @@ export function setSkipChoice(skip: boolean): void {
 
 /**
  * Create a new study code via the server-side API route.
- * The API handles word selection (with alliteration preference),
+ * The API handles word selection (two adjectives and an animal),
  * collision retry, rate limiting, and mints the session cookie.
+ * A 429 is retried once after the server's Retry-After delay.
  * Returns the code on success, null on failure.
  */
-export async function createStudyCode(): Promise<string | null> {
+export async function createStudyCode(onBusy?: () => void): Promise<string | null> {
   try {
-    const response = await fetch('/api/generate-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const response = await fetchWithRetryAfter(
+      '/api/generate-code',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+      onBusy,
+    );
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
