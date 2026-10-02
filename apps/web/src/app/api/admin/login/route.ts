@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminPassword, createSessionCookie } from '@/lib/admin-session';
 import { checkRateLimit, getClientIp, getRateLimitStore } from '@/lib/rate-limiter';
 import {
+  adminLoginTightenedRetryAfterSeconds,
   isAdminLoginInTightenedMode,
   recordAdminLoginFailure,
-  ADMIN_LOGIN_TIGHTENED_MODE_DELAY_MS,
 } from '@/lib/admin-lockout-policy';
 import { verifyCsrfProtection } from '@/lib/csrf';
 import { adminLoginSchema } from '@/lib/api-schemas';
@@ -31,7 +31,10 @@ export async function POST(request: NextRequest) {
   const store = getRateLimitStore()!;
 
   if (await isAdminLoginInTightenedMode(store)) {
-    await new Promise((resolve) => setTimeout(resolve, ADMIN_LOGIN_TIGHTENED_MODE_DELAY_MS));
+    return NextResponse.json(
+      { error: 'Too many failed logins. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(await adminLoginTightenedRetryAfterSeconds(store)) } }
+    );
   }
 
   let rawBody: unknown;

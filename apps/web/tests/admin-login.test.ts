@@ -12,17 +12,16 @@ vi.mock('@/lib/rate-limiter', () => ({
   getRateLimitStore: getRateLimitStoreMock,
 }));
 
-const { isAdminLoginInTightenedModeMock, recordAdminLoginFailureMock } = vi.hoisted(() => ({
+const { isAdminLoginInTightenedModeMock, recordAdminLoginFailureMock, retryAfterMock } = vi.hoisted(() => ({
   isAdminLoginInTightenedModeMock: vi.fn(),
   recordAdminLoginFailureMock: vi.fn(),
+  retryAfterMock: vi.fn(),
 }));
 
-// Delay set to 0 so a tripped circuit breaker doesn't slow this test down — the wiring is what's
-// under test, not the wall-clock delay itself.
 vi.mock('@/lib/admin-lockout-policy', () => ({
   isAdminLoginInTightenedMode: isAdminLoginInTightenedModeMock,
   recordAdminLoginFailure: recordAdminLoginFailureMock,
-  ADMIN_LOGIN_TIGHTENED_MODE_DELAY_MS: 0,
+  adminLoginTightenedRetryAfterSeconds: retryAfterMock,
 }));
 
 const { verifyAdminPasswordMock, createSessionCookieMock } = vi.hoisted(() => ({
@@ -56,6 +55,7 @@ beforeEach(() => {
   getRateLimitStoreMock.mockReturnValue({});
   isAdminLoginInTightenedModeMock.mockReset();
   isAdminLoginInTightenedModeMock.mockResolvedValue(false);
+  retryAfterMock.mockResolvedValue(180);
   recordAdminLoginFailureMock.mockReset();
   verifyAdminPasswordMock.mockReset();
   createSessionCookieMock.mockReset();

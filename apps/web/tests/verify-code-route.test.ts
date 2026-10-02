@@ -1,11 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const from = vi.fn();
 const single = vi.fn();
 const checkRateLimit = vi.fn();
 const getRateLimitStore = vi.fn();
-const isCodeLockedOut = vi.fn();
+const codeLockRetryAfterSeconds = vi.fn();
+const ipLockRetryAfterSeconds = vi.fn();
+const recordIpMiss = vi.fn();
+const tightenedModeRetryAfterSeconds = vi.fn();
+const eq = vi.fn();
 const isInTightenedMode = vi.fn();
 const recordCodeLookupFailure = vi.fn();
 const recordGlobalLookupFailure = vi.fn();
@@ -38,11 +42,13 @@ vi.mock('@/lib/student-session', () => ({
 }));
 
 vi.mock('@/lib/verify-code-guard', () => ({
-  isCodeLockedOut: (...args: unknown[]) => isCodeLockedOut(...args),
+  codeLockRetryAfterSeconds: (...args: unknown[]) => codeLockRetryAfterSeconds(...args),
+  ipLockRetryAfterSeconds: (...args: unknown[]) => ipLockRetryAfterSeconds(...args),
+  recordIpMiss: (...args: unknown[]) => recordIpMiss(...args),
+  tightenedModeRetryAfterSeconds: (...args: unknown[]) => tightenedModeRetryAfterSeconds(...args),
   isInTightenedMode: (...args: unknown[]) => isInTightenedMode(...args),
   recordCodeLookupFailure: (...args: unknown[]) => recordCodeLookupFailure(...args),
   recordGlobalLookupFailure: (...args: unknown[]) => recordGlobalLookupFailure(...args),
-  TIGHTENED_MODE_DELAY_MS: 0,
 }));
 
 vi.mock('@/lib/turnstile', () => ({
@@ -76,7 +82,11 @@ beforeEach(() => {
   single.mockReset();
   checkRateLimit.mockReset();
   getRateLimitStore.mockReset();
-  isCodeLockedOut.mockReset();
+  codeLockRetryAfterSeconds.mockReset();
+  ipLockRetryAfterSeconds.mockReset();
+  recordIpMiss.mockReset();
+  tightenedModeRetryAfterSeconds.mockReset();
+  eq.mockReset();
   isInTightenedMode.mockReset();
   recordCodeLookupFailure.mockReset();
   recordGlobalLookupFailure.mockReset();
@@ -85,12 +95,15 @@ beforeEach(() => {
 
   checkRateLimit.mockResolvedValue({ allowed: true, remaining: 19, resetAt: Date.now() + 60_000 });
   getRateLimitStore.mockReturnValue({});
-  isCodeLockedOut.mockResolvedValue(false);
+  codeLockRetryAfterSeconds.mockResolvedValue(null);
+  ipLockRetryAfterSeconds.mockResolvedValue(null);
+  tightenedModeRetryAfterSeconds.mockResolvedValue(240);
+  eq.mockReturnValue({ single });
   verifyTurnstileToken.mockResolvedValue({ success: false, reason: 'missing_token' });
   single.mockResolvedValue({ data: VALID_STUDY_CODE_ROW, error: null });
   from.mockReturnValue({
     select: () => ({
-      eq: () => ({ single }),
+      eq: (...args: unknown[]) => eq(...args),
     }),
   });
 });
@@ -158,16 +171,16 @@ describe('POST /api/verify-code with Turnstile in tightened mode', () => {
     expect(body.exists).toBe(true);
   });
 
-  it('falls back to the fixed delay when Turnstile is not configured', async () => {
+  it('answers 429 with the rest of the window as Retry-After when Turnstile is not configured', async () => {
     isInTightenedMode.mockResolvedValue(true);
     isTurnstileConfigured.mockReturnValue(false);
 
     const response = await POST(makeRequest({ code: 'happy elephant' }));
-    const body = await response.json();
 
+    expect(response.status).toBe(429);
+    expect(response.headers.get('Retry-After')).toBe('240');
     expect(verifyTurnstileToken).not.toHaveBeenCalled();
-    expect(response.status).toBe(200);
-    expect(body.exists).toBe(true);
+    expect(from).not.toHaveBeenCalled();
   });
 });
 
@@ -192,5 +205,81 @@ describe('POST /api/verify-code database errors', () => {
     expect(await response.json()).toEqual({ exists: false });
     expect(recordCodeLookupFailure).toHaveBeenCalledTimes(1);
     expect(recordGlobalLookupFailure).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('POST /api/verify-code per-IP miss lock', () => {
+  it('answers 429 with Retry-After while the IP is locked, before any lookup', async () => {
+    ipLockRetryAfterSeconds.mockResolvedValue(600);
+
+    const response = await POST(makeRequest({ code: 'brave purple penguin' }));
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('Retry-After')).toBe('600');
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('counts a not-found code against the IP, and a found code does not', async () => {
+    await POST(makeRequest({ code: 'happy elephant' }));
+    expect(recordIpMiss).not.toHaveBeenCalled();
+
+    single.mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'no rows' } });
+    await POST(makeRequest({ code: 'unknown code' }));
+    expect(recordIpMiss).toHaveBeenCalledWith(expect.anything(), '203.0.113.7');
+  });
+
+  it('answers 429 with Retry-After for a locked code string', async () => {
+    codeLockRetryAfterSeconds.mockResolvedValue(300);
+
+    const response = await POST(makeRequest({ code: 'happy elephant' }));
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('Retry-After')).toBe('300');
+  });
+});
+
+describe('POST /api/verify-code code formats', () => {
+  it.each(['happy elephant', 'brave purple penguin'])('looks up %s as the stored, normalized string', async (code) => {
+    const response = await POST(makeRequest({ code: `  ${code.toUpperCase()} ` }));
+
+    expect(response.status).toBe(200);
+    expect(eq).toHaveBeenCalledWith('code', code);
+  });
+});
+
+describe('POST /api/verify-code in production', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('refuses every request with 503 when Turnstile is not configured', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    isTurnstileConfigured.mockReturnValue(false);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const response = await POST(makeRequest({ code: 'happy elephant' }));
+
+    expect(response.status).toBe(503);
+    expect(checkRateLimit).not.toHaveBeenCalled();
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('serves requests when Turnstile is configured', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    isTurnstileConfigured.mockReturnValue(true);
+
+    const response = await POST(makeRequest({ code: 'happy elephant' }));
+
+    expect(response.status).toBe(200);
+  });
+
+  it('treats a Vercel production deployment the same way', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+    isTurnstileConfigured.mockReturnValue(false);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const response = await POST(makeRequest({ code: 'happy elephant' }));
+
+    expect(response.status).toBe(503);
   });
 });

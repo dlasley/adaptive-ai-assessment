@@ -12,15 +12,16 @@ vi.mock('@/lib/rate-limiter', () => ({
   getRateLimitStore: getRateLimitStoreMock,
 }));
 
-const { isAdminLoginInTightenedModeMock, recordAdminLoginFailureMock } = vi.hoisted(() => ({
+const { isAdminLoginInTightenedModeMock, recordAdminLoginFailureMock, retryAfterMock } = vi.hoisted(() => ({
   isAdminLoginInTightenedModeMock: vi.fn(),
   recordAdminLoginFailureMock: vi.fn(),
+  retryAfterMock: vi.fn(),
 }));
 
 vi.mock('@/lib/admin-lockout-policy', () => ({
   isAdminLoginInTightenedMode: isAdminLoginInTightenedModeMock,
   recordAdminLoginFailure: recordAdminLoginFailureMock,
-  ADMIN_LOGIN_TIGHTENED_MODE_DELAY_MS: 0,
+  adminLoginTightenedRetryAfterSeconds: retryAfterMock,
 }));
 
 const { verifyAdminPasswordMock, createSessionCookieMock } = vi.hoisted(() => ({
@@ -54,6 +55,7 @@ beforeEach(() => {
   getRateLimitStoreMock.mockReturnValue({});
   isAdminLoginInTightenedModeMock.mockReset();
   isAdminLoginInTightenedModeMock.mockResolvedValue(false);
+  retryAfterMock.mockResolvedValue(180);
   recordAdminLoginFailureMock.mockReset();
   verifyAdminPasswordMock.mockReset();
   createSessionCookieMock.mockReset();
@@ -87,15 +89,15 @@ describe('POST /api/admin/login per-IP rate limit', () => {
 });
 
 describe('POST /api/admin/login global circuit breaker interplay', () => {
-  it('delays before checking the password once the global circuit breaker is tripped', async () => {
+  it('answers 429 with Retry-After for the rest of the window once the global circuit breaker is tripped, without checking the password', async () => {
     isAdminLoginInTightenedModeMock.mockResolvedValue(true);
     verifyAdminPasswordMock.mockReturnValue(true);
 
     const res = await POST(loginRequest({ password: 'correct' }));
 
-    expect(res.status).toBe(200);
-    expect(isAdminLoginInTightenedModeMock).toHaveBeenCalledTimes(1);
-    expect(verifyAdminPasswordMock).toHaveBeenCalledWith('correct');
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('180');
+    expect(verifyAdminPasswordMock).not.toHaveBeenCalled();
   });
 
   it('still enforces the per-IP rate limit ahead of the global circuit breaker check', async () => {

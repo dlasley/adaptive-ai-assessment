@@ -4,20 +4,32 @@ import { checkRateLimit, getClientIp, getRateLimitStore } from '@/lib/rate-limit
 import { verifyCsrfProtection } from '@/lib/csrf';
 import { createStudentSessionCookie } from '@/lib/student-session';
 import {
-  isCodeLockedOut,
+  codeLockRetryAfterSeconds,
+  ipLockRetryAfterSeconds,
   isInTightenedMode,
   recordCodeLookupFailure,
   recordGlobalLookupFailure,
-  TIGHTENED_MODE_DELAY_MS,
+  recordIpMiss,
+  tightenedModeRetryAfterSeconds,
 } from '@/lib/verify-code-guard';
 import { isTurnstileConfigured, verifyTurnstileToken } from '@/lib/turnstile';
+import { isProductionMode } from '@/lib/environment';
 import { verifyCodeSchema } from '@/lib/api-schemas';
 import { createLogger } from '@/lib/logger';
 import { isNoRowsError, supabaseErrorFields } from '@/lib/supabase-error';
 
 const logger = createLogger('verify-code');
 
-const RATE_LIMIT = { windowMs: 60_000, maxRequests: 20 };
+// Sized for a classroom behind one NAT: every page load with "remember me" is a lookup. Guesses are
+// held to a much smaller budget by the per-IP miss lock in verify-code-guard.
+const RATE_LIMIT = { windowMs: 60_000, maxRequests: 60 };
+
+function tooManyAttempts(message: string, retryAfterSeconds: number): NextResponse {
+  return NextResponse.json(
+    { error: message },
+    { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } },
+  );
+}
 
 /**
  * Verify that a study code exists and return its details.
@@ -27,17 +39,33 @@ export async function POST(request: NextRequest) {
   const csrfError = verifyCsrfProtection(request);
   if (csrfError) return csrfError;
 
+  // The circuit breaker's only production response is a Turnstile challenge, so a production-mode
+  // server without Turnstile keys refuses to answer rather than run without that control.
+  if (isProductionMode() && !isTurnstileConfigured()) {
+    logger.error('Turnstile is not configured; verify-code is refusing requests in production');
+    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+  }
+
   const ip = getClientIp(request);
   const rl = await checkRateLimit(`verify-code:${ip}`, RATE_LIMIT);
   if (!rl.allowed) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please try again later.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } },
+    return tooManyAttempts(
+      'Too many requests. Please try again later.',
+      Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000)),
     );
   }
 
   if (!isSupabaseAdminAvailable()) {
     return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+  }
+
+  // Reaching this point means checkRateLimit found a store (its fail-closed policy would otherwise
+  // have already returned above), so the store is always available here.
+  const store = getRateLimitStore()!;
+
+  const ipLockSeconds = await ipLockRetryAfterSeconds(store, ip);
+  if (ipLockSeconds !== null) {
+    return tooManyAttempts('Too many incorrect codes. Please try again later.', ipLockSeconds);
   }
 
   let rawBody: unknown;
@@ -58,15 +86,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Code is required' }, { status: 400 });
   }
 
-  // Reaching this point means checkRateLimit found a store (its fail-closed policy would otherwise
-  // have already returned above), so the store is always available here.
-  const store = getRateLimitStore()!;
-
-  if (await isCodeLockedOut(store, code)) {
-    return NextResponse.json(
-      { error: 'Too many attempts for this code. Please try again later.' },
-      { status: 429 },
-    );
+  const codeLockSeconds = await codeLockRetryAfterSeconds(store, code);
+  if (codeLockSeconds !== null) {
+    return tooManyAttempts('Too many attempts for this code. Please try again later.', codeLockSeconds);
   }
 
   if (await isInTightenedMode(store)) {
@@ -84,10 +106,12 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      // No Turnstile site key provisioned: a fixed delay is the minimum
-      // circuit-breaker response, raising a scan's wall-clock cost with no
-      // external dependency.
-      await new Promise((resolve) => setTimeout(resolve, TIGHTENED_MODE_DELAY_MS));
+      // Only reachable outside production, where Turnstile is optional: deny until the failure
+      // window ends, so the breaker caps how many guesses get through instead of slowing them.
+      return tooManyAttempts(
+        'Too many incorrect codes across the site. Please try again later.',
+        await tightenedModeRetryAfterSeconds(store),
+      );
     }
   }
 
@@ -107,6 +131,7 @@ export async function POST(request: NextRequest) {
     if (!data) {
       await recordCodeLookupFailure(store, code);
       await recordGlobalLookupFailure(store);
+      await recordIpMiss(store, ip);
       return NextResponse.json({ exists: false });
     }
 

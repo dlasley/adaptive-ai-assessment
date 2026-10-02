@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { InMemoryRateLimitStore } from '@/lib/rate-limit-store';
 import {
+  adminLoginTightenedRetryAfterSeconds,
   isAdminLoginInTightenedMode,
   recordAdminLoginFailure,
 } from '@/lib/admin-lockout-policy';
 
-// Threshold is not exported (only the delay constant is, for route wiring), so these tests drive
+// The threshold is not exported, so these tests drive
 // the boundary directly rather than importing a magic number.
 const GLOBAL_FAILURE_THRESHOLD = 20;
 
@@ -28,5 +29,16 @@ describe('admin login global circuit breaker', () => {
     }
 
     expect(await isAdminLoginInTightenedMode(store)).toBe(false);
+  });
+});
+
+describe('admin login retry delay', () => {
+  it('reports the rest of the failure window', async () => {
+    const store = new InMemoryRateLimitStore();
+    await recordAdminLoginFailure(store);
+
+    const seconds = await adminLoginTightenedRetryAfterSeconds(store);
+    expect(seconds).toBeGreaterThan(4 * 60);
+    expect(seconds).toBeLessThanOrEqual(5 * 60);
   });
 });

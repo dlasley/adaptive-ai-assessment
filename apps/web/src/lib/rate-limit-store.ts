@@ -7,6 +7,8 @@ export interface RateLimitStore {
   increment(key: string, windowMs: number): Promise<{ count: number; resetAt: number }>;
   /** Current count for a key without incrementing it. 0 if absent or expired. */
   peek(key: string): Promise<number>;
+  /** Milliseconds until the key's window resets. 0 if the key is absent or expired. */
+  ttlMs(key: string): Promise<number>;
 }
 
 /**
@@ -36,6 +38,12 @@ export class InMemoryRateLimitStore implements RateLimitStore {
     if (!existing || Date.now() >= existing.resetAt) return 0;
     return existing.count;
   }
+
+  async ttlMs(key: string): Promise<number> {
+    const existing = this.windows.get(key);
+    if (!existing) return 0;
+    return Math.max(0, existing.resetAt - Date.now());
+  }
 }
 
 /** Vercel's deployment environment, defaulting to 'development' for local runs and tests where VERCEL_ENV is unset. */
@@ -62,5 +70,9 @@ export class EnvPrefixedRateLimitStore implements RateLimitStore {
 
   peek(key: string): Promise<number> {
     return this.inner.peek(`${this.environment}:${key}`);
+  }
+
+  ttlMs(key: string): Promise<number> {
+    return this.inner.ttlMs(`${this.environment}:${key}`);
   }
 }

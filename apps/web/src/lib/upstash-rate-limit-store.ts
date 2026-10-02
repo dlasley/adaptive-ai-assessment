@@ -33,6 +33,11 @@ export class UpstashRateLimitStore implements RateLimitStore {
     const value = await this.redis.get<number>(key);
     return value ?? 0;
   }
+
+  async ttlMs(key: string): Promise<number> {
+    const ttl = await this.redis.pttl(key);
+    return ttl > 0 ? ttl : 0;
+  }
 }
 
 /**
