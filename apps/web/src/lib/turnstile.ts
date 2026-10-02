@@ -1,14 +1,15 @@
 /**
  * Cloudflare Turnstile server-side verification for verify-code's tightened
  * mode. Active only when both NEXT_PUBLIC_TURNSTILE_SITE_KEY and
- * TURNSTILE_SECRET_KEY are configured; verify-code falls back to a fixed
- * delay when either is absent, so the circuit breaker works without a
- * Cloudflare account.
+ * TURNSTILE_SECRET_KEY are configured. A production-mode server refuses
+ * verify-code requests without them; outside production, tightened mode
+ * answers 429 until its window ends.
  */
 
 import 'server-only';
 import crypto from 'crypto';
 import { TURNSTILE_VERIFY_CODE_ACTION } from './turnstile-constants';
+import { isLiveProduction } from './environment';
 
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
@@ -103,7 +104,7 @@ export async function verifyTurnstileToken(
 
   const secret = process.env.TURNSTILE_SECRET_KEY!;
   const usingTestSecret = TEST_SECRET_KEYS.has(secret);
-  if (usingTestSecret && process.env.VERCEL_ENV === 'production') {
+  if (usingTestSecret && isLiveProduction()) {
     return { success: false, reason: 'test_secret_in_production' };
   }
 

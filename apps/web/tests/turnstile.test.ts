@@ -207,6 +207,31 @@ describe('verifyTurnstileToken', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it('rejects a test secret on a self-hosted production server, where VERCEL_ENV is unset', async () => {
+      delete process.env.VERCEL_ENV;
+      vi.stubEnv('NODE_ENV', 'production');
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await verifyTurnstileToken('valid-token');
+      expect(result).toEqual({ success: false, reason: 'test_secret_in_production' });
+      expect(fetchMock).not.toHaveBeenCalled();
+      vi.unstubAllEnvs();
+    });
+
+    it('still accepts a test secret on a Vercel preview, whose NODE_ENV is production', async () => {
+      process.env.VERCEL_ENV = 'preview';
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({ ok: true, json: async () => siteverifyResponse({ hostname: 'example.com' }) })
+      );
+
+      const result = await verifyTurnstileToken('valid-token');
+      expect(result).toEqual({ success: true });
+      vi.unstubAllEnvs();
+    });
+
     it('does not skip the hostname check for the production secret', async () => {
       process.env.TURNSTILE_SECRET_KEY = 'a-real-production-secret';
       vi.stubGlobal(

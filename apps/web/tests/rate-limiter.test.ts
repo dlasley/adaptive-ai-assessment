@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getClientIp } from '@/lib/rate-limiter';
 
 function makeRequest(headers: Record<string, string>): Request {
@@ -22,5 +22,31 @@ describe('getClientIp', () => {
 
     expect(getClientIp(forged)).toBe(getClientIp(clean));
     expect(getClientIp(forged)).toBe('203.0.113.5');
+  });
+});
+
+describe('getClientIp with no client IP', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('falls back to the loopback address in development and tests', () => {
+    expect(getClientIp(makeRequest({}))).toBe('127.0.0.1');
+  });
+
+  it.each([
+    ['a production-mode server', { NODE_ENV: 'production' }],
+    ['a Vercel production deployment', { VERCEL_ENV: 'production' }],
+    ['a Vercel preview deployment', { VERCEL_ENV: 'preview', NODE_ENV: 'production' }],
+  ])('fails closed on %s instead of sharing one bucket', (_name, env) => {
+    for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => getClientIp(makeRequest({}))).toThrow('Client IP unavailable');
+  });
+
+  it('still resolves an IP the platform supplies in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    expect(getClientIp(makeRequest({ 'x-real-ip': '203.0.113.5' }))).toBe('203.0.113.5');
   });
 });

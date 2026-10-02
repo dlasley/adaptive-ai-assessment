@@ -12,6 +12,7 @@ import { EnvPrefixedRateLimitStore, InMemoryRateLimitStore } from './rate-limit-
 import { createUpstashRateLimitStore } from './upstash-rate-limit-store';
 import { createLogger } from './logger';
 import { supabaseErrorFields } from './supabase-error';
+import { isProductionMode } from './environment';
 
 const logger = createLogger('rate-limiter');
 
@@ -86,7 +87,18 @@ export function getRateLimitStore(): RateLimitStore | null {
  * client-supplied values (except for Enterprise projects with a trusted
  * proxy configured), so ipAddress() is safe to trust as the true client IP
  * on this project without re-parsing the header by hand.
+ *
+ * With no client IP, a production-mode server throws rather than put every
+ * client in one shared rate-limit bucket, so the request fails instead of
+ * being counted against strangers. Local development and tests fall back to
+ * the loopback address.
  */
 export function getClientIp(request: Request): string {
-  return ipAddress(request) ?? '127.0.0.1';
+  const ip = ipAddress(request);
+  if (ip) return ip;
+  if (isProductionMode()) {
+    logger.error('No client IP on the request; refusing to share one rate-limit bucket across clients');
+    throw new Error('Client IP unavailable');
+  }
+  return '127.0.0.1';
 }
