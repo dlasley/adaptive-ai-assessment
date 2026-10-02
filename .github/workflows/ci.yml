@@ -4,12 +4,19 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -22,5 +29,11 @@ jobs:
         run: |
           if grep -rn "supabase!\?\.from(['\"]\(study_codes\|quiz_history\|question_results\|leitner_state\)['\"])" apps/web/src/ --include="*.ts" --include="*.tsx" | grep -v "apps/web/src/app/api/"; then
             echo "Found direct anon-client access to a student table outside apps/web/src/app/api/ — route it through a server API instead."
+            exit 1
+          fi
+      - name: Guard against anon-client access to the question bank and units
+        run: |
+          if grep -rn "supabase!\?\.from(['\"]\(questions\|units\)['\"])" apps/web/src/ --include="*.ts" --include="*.tsx"; then
+            echo "Found anon-client access to questions or units. Read them with the service-role client in a server route."
             exit 1
           fi
