@@ -1,147 +1,103 @@
 # Adaptive AI Assessment
-_Modular LLM Orchestration · Cross-Provider Evaluation_
 
-An adaptive language-learning quiz platform, built as a reference implementation of modular LLM orchestration and cross-provider model evaluation. Students practice with adaptive, Leitner-scheduled quizzes; questions are generated, validated, and audited by a TypeScript content pipeline that routes across Anthropic and Mistral models through OpenRouter. A separate model-evaluation framework in the same pipeline tests each of the pipeline's LLM-driven tasks against models from six vendors before any of them is trusted to replace what runs in production. Built with Next.js, TypeScript, and Supabase (PostgreSQL with Row-Level Security).
+An adaptive quiz platform with a content pipeline and a model-evaluation framework. Students practice with Leitner-scheduled quizzes across four question types. A TypeScript pipeline converts course PDFs into questions, validates them, and audits them with a model from a different vendor before they are served. A separate framework in the same pipeline tests alternative models against the ones in production. Built with Next.js, TypeScript, and Supabase (PostgreSQL with Row-Level Security). Every model call goes through OpenRouter.
 
-The system is a reference implementation of:
+This repository contains no course content. Questions are generated from course PDFs you supply, which are gitignored, so a fresh install starts with an empty question bank.
 
-- Cross-provider model evaluation: frozen item sets, paired significance tests, and a durable experiment/findings/model-registry layer
-- Multi-stage LLM generation, validation, and audit pipelines
-- Model routing with provider separation
-- Tiered semantic evaluation with structured fallbacks
-- Adaptive learning algorithms (Leitner spaced repetition)
-- Security-first design and relational data hygiene
+## Documentation
+
+- [`docs/pipeline-architecture.md`](docs/pipeline-architecture.md): the question pipeline's stages, gate criteria, model assignments, and the evaluation framework's tables.
+- [`apps/pipeline/README.md`](apps/pipeline/README.md): what each `pipeline` command does.
+- [`docs/cli-guide-content-ingestion-and-question-pipeline.md`](docs/cli-guide-content-ingestion-and-question-pipeline.md): task walkthroughs, from adding a unit to evaluating a model.
 
 ---
 
-## Architecture Overview
+## Architecture
 
-### Three-Stage Question Pipeline
+### Question pipeline
 
 ```text
-Source Content → Stage 1: Generation → Stage 2: Validation → Stage 3: Audit → Production
-                   (LLM A₁, A₂)           (LLM A₂)               (LLM B)
+Source content → Stage 1: Generation → Stage 2: Validation → Stage 3: Audit → Production
+                  (Claude, two sizes)      (Claude)            (Mistral)
 ```
 
-- **LLM A₁ (Haiku)**: Cost-efficient primary generation
-- **LLM A₂ (Sonnet)**: Higher-fidelity generation and structured validation
-- **LLM B (Mistral Large)**: Independent cross-provider audit layer
-
-#### Quality Lifecycle
+- **Generation**: the smaller Claude model writes multiple-choice and true/false questions at beginner and intermediate difficulty. The larger one writes typed-answer questions and everything at advanced difficulty.
+- **Validation**: the larger Claude model checks answer correctness and grammar, re-labels difficulty, and proposes acceptable variations, before anything is inserted.
+- **Audit**: a Mistral model, independent of the generating vendor, reviews each question against the course material it came from under a 6-criteria gate.
 
 Questions move through a gated lifecycle:
 
-- `pending`: Generated but not served
-- `active`: Audited and approved for production
-- `flagged`: Excluded due to quality failure
+- `pending`: generated but not served
+- `active`: audited and approved for production
+- `flagged`: excluded due to a quality failure
 
-Stage 2 enforces structural correctness and answer integrity. Stage 3 performs an independent semantic and quality review prior to production exposure.
+Using a different vendor for the audit reduces the chance that generator and reviewer share the same blind spots. PDF conversion also calls a Google model by default, as a classifier that skips slides with no teaching content. Exact model IDs live in `packages/shared/src/models.ts`.
 
-This layered architecture reduces correlated model failure risk while preserving structured downstream validation controls.
-
-### Three-Stage Evaluation Pipeline
+### Typed-answer evaluation
 
 ```text
-Student Answer → Stage 1: Exact Match → Stage 2: Fuzzy Match → Stage 3: Semantic → Result
-                    (normalized)         (Levenshtein)           (Opus 5.5)
+Student answer → Empty check → Exact match → Fuzzy match → Semantic (LLM) → Result
+                                (normalized)  (Levenshtein)
 ```
 
-- **Stage 1, Exact Match**: Normalized string comparison (case, whitespace, accents)
-- **Stage 2, Fuzzy Match**: Levenshtein distance thresholds scaled by difficulty level
-- **Stage 3, Semantic Fallback**: LLM-based evaluation for low-confidence cases
+- **Empty check**: rejects an empty or too-short answer.
+- **Exact match**: normalized string comparison (case, whitespace, accents).
+- **Fuzzy match**: Levenshtein distance thresholds scaled by difficulty.
+- **Semantic fallback**: an LLM evaluates the cases the first three tiers cannot settle.
+
+### Web app
+
+The Next.js app (`apps/web/`) has no student accounts. A student enters or generates a study code, and the server answers with a signed session cookie (`student_session`, HMAC-signed, `httpOnly`). Admins log in with a shared password and receive a separately signed cookie (`admin_session`). `src/proxy.ts` redirects unauthenticated `/admin` page requests, and every `/api/admin/*` route verifies the cookie signature itself.
+
+The browser reads only what the anonymous Supabase key can see under RLS: active questions, units, and learning resources. Everything about a student (study codes, quiz history, results, Leitner state) is reached only through `/api/*` routes that check the session and then use the service-role key; the anonymous role has no policies on those tables, and CI fails if code outside `apps/web/src/app/api/` queries them with the anonymous client. State-changing routes check the request's `Origin` or `Referer` against an allow-list and require a JSON `Content-Type` (CSRF). Rate limiting is sliding-window and backed by Upstash Redis, with an in-memory store outside production. Study-code verification adds a per-code lockout and a global circuit breaker, which uses a Cloudflare Turnstile challenge when configured; admin login has its own global circuit breaker.
 
 ---
 
-## Model Evaluation Framework
+## Model evaluation framework
 
-Production question generation, audit, and answer grading are pinned to specific models (Anthropic and Mistral). Before any of them changes, `apps/pipeline/` carries a separate evaluation framework. It runs the same tasks (question audit, answer grading, topic-to-heading mapping, and slide transcription) against models from Anthropic, OpenAI, Google, Mistral, DeepSeek, and Qwen, all through one OpenRouter integration.
+Production question generation, audit, and answer grading are pinned to specific models. Before any of them changes, `apps/pipeline/` carries an evaluation framework. It runs four of the pipeline's LLM-driven tasks (question audit, answer grading, topic-to-heading mapping, and slide transcription) against alternative models through the same OpenRouter integration.
 
-Each run pins the model to a specific provider with fallbacks disabled, so a comparison never silently switches which infrastructure actually served a call. Mistral variants route through the project's own Mistral API key rather than shared OpenRouter capacity, so the comparison gets the same access production gets. Every call's cost comes from OpenRouter's own reported usage, not an estimate, and the host that actually served each call is recorded and checked against the pin that was requested. A result also keeps the OpenRouter response facts that have no column of their own (the response id, finish reason, and similar), minus any message content, so a question noticed later about one specific call does not require having captured it in advance.
+Each run can pin the model to a specific provider with fallbacks disabled, so a comparison does not silently switch which infrastructure served a call. To compare Mistral models on the same access production uses, add your own Mistral key to your OpenRouter account (OpenRouter's bring-your-own-key setting); the repository reads only `OPENROUTER_API_KEY`. Every call's cost comes from OpenRouter's reported usage, not an estimate, and the host that served each call is recorded and checked against the requested pin.
 
-**Keeping comparisons honest.** Items are drawn once into a frozen, hashed set, so a later run scores the exact same inputs. Multiple model variants run interleaved in blocks rather than one after another, so no model gets an easier or harder slice of the material by chance of order. Repeating the same variant measures how much a model's own randomness moves its score, a noise floor a real difference has to clear. Each task has its own non-inferiority tolerance: a candidate counts as a possible replacement only if its score is no worse than the current model's by more than that tolerance, and paired statistical tests (McNemar's exact test for pass/fail tasks, a sign test for continuous scores) back that verdict instead of a bare percentage comparison. Where a task needs ground truth, a human reviewer labels a sample of items; where it doesn't have that yet, the report says so and marks its numbers reference-free instead of presenting them as accuracy. A run refuses to start at all if its projected cost exceeds a budget cap.
+Comparison method:
 
-**A durable record, not one-off scripts.** Every comparison is tied to a named experiment, and once decided, an append-only finding records what was concluded, by whom, and when; a later reversal adds a new finding rather than editing the old one. A dated model registry records each model's attributes (open or closed weights, total and active parameter count, architecture, release date, price, context window) as of when they were checked, since a vendor can silently repoint the same model identifier to different weights or pricing later. A handful of analysis views let a query compare models head to head or trace one model's family across versions over time. With as few repeats as these evaluations run, attributing a score difference to a specific model attribute, such as parameter count or architecture, is a hypothesis worth checking further, not a finding.
+- Items are drawn once into a frozen, hashed set, so a later run scores the same inputs.
+- Variants run interleaved in blocks rather than one after another, so no model gets an easier slice by order.
+- Repeating a variant measures how much a model's own randomness moves its score, a noise floor a real difference has to clear.
+- Each task has a non-inferiority tolerance: a candidate is a possible replacement only if it is no worse than the current model by more than that tolerance, backed by paired tests (McNemar's exact test for pass/fail tasks, a sign test for continuous scores).
+- Where a task needs ground truth, a human reviewer labels a sample. Where it does not exist yet, the report says so and marks its numbers reference-free instead of presenting them as accuracy.
+- A run refuses to start if its projected cost exceeds a budget cap.
 
-**Results so far** (measured September 2026):
+Records:
 
-| Task | Result |
-|---|---|
-| Heading-to-topic mapping | The current model, Sonnet 5, scored a mean F1 of about 0.81 to 0.82 across three repeats. Every alternative tried scored lower and fell outside the task's tolerance, so it stays the mapper. |
-| Slide transcription | The current model, Sonnet 5, scored 0.95 against reviewed transcripts. Every alternative tried scored lower, from 0.78 to 0.91, so it stays the transcriber. |
-| Audit call shape | Auditing one question per call, instead of batching five together, was adopted: it was as stable under model randomness as identical repeats of the batched design (a 2.8% vs 3.3% flip rate), and a hand check of the cases where the two designs disagreed found the batched design wrong more than five times as often as the single-question design. |
+- Every comparison belongs to a named experiment. A decision is an append-only finding, and a later reversal adds a new finding instead of editing the old one.
+- A dated model registry stores each model's attributes (weights, parameter count, architecture, release date, price, context window) as of when they were checked, since a vendor can repoint a model identifier to different weights or pricing.
+- Views compare models head to head or trace a model family across versions.
 
-Auditor and answer-grading model comparisons are still reference-free, since there is no human-reviewed answer key yet to score against, so those results aren't reported here as accuracy.
-
-See [`apps/pipeline/README.md`](apps/pipeline/README.md) for the full command reference and [`docs/pipeline-architecture.md`](docs/pipeline-architecture.md#evaluation-framework) for the framework's tables and mechanics.
-
----
-
-## Model Selection Rationale
-
-The system separates generation, validation, and audit across model tiers and providers to balance cost efficiency, output quality, and systemic risk.
-
-### LLM A₁: Haiku (Cost-Efficient Generation)
-
-Used for high-volume draft generation where speed and cost efficiency are prioritized.
-
-### LLM A₂: Sonnet (Structured Validation and Higher-Fidelity Generation)
-
-Used for:
-- Higher-fidelity generation when needed
-- Structured validation of grammar, correctness, and schema compliance
-
-This stage ensures outputs meet structural and correctness constraints before independent audit.
-
-### LLM B: Mistral Large (Independent Audit Layer)
-
-Used as a final quality gate to:
-- Provide cross-provider semantic evaluation
-- Reduce blind spots correlated with a single provider's model family
-- Detect generation artifacts not caught by structural validation
-
-Separating audit from the generation vendor strengthens reliability controls and reduces systemic evaluation risk.
+See [`docs/pipeline-architecture.md`](docs/pipeline-architecture.md#evaluation-framework) for the tables and [`apps/pipeline/README.md`](apps/pipeline/README.md) for the commands.
 
 ---
 
-## Reliability and Evaluation Strategy
-
-Typed answers are evaluated through the three-stage evaluation pipeline described above, balancing precision, recall, and cost.
-
-Additional safeguards:
-- Lifecycle gating before production exposure
-- Audit remediation loop
-- Durable, sliding-window rate limiting (Upstash Redis, in-memory fallback outside production)
-- Row-Level Security (RLS) policies
-- HMAC-signed admin and student session cookies, CSRF protection on state-changing routes
-- Cloudflare Turnstile challenge on the study-code circuit breaker
-- Strict relational cascade-delete chains
-
-The system prioritizes structured validation and guardrails over unchecked model generation.
-
----
-
-## Core Features
+## Features
 
 **Student-facing**
 - Four question types: multiple choice, true/false, fill-in-the-blank, writing
 - Practice and assessment quiz modes
 - Adaptive Leitner spaced-repetition scheduling, per-topic mastery tracking, and quiz history
-- Tiered typed-answer grading: exact match, fuzzy match, then LLM-based semantic fallback
+- Tiered typed-answer grading: exact match, fuzzy match, then an LLM semantic fallback
 - Anonymous study codes for identity (no accounts, no PII)
 
 **Admin**
-- Dashboard (`/admin`) backed by `/api/admin/*` routes: study-code search, bulk delete, and CSV export. These are protected by the admin session alone; `NEXT_PUBLIC_ENABLE_ADMIN_PANEL` only shows the "Teacher Dashboard" navigation link
-- Feature flags for runtime configuration
+- Dashboard (`/admin`): study-code search and bulk delete through `/api/admin/*`, and a CSV export generated in the browser. These are protected by the admin session alone; `NEXT_PUBLIC_ENABLE_ADMIN_PANEL` only shows the "Teacher Dashboard" navigation link
+- Build-time feature flags (`NEXT_PUBLIC_*`, read in `apps/web/src/lib/feature-flags.ts`)
 
 **Content pipeline**
-- TypeScript commands (`apps/pipeline/`) that convert course PDFs to markdown, extract topics, and generate questions across Haiku and Sonnet
-- Independent Mistral-based audit stage with a 6-criteria quality gate and remediation (difficulty relabeling, variation cleanup)
+- TypeScript commands (`apps/pipeline/`) that convert course PDFs to markdown, extract topics, and generate questions
+- A Mistral audit stage with a 6-criteria quality gate and remediation (difficulty relabeling, variation cleanup)
 
 ---
 
 ## Environment Configuration
-
-The system is configurable via environment variables to support model routing, feature flagging, and deployment flexibility.
 
 | Variable | Required | Description |
 |---|---|---|
@@ -156,37 +112,30 @@ The system is configurable via environment variables to support model routing, f
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | No | Cloudflare Turnstile. When both are set, the study-code circuit breaker challenges suspected scanners instead of adding a fixed delay. Use Cloudflare's test keys outside production (see `.env.local.example`) |
 | `OPENROUTER_API_KEY` | Yes | OpenRouter API key for all model calls (generation, validation, audit, evaluation) |
 | `STUDENT_SESSION_SECRET` | Yes | Hex string for signing the student session cookie; students cannot sign in without it |
-| `SUPABASE_ACCESS_TOKEN` | No | Personal access token for the Supabase MCP server used by local Claude Code tooling; the app and scripts don't read it |
-| `SUPABASE_SECRET_KEY` | Yes (scripts) | Supabase service role key for CLI DB writes |
+| `SUPABASE_ACCESS_TOKEN` | No | Used by the Supabase MCP server for local tooling; the app and scripts do not read it |
+| `SUPABASE_SECRET_KEY` | Yes | Supabase service role key. The web app's server routes and every pipeline write use it |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Alternative | The same Upstash connection under the names some setups provide; either pair works |
 
-Pipeline-only variables, including `EXPECTED_SUPABASE_REF` for the write-target guard, are documented in `apps/pipeline/README.md` and `docs/cli-guide-content-ingestion-and-question-pipeline.md` rather than duplicated here.
+Pipeline-only variables, including `EXPECTED_SUPABASE_REF` for the write-target guard, are documented in [`apps/pipeline/README.md`](apps/pipeline/README.md#environment).
 
 ---
 
 ## Database
 
-Supabase (PostgreSQL) schema includes:
+The Supabase (PostgreSQL) schema is `supabase/schema.sql`. The application tables are:
 
-- `units`: Unit definitions with topics and heading aliases
-- `study_codes`: Anonymous student identifiers with per-user settings
-- `quiz_history`: Individual quiz attempts
-- `question_results`: Per-question results for analytics
-- `questions`: All quiz questions (MCQ, T/F, fill-in-the-blank, writing)
-- `batches`: Question generation batch metadata (model, config, counts)
-- `leitner_state`: Spaced repetition box state per student per question
-- `learning_resources`: Videos, articles, and other resources by unit and topic
-- `study_code_source_words`: Adjective/animal word pools used to generate study codes
-- `llm_batch_jobs`: Bookkeeping for OpenRouter batch audit jobs (`--llm-batch` / `--llm-batch-resume`)
+- `units`: unit definitions, with each topic's name and the document headings it covers
+- `study_codes`: anonymous student identifiers with per-user settings
+- `quiz_history`: individual quiz attempts
+- `question_results`: per-question results for analytics
+- `questions`: all quiz questions (MCQ, T/F, fill-in-the-blank, writing)
+- `batches`: question generation batch metadata (model, config, counts)
+- `leitner_state`: spaced repetition box state per student per question
+- `learning_resources`: videos, articles, and other resources by unit and topic
+- `study_code_source_words`: adjective and animal word pools used to generate study codes
+- `llm_batch_jobs`: bookkeeping for OpenRouter batch audit jobs
 
-### Cascade Deletes
-
-All FK relationships use `ON DELETE CASCADE` for automatic cleanup.
-
-- **Batch deletion**: `batches` → `questions` → `question_results`, `leitner_state`; `batches` → `learning_resources`
-- **Student deletion**: `study_codes` → `quiz_history` → `question_results`; `study_codes` → `question_results` (direct FK), `leitner_state`
-
-These chains are independent. Deleting a batch does not affect student data, and vice versa.
+The `eval_*` tables and views belong to the evaluation framework and are service-role only. Deleting a batch cascades to its questions and their results, and deleting a study code cascades to that student's history and results, in two independent chains. See [`docs/pipeline-architecture.md`](docs/pipeline-architecture.md#data-hygiene-via-cascade-deletes) for the chains and the evaluation tables' different rules.
 
 ---
 
@@ -194,37 +143,17 @@ These chains are independent. Deleting a batch does not affect student data, and
 
 ```text
 adaptive-ai-assessment/
-├── docs/                  # Architecture and analysis documentation
-│   └── pipeline-architecture.md
 ├── apps/
-│   ├── web/                # Next.js App Router application
-│   │   ├── src/
-│   │   │   ├── app/         # admin/, api/, progress/, resources/, quiz/[unitId]/
-│   │   │   ├── components/
-│   │   │   ├── hooks/
-│   │   │   └── lib/
-│   │   └── tests/
-│   └── pipeline/            # Question generation and audit tooling
-│       ├── bin/pipeline.ts          # `pipeline` dispatcher (npm bin entry)
-│       ├── src/
-│       │   ├── commands/            # pipeline-run, questions-generate, content-suggest-topics,
-│       │   │                        # questions-plan, content-extract-resources, questions-audit,
-│       │   │                        # db-seed-study-code-words, db-export-questions,
-│       │   │                        # db-check-connection
-│       │   └── lib/                 # shared option parsing (lib/options/), dispatcher internals
-│       │                            # (lib/dispatch/), Supabase/logging/PDF-conversion helpers
-│       ├── prompts/
-│       ├── content/                 # pdf/, markdown/, exports/, gitignored working files
-│       └── tests/
+│   ├── web/             # Next.js App Router application (src/app, src/lib, tests)
+│   └── pipeline/        # Content pipeline and evaluation commands (bin, src, prompts, tests)
 ├── packages/
-│   └── shared/              # Modules imported by both apps/web and apps/pipeline
-│       └── src/              # enums, llm, models, course, types
+│   └── shared/          # Enums, model IDs, course settings, types, OpenRouter client
+├── docs/                # Pipeline architecture and CLI guide
 ├── supabase/
 │   └── schema.sql
-└── package.json
+├── tests/               # Repo-wide tests and the credential guard
+└── .github/workflows/   # CI
 ```
-
-See `docs/pipeline-architecture.md` for a deeper architectural walkthrough. Pipeline command usage details are in `apps/pipeline/README.md`, and a task-oriented walkthrough (ingesting a new unit, re-running generation, auditing) is in [`docs/cli-guide-content-ingestion-and-question-pipeline.md`](docs/cli-guide-content-ingestion-and-question-pipeline.md).
 
 ---
 
@@ -233,8 +162,9 @@ See `docs/pipeline-architecture.md` for a deeper architectural walkthrough. Pipe
 ### Prerequisites
 
 - Node.js 24.x (see `.nvmrc`)
-- OpenRouter API key
-- Supabase project
+- An OpenRouter API key
+- A Supabase project
+- Poppler (`pdftotext`, `pdftoppm`, `pdfinfo`) for PDF conversion, for example `brew install poppler` or `apt install poppler-utils`
 
 ### Installation
 
@@ -246,41 +176,31 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-`npm install` at the repo root installs and links all three workspaces (`apps/web`, `apps/pipeline`, `packages/shared`). `.env.local` lives at the repo root. `apps/web/next.config.ts` loads it explicitly via `@next/env`'s `loadEnvConfig()`, and every pipeline command loads it via `apps/pipeline/src/lib/env.ts`, so there's one file to edit regardless of which part of the app you're running.
+`.env.local` lives at the repo root, and both the web app and every pipeline command load it from there. Open http://localhost:3000.
 
-Open http://localhost:3000
+The app is empty until you add content:
 
-`npm install` also links the `pipeline` command (`npx --no -- pipeline --help` works immediately from the
-repo root). Always run the npx form from inside this repo, as `npx --no -- pipeline`: outside the repo, a plain
-`npx pipeline` falls back to downloading and running an unrelated public npm package named
-`pipeline`, and `--no` makes npx stop instead, and `--` keeps npx from reading the command's options as its own. To use bare `pipeline` from any folder, register it
-once with `npm link` in `apps/pipeline`.
+1. **Seed the study-code word pools.** Study codes cannot be generated until `study_code_source_words` has rows:
+   `npx --no -- pipeline db-seed-study-code-words --write-db`. Pipeline writes refuse to run until the Supabase target is confirmed, through `EXPECTED_SUPABASE_REF` or `--yes-production`; the [CLI guide](docs/cli-guide-content-ingestion-and-question-pipeline.md#2-safety-model) explains why.
+2. **Add a unit.** Put your course PDF in `apps/pipeline/content/pdf/` and follow the [CLI guide's ingest workflow](docs/cli-guide-content-ingestion-and-question-pipeline.md#3-workflow-ingest-a-new-unit). Questions are served once the audit marks them `active`.
+3. **Optional: register models for evaluation.** The model registry (`eval_models`) starts empty and no command fills it; see ["Registering a model"](docs/cli-guide-content-ingestion-and-question-pipeline.md#registering-a-model).
 
-For zsh tab completion, pick one:
-
-```zsh
-# (a) Always current, ~200ms per new shell; add after the compinit line in ~/.zshrc:
-source <(pipeline completion zsh)
-
-# (b) Faster shell start, manual refresh; put before the compinit line in ~/.zshrc:
-fpath=(~/.zfunc $fpath)
-# then, once (and again after adding a command, adding a PDF, or pulling changes):
-mkdir -p ~/.zfunc && pipeline completion zsh > ~/.zfunc/_pipeline
-```
-
-then `exec zsh` to reload. See `apps/pipeline/README.md`'s "The `pipeline` dispatcher" section for
-bash completion (option (a) only), running `pipeline` without setup via `npx`, and guided mode.
+`npm install` links the `pipeline` command. Run it from the repo root as `npx --no -- pipeline --help` (the `--no --` matters: without it, npx can fetch an unrelated public package named `pipeline`). Shell completion and guided mode are described in [`apps/pipeline/README.md`](apps/pipeline/README.md).
 
 ---
 
 ## Testing
 
 ```bash
-npm test              # Vitest, runs against a mocked/stubbed environment
-npm run lint           # eslint .
+npm test          # Vitest, against a mocked environment
+npm run lint
+npm run typecheck
+npm run knip      # unused files, exports, and dependencies
 ```
 
-By default, tests never touch a real database: a global setup step strips credential environment variables before each test file loads and again before each test body runs. A handful of tests need a real connection (RLS policy checks, live schema checks); those are gated behind `RUN_DB_TESTS=1` and read `process.env` directly inside their own `it()` blocks:
+CI runs lint, knip, typecheck, and the tests on every push.
+
+By default, tests never touch a real database: a global setup step strips credential environment variables before each test file loads and again before each test body. A few tests need a real connection (RLS policy checks, live schema checks); they are gated behind `RUN_DB_TESTS=1`:
 
 ```bash
 # Point at a test Supabase project, then opt in to the DB-backed tests
@@ -288,7 +208,7 @@ set -a; source .env.test.local; set +a
 RUN_DB_TESTS=1 npm test
 ```
 
-With `RUN_DB_TESTS=1`, the credential guard checks `NEXT_PUBLIC_SUPABASE_URL` against the test project's host before leaving credentials in place, and throws if it doesn't match, so a misconfigured run fails loudly instead of running live-DB tests against an unexpected project. Never point this at a production project.
+`.env.test.local` holds the test project's `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SECRET_KEY`, plus `EXPECTED_SUPABASE_REF` set to that project's ref. With `RUN_DB_TESTS=1`, the credential guard checks the URL's host against that ref and throws if they differ, so a misconfigured run fails instead of running live-DB tests against an unexpected project. Never point this at a production project.
 
 ---
 
@@ -298,15 +218,15 @@ Deploys to Vercel on push to `main`. Set the environment variables from `.env.lo
 
 ---
 
-## Development Philosophy
+## Security
 
-Built using AI-assisted development tooling while maintaining human ownership of architectural decisions, experiment design, separation of concerns, and reliability controls. AI accelerated implementation; system design and evaluation strategy were deliberate and human-directed.
+To report a vulnerability, see [`SECURITY.md`](SECURITY.md).
 
-The focus throughout was:
-- Explicit architecture over implicit coupling
-- Experiment isolation over uncontrolled iteration
-- Provider separation over tight dependency coupling
-- Structured validation and guardrails over unchecked generation
+---
+
+## AI assistance
+
+This project was built with AI assistance from Claude Code, using Anthropic models. The architecture, experiment design, and decisions about what ships were made and reviewed by the author.
 
 ---
 
