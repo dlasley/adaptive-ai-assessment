@@ -144,7 +144,7 @@ export const COURSE_CONTENT: {
     fuzzyBelowThreshold: 'Vous êtes sur la bonne voie, mais il y a plusieurs erreurs.',
     evaluationRequestFailed: 'Unable to evaluate. Please try again.',
     evaluationApiFailed: 'Unable to evaluate automatically. Please try again or ask your teacher for feedback.',
-    evaluationDailyLimit: 'The automatic grader is unavailable right now. Ask your teacher for feedback on this answer.',
+    evaluationDailyLimit: 'The automatic grader is unavailable until tomorrow (UTC). Ask your teacher for feedback on this answer.',
   },
 };
 

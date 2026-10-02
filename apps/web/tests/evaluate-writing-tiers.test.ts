@@ -77,7 +77,7 @@ describe('exactMatchTier', () => {
 });
 
 describe('isNoiseAnswer', () => {
-  it.each(['?!?!', '12345', '   ', '...', '{}', '你好', '[[[[[[[[[[[[[[[[[[[[[[a]]]]]]]]]]]]]]]]]]]]]]'])(
+  it.each(['?!?!', '   ', '...', '{}', '你好', '[[[[[[[[[[[[[[[[[[[[[[a]]]]]]]]]]]]]]]]]]]]]]'])(
     'flags %j',
     (answer) => {
       expect(isNoiseAnswer(answer)).toBe(true);
@@ -92,6 +92,9 @@ describe('isNoiseAnswer', () => {
     "L'été, c'est l'été !",
     'Où est la bibliothèque ?',
     'Élève',
+    '15',
+    '1998',
+    '12345',
   ])('passes the French answer %j on to the later tiers', (answer) => {
     expect(isNoiseAnswer(answer)).toBe(false);
   });

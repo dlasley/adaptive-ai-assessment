@@ -50,13 +50,16 @@ export function gradingUnavailableResult(feedback: string): EvaluationResult {
  * Evaluate answer using the configured writing-evaluation model (`MODELS.writingEvaluation`)
  * Returns both the evaluation result and the model's confidence score. `isCorrect` and the score
  * come from the model's score and the correctness threshold, not from the model's own boolean.
+ * A retry is a second model call, so `reserveRetry` must grant a second unit of the daily
+ * allowance first; when it declines, the first failure stands and the fallback result is returned.
  */
 export async function evaluateWithModel(
   question: string,
   userAnswer: string,
   correctAnswer: string | undefined,
   questionType: string,
-  difficulty: string
+  difficulty: string,
+  reserveRetry: () => Promise<boolean>
 ): Promise<{ evaluation: EvaluationResult; modelConfidence?: number; parseFailure?: boolean; usage: GradingCallUsage }> {
   const correctnessThreshold = CORRECTNESS_THRESHOLDS.SEMANTIC_API_PASS;
   const messages = buildEvaluationMessages({
@@ -114,6 +117,7 @@ export async function evaluateWithModel(
       // that came back but didn't parse/validate, or came back with no content at all, is worth
       // one more attempt.
       if (!(err instanceof EvaluationParseError) && !isRetryableContentError(err)) throw err;
+      if (!(await reserveRetry())) throw err;
       logger.warn('Semantic API response failed to parse, validate, or returned no content; retrying once');
       try {
         modelResponse = await callAndParse();

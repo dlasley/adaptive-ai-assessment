@@ -32,12 +32,14 @@ export interface BuildEvaluationMessagesParams {
 const DELIMITER_TAG = /<\/?\s*(?:student_answer|question|expected_answer)\b[^>]*>/gi;
 
 /**
- * Removes the literal delimiter tags from a student's text so it cannot close its own block and
- * write outside it. Repeats until nothing changes, because removing one tag can join the pieces
- * around it into another.
+ * Removes the delimiter tags from a student's text so it cannot close its own block and write
+ * outside it. The text is first normalized with NFKC (fullwidth brackets and letters become their
+ * ASCII forms) and stripped of format characters such as zero-width spaces and soft hyphens, so a
+ * look-alike spelling of a tag is removed too. Repeats until nothing changes, because removing one
+ * tag can join the pieces around it into another.
  */
 function stripDelimiterTags(text: string): string {
-  let current = text;
+  let current = text.normalize('NFKC').replace(/\p{Cf}/gu, '');
   for (;;) {
     const next = current.replace(DELIMITER_TAG, '');
     if (next === current) return current;

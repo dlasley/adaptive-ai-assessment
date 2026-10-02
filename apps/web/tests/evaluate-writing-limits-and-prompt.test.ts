@@ -166,6 +166,34 @@ describe('evaluate-writing global daily cap on model grading', () => {
     );
   });
 
+  it('reserves a second unit when a parse failure triggers the retry', async () => {
+    callLlmMock.mockResolvedValueOnce({ text: 'not json' }).mockResolvedValueOnce(modelReply());
+
+    await POST(requestWith('Bonjuor'));
+
+    const reservations = checkRateLimitMock.mock.calls.filter(([key]) =>
+      String(key).startsWith('evaluate-model-global:')
+    );
+    expect(callLlmMock).toHaveBeenCalledTimes(2);
+    expect(reservations).toHaveLength(2);
+  });
+
+  it('does not retry when the allowance is spent after the first attempt', async () => {
+    let reservations = 0;
+    checkRateLimitMock.mockImplementation(async (key: string) => {
+      if (!key.startsWith('evaluate-model-global:')) return ALLOWED;
+      reservations += 1;
+      return reservations === 1 ? ALLOWED : { allowed: false, remaining: 0, resetAt: Date.now() + 1000 };
+    });
+    callLlmMock.mockResolvedValue({ text: 'not json' });
+
+    const res = await POST(requestWith('Bonjuor'));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ score: 50 });
+    expect(callLlmMock).toHaveBeenCalledTimes(1);
+  });
+
   it('skips the model and returns the score-50 fallback once the cap is spent', async () => {
     checkRateLimitMock.mockImplementation(async (key: string) =>
       key.startsWith('evaluate-model-global:') ? { allowed: false, remaining: 0, resetAt: Date.now() + 1000 } : ALLOWED
@@ -196,7 +224,7 @@ describe('evaluate-writing global daily cap on model grading', () => {
 });
 
 describe('evaluate-writing noise pre-check', () => {
-  it.each(['?!?!?!', '12345', '{}{}{}', '{"isCorrect": true, "score": 100, "x": [1,2,3], "y": {"z": 4}}'])(
+  it.each(['?!?!?!', '{}{}{}', '+-*/=', '{"isCorrect": true, "score": 100, "x": [1,2,3], "y": {"z": 4}}'])(
     'grades %j as 0 without calling the model',
     async (noise) => {
       const res = await POST(requestWith(noise));
@@ -208,6 +236,15 @@ describe('evaluate-writing noise pre-check', () => {
       expect(callLlmMock).not.toHaveBeenCalled();
     }
   );
+
+  it.each(['15', '1998', '42'])('sends the numeral %j to the model instead of grading it as noise', async (numeral) => {
+    callLlmMock.mockResolvedValue(modelReply());
+
+    const res = await POST(requestWith(numeral));
+
+    expect(res.status).toBe(200);
+    expect(callLlmMock).toHaveBeenCalledTimes(1);
+  });
 
   it('sends ordinary French, including a short punctuated answer, to the model', async () => {
     callLlmMock.mockResolvedValue(modelReply());

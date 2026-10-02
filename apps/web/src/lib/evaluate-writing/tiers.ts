@@ -156,11 +156,12 @@ const NOISE_SYMBOL_TO_LETTER_RATIO = 0.5;
 
 /**
  * True for an answer that cannot be prose in the course language: it has no Latin-script letter
- * (French is written in Latin script), or it is long and mostly punctuation, braces and other
- * symbols. Short answers are judged on letters alone so a legitimate "A-t-il ?" is not caught.
+ * and no digit (French is written in Latin script, and a numeral such as "15" can be a real
+ * answer), or it is long and mostly punctuation, braces and other symbols. Short answers are
+ * judged on letters and digits alone so a legitimate "A-t-il ?" is not caught.
  */
 export function isNoiseAnswer(answer: string): boolean {
-  const letters = answer.match(/\p{Script=Latin}/gu)?.length ?? 0;
+  const letters = answer.match(/[\p{Script=Latin}\p{Nd}]/gu)?.length ?? 0;
   if (letters === 0) return true;
   if (answer.length < NOISE_RATIO_MIN_LENGTH) return false;
   const symbols = answer.match(/[\p{P}\p{S}]/gu)?.length ?? 0;
@@ -187,7 +188,7 @@ export function noiseCheckTier(ctx: TierContext): EvaluationResult | null {
       evaluationTier: 'noise_check',
       usedClaudeAPI: false,
       matchedAgainst: 'none',
-      evaluationReason: 'Answer has no letters or is mostly symbols; not sent to the model'
+      evaluationReason: 'Answer has no letters or digits or is mostly symbols; not sent to the model'
     };
   }
 

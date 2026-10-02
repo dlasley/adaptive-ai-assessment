@@ -160,7 +160,8 @@ export async function POST(request: NextRequest) {
       userAnswer,
       correctAnswer,
       questionType,
-      difficulty
+      difficulty,
+      reserveModelGrading
     );
 
     if (includeSuperuserMetadata) {
