@@ -8,6 +8,7 @@ import {
   normalizeStudyCode,
   setSkipChoice,
 } from '@/lib/study-codes';
+import { describeWait } from '@/lib/retry-after';
 import type { TurnstileGateOutcome } from '@/hooks/use-turnstile-gate';
 
 interface StudyCodeEntryProps {
@@ -16,6 +17,12 @@ interface StudyCodeEntryProps {
   pendingCode?: string | null;
   /** Verifies a code, transparently handling verify-code's Turnstile challenge if the circuit breaker demands one. */
   verifyCode: (code: string) => Promise<TurnstileGateOutcome>;
+}
+
+function rateLimitedMessage(retryAfterSeconds: number | null): string {
+  return retryAfterSeconds === null
+    ? 'Too many attempts. Please wait a few minutes and try again.'
+    : `Too many attempts. Please try again in about ${describeWait(retryAfterSeconds)}.`;
 }
 
 type Mode = 'choice' | 'entering' | 'creating' | 'confirming-swap';
@@ -74,6 +81,11 @@ export function StudyCodeEntry({
     setIsValidating(true);
     try {
       const outcome = await verifyCode(normalized);
+      if (typeof outcome === 'object') {
+        setError(rateLimitedMessage(outcome.retryAfterSeconds));
+        setIsValidating(false);
+        return;
+      }
       if (outcome === 'error') {
         setError('Something went wrong. Please try again.');
         setIsValidating(false);

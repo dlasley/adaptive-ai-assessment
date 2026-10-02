@@ -11,7 +11,7 @@
 
 import { QuizHistory, ConceptMastery } from './supabase';
 import { STORAGE_KEYS } from './storage-keys';
-import { fetchWithRetryAfter } from './retry-after';
+import { fetchWithRetryAfter, retryAfterSeconds } from './retry-after';
 
 // Local storage key for study code
 export const STUDY_CODE_KEY = STORAGE_KEYS.studyCode;
@@ -126,6 +126,7 @@ export type VerifyCodeResult =
   | { status: 'valid' }
   | { status: 'invalid' }
   | { status: 'turnstile_required'; siteKey: string }
+  | { status: 'rate_limited'; retryAfterSeconds: number | null }
   | { status: 'error' };
 
 /**
@@ -136,7 +137,8 @@ export type VerifyCodeResult =
  * 403 with a Turnstile site key instead of a plain exists/not-exists
  * result. Callers that can present a challenge should re-invoke this with
  * the solved turnstileToken; callers that can't should treat
- * 'turnstile_required' the same as 'error'.
+ * 'turnstile_required' the same as 'error'. A 429 (a per-IP or per-code lock, or the site-wide
+ * breaker) comes back as 'rate_limited' with the server's Retry-After.
  */
 export async function verifyStudyCode(code: string, turnstileToken?: string): Promise<VerifyCodeResult> {
   try {
@@ -152,6 +154,10 @@ export async function verifyStudyCode(code: string, turnstileToken?: string): Pr
         return { status: 'turnstile_required', siteKey: body.turnstileSiteKey };
       }
       return { status: 'error' };
+    }
+
+    if (response.status === 429) {
+      return { status: 'rate_limited', retryAfterSeconds: retryAfterSeconds(response) };
     }
 
     if (!response.ok) return { status: 'error' };

@@ -3,7 +3,11 @@ import { verifyStudyCode } from '@/lib/study-codes';
 import type { TurnstileWidgetHandle } from '@/components/turnstile-widget';
 import { TurnstileTokenBuffer } from '@/lib/turnstile-token-buffer';
 
-export type TurnstileGateOutcome = 'valid' | 'invalid' | 'error';
+export type TurnstileGateOutcome =
+  | 'valid'
+  | 'invalid'
+  | 'error'
+  | { status: 'rate_limited'; retryAfterSeconds: number | null };
 
 /**
  * How long verify() waits for a solved token before giving up and
@@ -74,6 +78,7 @@ export function useTurnstileGate() {
       return 'error';
     }
 
+    if (result.status === 'rate_limited') return result;
     return result.status;
   }, []);
 

@@ -7,7 +7,7 @@ import { getFuzzyLogicThreshold, CORRECTNESS_THRESHOLDS } from './feature-flags'
 import type { Difficulty } from '@adaptive/shared/enums';
 import { COURSE_CONTENT } from '@adaptive/shared/course';
 import type { EvaluationResult } from '@/lib/evaluate-writing/types';
-import { fetchWithRetryAfter } from './retry-after';
+import { fetchWithRetryAfter, retryAfterSeconds } from './retry-after';
 
 // Not destructured to `feedback` — fuzzyEvaluateAnswer already has a local
 // `feedback` variable for the string it's building up.
@@ -254,20 +254,32 @@ export function fuzzyEvaluateAnswer(
   };
 }
 
+/** Stands in for a grade when the server refused to grade the answer; `retryAfterSeconds` is its Retry-After. */
+export interface RateLimitedEvaluation {
+  rateLimited: true;
+  retryAfterSeconds: number | null;
+}
+
+export function isRateLimitedEvaluation(
+  result: EvaluationResult | RateLimitedEvaluation
+): result is RateLimitedEvaluation {
+  return 'rateLimited' in result;
+}
+
 /**
  * Evaluate a writing answer using the API. Grading inputs (correct answer,
  * difficulty, acceptable variations) are looked up server-side from
  * questionId — this only sends what the server can't already know.
  *
  * A 429 is retried once after the server's Retry-After delay (`onBusy` runs before the wait).
- * Returns null when the server is still rate-limiting after that: the answer was not graded and
- * must not be recorded as one.
+ * Returns a `RateLimitedEvaluation` when the server is still rate-limiting after that: the answer
+ * was not graded and must not be recorded as one.
  */
 export async function evaluateWritingAnswer(
   questionId: string,
   userAnswer: string,
   onBusy?: () => void
-): Promise<EvaluationResult | null> {
+): Promise<EvaluationResult | RateLimitedEvaluation> {
   try {
     const response = await fetchWithRetryAfter(
       '/api/evaluate-writing',
@@ -282,7 +294,7 @@ export async function evaluateWritingAnswer(
       onBusy
     );
 
-    if (response.status === 429) return null;
+    if (response.status === 429) return { rateLimited: true, retryAfterSeconds: retryAfterSeconds(response) };
 
     if (!response.ok) {
       throw new Error('Evaluation API request failed');
