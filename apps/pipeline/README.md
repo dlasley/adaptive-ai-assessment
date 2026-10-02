@@ -46,14 +46,16 @@ command list, shell tab completion, and an interactive picker.
 
 ### Command discovery
 
-The command list is not hand-maintained. On every invocation, `pipeline` scans `src/commands/` for
-top-level `.ts` files matching `<area>-<action>[-<object>].ts` (the five areas in the table above)
-and imports each one to read its exported `cli` (the `defineCli()` result: name, description, and
+The command list is not hand-maintained. `pipeline` scans `src/commands/` for
+top-level `.ts` files matching `<area>-<action>[-<object>].ts` (the five areas in the table above).
+A direct run (`pipeline <command> ...`) only checks the name against that list. `--help`, shell
+completion, and guided mode also import each file to read its exported `cli` (the `defineCli()` result: name, description, and
 option specs). Importing is safe because every command runs its `main()` only when executed directly
 (`runIfMain`) and loads no environment file at import. `db-check-connection.ts`, the one command
 without a `defineCli()` call, exports a `commandMeta` with its name and description instead. A new
 command file that follows the naming convention appears in `pipeline --help`, completion, and guided
-mode with no other changes.
+mode with no other changes. A file that fails to import is listed with a "Failed to load" line in
+place of its description, and the other commands are unaffected.
 
 `pipeline --help` lists every discovered command, grouped by area. A typo gets a nearest-match
 suggestion (edit distance against every discovered command name) instead of a bare parser error:
@@ -148,7 +150,7 @@ non-zero exit code.
 Every command's flags are declared through `src/lib/options/define-cli.ts`, a shared declarative
 option parser with the same baseline behavior everywhere:
 
-- `--flag value` and `--flag=value` are both accepted.
+- Value flags accept `--flag value` or `--flag=value`. Switches such as `--write-db` are written bare; `--write-db=false` is an error, and a value flag with no value is an error.
 - An unrecognized flag fails immediately with a usage hint instead of being ignored.
 - `--help` / `-h` prints full usage, generated from the same schema the command runs against.
 
@@ -366,9 +368,9 @@ is given. The app cannot issue study codes until this has run.
 
 ### db-check-connection
 
-Verifies Supabase connectivity and schema for the core tables. It takes no options and calls
-`assertSupabaseTarget({ write: true })` directly rather than going through `createScriptSupabase()`,
-since it always inserts and deletes a throwaway row.
+Checks that the service key (`SUPABASE_SECRET_KEY`) can read each core table and view, and prints a
+row count or the error for each. It takes no options and writes nothing, so it needs no write
+confirmation. A missing secret key is an error.
 
 ---
 
@@ -697,6 +699,6 @@ PDF conversion also needs poppler (`pdftotext`, `pdftoppm`, `pdfinfo`) on PATH.
 
 Every command that can write resolves its Supabase target through `createScriptSupabase()`, which
 prints the target and, for a write, requires `EXPECTED_SUPABASE_REF` to match it or `--yes-production`
-to be passed. `db-check-connection` calls the guard directly. The full rule, with the reasoning and
+to be passed. The full rule, with the reasoning and
 the recommended per-environment setup, is in
 [section 2 of the CLI guide](../../docs/cli-guide-content-ingestion-and-question-pipeline.md#2-safety-model).
