@@ -12,7 +12,7 @@ const RATE_LIMIT = { windowMs: 60_000, maxRequests: 30 };
 
 /**
  * Check whether the current session's study code is a superuser.
- * Identity comes only from the session cookie — a studyCodeId query
+ * Identity comes only from the session (cookie or bearer token); a studyCodeId query
  * parameter, if present, is not read.
  */
 export async function GET(request: NextRequest) {

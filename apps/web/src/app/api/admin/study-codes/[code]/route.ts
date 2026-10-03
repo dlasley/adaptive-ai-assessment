@@ -113,8 +113,8 @@ export async function PATCH(
     if (body.wrongAnswerCountdown !== undefined) updates.wrong_answer_countdown = body.wrongAnswerCountdown;
 
     if (body.forceLogout === true) {
-      // Bumping session_epoch invalidates every active student_session
-      // cookie for this study code immediately, regardless of expiry — the
+      // Bumping session_epoch invalidates every active student session
+      // (cookie or bearer token) for this study code immediately, regardless of expiry: the
       // lost/stolen-device revocation path.
       const { data: current, error: fetchError } = await supabaseAdmin!
         .from('study_codes')

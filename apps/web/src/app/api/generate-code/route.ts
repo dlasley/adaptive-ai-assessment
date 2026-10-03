@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 import { verifyCsrfProtection } from '@/lib/csrf';
-import { createStudentSessionCookie } from '@/lib/student-session';
+import { createStudentSessionCookie, createStudentSessionToken } from '@/lib/student-session';
+import { generateCodeSchema } from '@/lib/api-schemas';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
 
@@ -59,12 +60,24 @@ async function pickAnimalFor(letter: string): Promise<string | null> {
   return fallback?.word ?? null;
 }
 
+/** The body is optional: the web client sends none, a native client sends `{ platform: 'native' }`. */
+async function readOptionalJson(request: NextRequest): Promise<{ ok: true; value: unknown } | { ok: false }> {
+  const text = await request.text();
+  if (text.trim() === '') return { ok: true, value: {} };
+  try {
+    return { ok: true, value: JSON.parse(text) };
+  } catch {
+    return { ok: false };
+  }
+}
+
 /**
  * Generate a new study code server-side: two different adjectives and an animal, such as
  * "brave purple penguin". The second adjective and the animal share a first letter whenever the
  * pool has such an animal; the first adjective is drawn independently. Words come from
  * study_code_source_words (service role only). The code is inserted into study_codes with a
- * collision retry.
+ * collision retry. A native caller receives the session as a token in the body; the web client
+ * receives it as a cookie.
  */
 export async function POST(request: NextRequest) {
   const csrfError = verifyCsrfProtection(request);
@@ -83,6 +96,13 @@ export async function POST(request: NextRequest) {
       );
     }
   }
+
+  const rawBody = await readOptionalJson(request);
+  const parsed = rawBody.ok ? generateCodeSchema.safeParse(rawBody.value) : null;
+  if (!parsed?.success) {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+  const isNative = parsed.data.platform === 'native';
 
   if (!isSupabaseAdminAvailable()) {
     return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
@@ -114,6 +134,13 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (!insertErr && inserted) {
+        if (isNative) {
+          // The body carries a credential, so no cache may ever store it.
+          return NextResponse.json(
+            { code, token: createStudentSessionToken(inserted.id, inserted.session_epoch) },
+            { headers: { 'Cache-Control': 'no-store' } },
+          );
+        }
         const response = NextResponse.json({ code });
         const cookie = createStudentSessionCookie(inserted.id, inserted.session_epoch);
         response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2]);

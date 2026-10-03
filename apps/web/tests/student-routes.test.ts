@@ -283,3 +283,18 @@ describe('POST /api/student/logout', () => {
     expect(res.cookies.get('student_session')?.value).toBe('');
   });
 });
+
+describe('POST /api/student/logout from a native caller', () => {
+  it('answers success to a bearer-carrying request with no cookie, without requiring a session', async () => {
+    const res = await logoutPost(
+      new NextRequest('https://example.com/api/student/logout', {
+        method: 'POST',
+        headers: { ...JSON_HEADERS, authorization: 'Bearer any-token' },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).success).toBe(true);
+    expect(requireStudentSessionMock).not.toHaveBeenCalled();
+  });
+});

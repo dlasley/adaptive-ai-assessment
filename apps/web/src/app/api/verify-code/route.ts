@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
 import { checkRateLimit, getClientIp, getRateLimitStore } from '@/lib/rate-limiter';
 import { verifyCsrfProtection } from '@/lib/csrf';
-import { createStudentSessionCookie } from '@/lib/student-session';
+import { createStudentSessionCookie, createStudentSessionToken } from '@/lib/student-session';
 import {
   codeLockRetryAfterSeconds,
   ipLockRetryAfterSeconds,
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
-  const turnstileToken = parsed.data.turnstileToken;
+  const { turnstileToken, platform } = parsed.data;
 
   const code = parsed.data.code?.trim().toLowerCase();
   if (!code) {
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     if (isTurnstileConfigured()) {
       const result = await verifyTurnstileToken(turnstileToken, ip);
       if (!result.success) {
-        logger.warn('Turnstile verification failed', { reason: result.reason });
+        logger.warn('Turnstile verification failed', { reason: result.reason, platform: platform ?? 'web' });
         return NextResponse.json(
           {
             error: 'Verification required',
@@ -135,10 +135,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ exists: false });
     }
 
-    // session_epoch is internal-only: used to mint the cookie, never echoed
+    // session_epoch is internal-only: used to mint the session, never echoed
     // back to the client, matching the exclusion discipline already applied
     // to admin_label/is_superuser/wrong_answer_countdown.
     const { session_epoch: sessionEpoch, ...details } = data;
+
+    if (platform === 'native') {
+      // The body carries a credential, so no cache may ever store it.
+      return NextResponse.json(
+        { exists: true, details, token: createStudentSessionToken(data.id, sessionEpoch) },
+        { headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
 
     const response = NextResponse.json({ exists: true, details });
     const cookie = createStudentSessionCookie(data.id, sessionEpoch);

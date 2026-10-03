@@ -39,6 +39,7 @@ vi.mock('@/lib/student-session', () => ({
     value: 'signed-cookie-value',
     options: { httpOnly: true, path: '/' },
   }),
+  createStudentSessionToken: () => 'signed-token-value',
 }));
 
 vi.mock('@/lib/verify-code-guard', () => ({
@@ -281,5 +282,123 @@ describe('POST /api/verify-code in production', () => {
     const response = await POST(makeRequest({ code: 'happy elephant' }));
 
     expect(response.status).toBe(503);
+  });
+});
+
+describe('POST /api/verify-code session delivery by platform', () => {
+  it('answers a native caller with the token in the body and no cookie', async () => {
+    const response = await POST(makeRequest({ code: 'happy elephant', platform: 'native' }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(Object.keys(body).sort()).toEqual(['details', 'exists', 'token']);
+    expect(body.exists).toBe(true);
+    expect(body.token).toBe('signed-token-value');
+    expect(body.details).not.toHaveProperty('session_epoch');
+  });
+
+  it.each([
+    ['absent', {}],
+    ['web', { platform: 'web' }],
+  ])('sets the cookie and returns no token with platform %s', async (_name, extra) => {
+    const response = await POST(makeRequest({ code: 'happy elephant', ...extra }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('set-cookie')).toContain('student_session=signed-cookie-value');
+    expect(Object.keys(body).sort()).toEqual(['details', 'exists']);
+  });
+
+  it('rejects an unknown platform with 400 before any lookup', async () => {
+    const response = await POST(makeRequest({ code: 'happy elephant', platform: 'ios' }));
+
+    expect(response.status).toBe(400);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('returns no token and no cookie to a native caller whose code is not found', async () => {
+    single.mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'no rows' } });
+
+    const response = await POST(makeRequest({ code: 'unknown code', platform: 'native' }));
+
+    expect(await response.json()).toEqual({ exists: false });
+    expect(response.headers.get('set-cookie')).toBeNull();
+  });
+});
+
+describe('POST /api/verify-code platform is never a control', () => {
+  it('still answers 403 turnstileRequired to a native caller with no token in tightened mode', async () => {
+    isInTightenedMode.mockResolvedValue(true);
+    isTurnstileConfigured.mockReturnValue(true);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const response = await POST(makeRequest({ code: 'happy elephant', platform: 'native' }));
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.turnstileRequired).toBe(true);
+    expect(body).not.toHaveProperty('token');
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('still answers 429 to a native caller in tightened mode when Turnstile is not configured', async () => {
+    isInTightenedMode.mockResolvedValue(true);
+    isTurnstileConfigured.mockReturnValue(false);
+
+    const response = await POST(makeRequest({ code: 'happy elephant', platform: 'native' }));
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(await response.json()).not.toHaveProperty('token');
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('logs the platform on a failed Turnstile verification', async () => {
+    isInTightenedMode.mockResolvedValue(true);
+    isTurnstileConfigured.mockReturnValue(true);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    warn.mockClear();
+
+    await POST(makeRequest({ code: 'happy elephant', platform: 'native' }));
+    await POST(makeRequest({ code: 'happy elephant' }));
+
+    expect(warn).toHaveBeenNthCalledWith(1, expect.stringContaining('Turnstile verification failed'), {
+      reason: 'missing_token',
+      platform: 'native',
+    });
+    expect(warn).toHaveBeenNthCalledWith(2, expect.stringContaining('Turnstile verification failed'), {
+      reason: 'missing_token',
+      platform: 'web',
+    });
+  });
+
+  it('records all three failure counters for a native not-found lookup', async () => {
+    single.mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'no rows' } });
+
+    await POST(makeRequest({ code: 'unknown code', platform: 'native' }));
+
+    expect(recordCodeLookupFailure).toHaveBeenCalledWith(expect.anything(), 'unknown code');
+    expect(recordGlobalLookupFailure).toHaveBeenCalledTimes(1);
+    expect(recordIpMiss).toHaveBeenCalledWith(expect.anything(), '203.0.113.7');
+  });
+
+  it('keys every rate limit and lock the same way for a native caller as for the web', async () => {
+    single.mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'no rows' } });
+    const keyedCalls = () =>
+      [checkRateLimit, ipLockRetryAfterSeconds, codeLockRetryAfterSeconds, recordCodeLookupFailure, recordIpMiss].map(
+        (mock) => mock.mock.calls.map((call) => call.filter((arg) => typeof arg === 'string')),
+      );
+
+    await POST(makeRequest({ code: 'unknown code' }));
+    const web = keyedCalls();
+    for (const mock of [checkRateLimit, ipLockRetryAfterSeconds, codeLockRetryAfterSeconds, recordCodeLookupFailure, recordIpMiss]) {
+      mock.mockClear();
+    }
+    await POST(makeRequest({ code: 'unknown code', platform: 'native' }));
+
+    expect(keyedCalls()).toEqual(web);
+    expect(web[0]).toEqual([['verify-code:203.0.113.7']]);
   });
 });
