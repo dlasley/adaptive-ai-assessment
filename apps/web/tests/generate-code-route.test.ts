@@ -87,15 +87,20 @@ function wirePools(options: { insertErrors?: string[] } = {}) {
     }
     return {
       select: (_columns: string, opts?: { head?: boolean }) => {
-        const state: { category?: string; letter?: string } = {};
+        const state: { category?: string; letter?: string; exclude?: string } = {};
         const rows = () =>
           pool(state.category!)
             .filter((word) => !state.letter || word[0] === state.letter)
+            .filter((word) => word !== state.exclude)
             .map((word) => ({ word, first_letter: word[0] }));
         const builder: Record<string, unknown> = {
           eq: (column: string, value: string) => {
             if (column === 'category') state.category = value;
             if (column === 'first_letter') state.letter = value;
+            return builder;
+          },
+          neq: (column: string, value: string) => {
+            if (column === 'word') state.exclude = value;
             return builder;
           },
           range: (offset: number) => ({ single: async () => ({ data: rows()[offset], error: null }) }),

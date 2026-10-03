@@ -14,26 +14,31 @@ const logger = createLogger('generate-code');
 const RATE_LIMIT_PER_MINUTE = { windowMs: 60_000, maxRequests: 30 };
 const RATE_LIMIT_PER_DAY = { windowMs: 24 * 60 * 60 * 1000, maxRequests: 100 };
 const MAX_ATTEMPTS = 10;
-const MAX_FIRST_ADJECTIVE_DRAWS = 5;
 
 type WordCategory = 'adjective' | 'animal';
 
-/** Pick a random row from study_code_source_words by category using count + offset. */
-async function pickRandom(category: WordCategory) {
-  const { count } = await supabaseAdmin!
+/**
+ * Pick a random row from study_code_source_words by category using count + offset. With
+ * `excludeWord`, that word is left out of both the count and the draw, so the pick is uniform over
+ * the remaining words and never needs a retry.
+ */
+async function pickRandom(category: WordCategory, excludeWord?: string) {
+  let countQuery = supabaseAdmin!
     .from('study_code_source_words')
     .select('id', { count: 'exact', head: true })
     .eq('category', category);
+  if (excludeWord) countQuery = countQuery.neq('word', excludeWord);
+  const { count } = await countQuery;
 
   if (!count) return null;
 
   const offset = randomInt(count);
-  const { data } = await supabaseAdmin!
+  let rowQuery = supabaseAdmin!
     .from('study_code_source_words')
     .select('word, first_letter')
-    .eq('category', category)
-    .range(offset, offset)
-    .single();
+    .eq('category', category);
+  if (excludeWord) rowQuery = rowQuery.neq('word', excludeWord);
+  const { data } = await rowQuery.range(offset, offset).single();
 
   return data;
 }
@@ -52,16 +57,6 @@ async function pickAnimalFor(letter: string): Promise<string | null> {
 
   const fallback = await pickRandom('animal');
   return fallback?.word ?? null;
-}
-
-/** Pick an adjective different from `excluded`, or null if the pool keeps returning it. */
-async function pickAdjectiveOtherThan(excluded: string): Promise<string | null> {
-  for (let draw = 0; draw < MAX_FIRST_ADJECTIVE_DRAWS; draw++) {
-    const adjective = await pickRandom('adjective');
-    if (!adjective) return null;
-    if (adjective.word !== excluded) return adjective.word;
-  }
-  return null;
 }
 
 /**
@@ -105,7 +100,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'No animals available' }, { status: 500 });
       }
 
-      const firstAdjective = await pickAdjectiveOtherThan(secondAdjective.word);
+      const firstAdjective = (await pickRandom('adjective', secondAdjective.word))?.word ?? null;
       if (!firstAdjective) {
         return NextResponse.json({ error: 'Not enough adjectives available' }, { status: 500 });
       }
