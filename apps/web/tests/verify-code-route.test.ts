@@ -134,6 +134,32 @@ describe('POST /api/verify-code with Turnstile in tightened mode', () => {
     expect(from).not.toHaveBeenCalled();
   });
 
+  it('carries the rest of the failure window as a whole-second Retry-After on the 403', async () => {
+    isInTightenedMode.mockResolvedValue(true);
+    isTurnstileConfigured.mockReturnValue(true);
+
+    const response = await POST(makeRequest({ code: 'happy elephant' }));
+    const retryAfter = response.headers.get('Retry-After');
+
+    expect(response.status).toBe(403);
+    expect(retryAfter).toMatch(/^\d+$/);
+    expect(Number(retryAfter)).toBe(240);
+    expect(tightenedModeRetryAfterSeconds).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends no Retry-After when a supplied token failed, since a fresh token is the remedy', async () => {
+    isInTightenedMode.mockResolvedValue(true);
+    isTurnstileConfigured.mockReturnValue(true);
+    verifyTurnstileToken.mockResolvedValue({ success: false, reason: 'invalid_token' });
+
+    const response = await POST(makeRequest({ code: 'happy elephant', turnstileToken: 'stale' }));
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).turnstileRequired).toBe(true);
+    expect(response.headers.get('Retry-After')).toBeNull();
+    expect(tightenedModeRetryAfterSeconds).not.toHaveBeenCalled();
+  });
+
   it('proceeds to the database lookup once a valid token is supplied', async () => {
     isInTightenedMode.mockResolvedValue(true);
     isTurnstileConfigured.mockReturnValue(true);
