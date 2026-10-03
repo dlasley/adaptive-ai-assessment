@@ -22,6 +22,7 @@ vi.mock('@/lib/rate-limiter', () => ({
 }));
 
 const { POST } = await import('@/app/api/generate-code/route');
+const { verifyStudentSessionToken } = await import('@/lib/student-session');
 
 function makeRequest(headers: Record<string, string>): NextRequest {
   return new NextRequest('https://french-1.vercel.app/api/generate-code', {
@@ -196,5 +197,82 @@ describe('POST /api/generate-code rate limits', () => {
     expect(response.status).toBe(429);
     expect(Number(response.headers.get('Retry-After'))).toBeGreaterThan(3000);
     expect(inserted).toEqual([]);
+  });
+});
+
+const requestWithBody = (body: string) =>
+  new NextRequest('https://french-1.vercel.app/api/generate-code', {
+    method: 'POST',
+    headers: { origin: 'https://french-1.vercel.app', 'content-type': 'application/json' },
+    body,
+  });
+
+describe('POST /api/generate-code session delivery by platform', () => {
+  it('issues a code and sets the cookie, with no token, when the body is empty', async () => {
+    allowAll();
+    const { inserted } = wirePools();
+
+    const response = await POST(validRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(Object.keys(body)).toEqual(['code']);
+    expect(response.headers.get('set-cookie')).toContain('student_session=');
+    expect(inserted).toHaveLength(1);
+  });
+
+  it.each([
+    ['an empty object', '{}'],
+    ['platform web', '{"platform":"web"}'],
+  ])('sets the cookie and returns no token for %s', async (_name, body) => {
+    allowAll();
+    wirePools();
+
+    const response = await POST(requestWithBody(body));
+
+    expect(response.status).toBe(200);
+    expect(Object.keys(await response.json())).toEqual(['code']);
+    expect(response.headers.get('set-cookie')).toContain('student_session=');
+  });
+
+  it('answers a native caller with the token in the body and no cookie', async () => {
+    allowAll();
+    const { inserted } = wirePools();
+
+    const response = await POST(requestWithBody('{"platform":"native"}'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(Object.keys(body).sort()).toEqual(['code', 'token']);
+    expect(body.code).toBe(inserted[0]);
+    expect(verifyStudentSessionToken(body.token)).toMatchObject({ studyCodeId: 'new-id', sessionEpoch: 1 });
+  });
+
+  it.each([
+    ['an unknown platform', '{"platform":"ios"}'],
+    ['a body that is not JSON', 'not json'],
+  ])('rejects %s with 400 without issuing a code', async (_name, body) => {
+    allowAll();
+    const { inserted } = wirePools();
+
+    const response = await POST(requestWithBody(body));
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(inserted).toEqual([]);
+  });
+
+  it('keys the rate limits on the IP alone for a native caller', async () => {
+    allowAll();
+    wirePools();
+
+    await POST(requestWithBody('{"platform":"native"}'));
+
+    expect(checkRateLimit.mock.calls.map(([key]) => key)).toEqual([
+      'generate-code-minute:203.0.113.7',
+      'generate-code-day:203.0.113.7',
+    ]);
   });
 });

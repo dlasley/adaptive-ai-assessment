@@ -1,9 +1,12 @@
 /**
- * Server-side student session — HMAC-signed cookie identifying a study code.
- * Mirrors admin-session.ts's pattern via the shared signed-session helper.
+ * Server-side student session: an HMAC-signed token identifying a study code. The web client
+ * carries it in an httpOnly cookie; a native client carries the same token as an
+ * `Authorization: Bearer` header. Mirrors admin-session.ts's pattern via the shared signed-session
+ * helper. This is the only module that names the student cookie.
  */
 
 import 'server-only';
+import type { NextRequest } from 'next/server';
 import { requireSecret, signPayload, verifyPayload } from './signed-session';
 
 const COOKIE_NAME = 'student_session';
@@ -28,6 +31,16 @@ function baseCookieOptions(): Record<string, unknown> {
   };
 }
 
+/** Signs a fresh session for a study code; the value carried by both the cookie and a bearer header. */
+export function createStudentSessionToken(studyCodeId: string, sessionEpoch: number): string {
+  const payload: StudentSessionPayload = {
+    studyCodeId,
+    sessionEpoch,
+    expiresAt: Date.now() + SESSION_DURATION_MS,
+  };
+  return signPayload(payload, getSecret());
+}
+
 /**
  * Mints/refreshes the student session cookie for a study code. Called from
  * verify-code and generate-code on every successful credential exchange.
@@ -36,16 +49,9 @@ export function createStudentSessionCookie(
   studyCodeId: string,
   sessionEpoch: number
 ): { name: string; value: string; options: Record<string, unknown> } {
-  const now = Date.now();
-  const payload: StudentSessionPayload = {
-    studyCodeId,
-    sessionEpoch,
-    expiresAt: now + SESSION_DURATION_MS,
-  };
-
   return {
     name: COOKIE_NAME,
-    value: signPayload(payload, getSecret()),
+    value: createStudentSessionToken(studyCodeId, sessionEpoch),
     options: {
       ...baseCookieOptions(),
       maxAge: SESSION_DURATION_MS / 1000,
@@ -79,6 +85,22 @@ export function verifyStudentSessionToken(token: string | undefined): StudentSes
 
 export function getStudentCookieName(): string {
   return COOKIE_NAME;
+}
+
+const BEARER_PATTERN = /^Bearer +(\S+)$/i;
+
+/**
+ * Returns the unverified session token a request carries. An Authorization header, when present,
+ * is the only credential considered: a Bearer value is returned as is (so an invalid one fails
+ * verification rather than falling through to the cookie), and any other scheme or a malformed
+ * value yields no token. Without an Authorization header the cookie is read.
+ */
+export function readStudentSessionToken(request: NextRequest): string | undefined {
+  const authorization = request.headers.get('authorization');
+  if (authorization !== null) {
+    return BEARER_PATTERN.exec(authorization.trim())?.[1];
+  }
+  return request.cookies.get(COOKIE_NAME)?.value;
 }
 
 export function clearedStudentSessionCookie(): { name: string; value: string; options: Record<string, unknown> } {

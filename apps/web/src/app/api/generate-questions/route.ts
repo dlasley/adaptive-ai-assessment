@@ -7,7 +7,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 import { FEATURES } from '@/lib/feature-flags';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireStudentSession } from '@/lib/student-api-guard';
-import { getStudentCookieName, verifyStudentSessionToken } from '@/lib/student-session';
+import { readStudentSessionToken, verifyStudentSessionToken } from '@/lib/student-session';
 import { tooManyRequestsResponse } from '@/lib/rate-limit-response';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   if (!ipLimit.allowed) return tooManyRequestsResponse(RATE_LIMITED_MESSAGE, ipLimit.resetAt);
 
   // Signature and expiry only: a rate-limit key needs no database round trip.
-  const sessionId = verifyStudentSessionToken(request.cookies.get(getStudentCookieName())?.value)?.studyCodeId;
+  const sessionId = verifyStudentSessionToken(readStudentSessionToken(request))?.studyCodeId;
   const callerKey = sessionId ? `session:${sessionId}` : `anon:${ip}`;
   const callerLimit = await checkRateLimit(`generate-questions:${callerKey}`, GENERATE_SESSION_LIMIT);
   if (!callerLimit.allowed) return tooManyRequestsResponse(RATE_LIMITED_MESSAGE, callerLimit.resetAt);

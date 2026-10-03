@@ -1,11 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 
-const { eqMock, fromMock } = vi.hoisted(() => {
+const { eqMock, fromMock, liveEpochMock } = vi.hoisted(() => {
   const eqMock = vi.fn().mockResolvedValue({ data: [], error: null });
-  const fromMock = vi.fn(() => ({ select: vi.fn(() => ({ eq: eqMock })) }));
-  return { eqMock, fromMock };
+  const liveEpochMock = vi.fn().mockResolvedValue({ data: { session_epoch: 1 }, error: null });
+  // study_codes answers the session guard's epoch lookup; every other table is the Leitner read.
+  const fromMock = vi.fn((table: string) =>
+    table === 'study_codes'
+      ? { select: vi.fn(() => ({ eq: vi.fn(() => ({ single: liveEpochMock })) })) }
+      : { select: vi.fn(() => ({ eq: eqMock })) }
+  );
+  return { eqMock, fromMock, liveEpochMock };
 });
+
+const { checkRateLimitMock } = vi.hoisted(() => ({ checkRateLimitMock: vi.fn() }));
+
+vi.mock('@/lib/rate-limiter', () => ({
+  checkRateLimit: checkRateLimitMock,
+  getClientIp: () => '203.0.113.9',
+}));
 
 vi.mock('@/lib/supabase-admin', () => ({
   supabaseAdmin: { from: fromMock },
@@ -45,19 +58,27 @@ vi.mock('@/lib/question-loader', () => ({
 }));
 
 import { POST } from '@/app/api/generate-questions/route';
+import { createStudentSessionToken, getStudentCookieName } from '@/lib/student-session';
 
-function makeRequest(body: unknown): NextRequest {
+const { requireStudentSession: realRequireStudentSession } =
+  await vi.importActual<typeof import('@/lib/student-api-guard')>('@/lib/student-api-guard');
+
+function makeRequest(body: unknown, headers: Record<string, string> = {}): NextRequest {
   return new NextRequest('https://example.com/api/generate-questions', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000', ...headers },
     body: JSON.stringify(body),
   });
 }
 
 beforeEach(() => {
+  process.env.STUDENT_SESSION_SECRET = 'test-student-secret-0123456789abcdef012345';
   eqMock.mockClear();
   fromMock.mockClear();
+  liveEpochMock.mockClear();
   requireStudentSessionMock.mockReset();
+  checkRateLimitMock.mockReset();
+  checkRateLimitMock.mockResolvedValue({ allowed: true, remaining: 10, resetAt: Date.now() + 60_000 });
 });
 
 describe('POST /api/generate-questions Leitner weighting', () => {
@@ -95,5 +116,39 @@ describe('POST /api/generate-questions Leitner weighting', () => {
 
     expect(res.status).toBe(200);
     expect(fromMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/generate-questions Leitner weighting with a bearer token', () => {
+  const LEITNER_BODY = { unitId: 'all', numQuestions: 1, difficulty: 'beginner', leitnerMode: true };
+
+  beforeEach(() => {
+    requireStudentSessionMock.mockImplementation(realRequireStudentSession);
+  });
+
+  it("reads leitner_state for the bearer's studyCodeId", async () => {
+    const res = await POST(
+      makeRequest(LEITNER_BODY, { authorization: `Bearer ${createStudentSessionToken('bearer-study-id', 1)}` })
+    );
+
+    expect(res.status).toBe(200);
+    expect(fromMock).toHaveBeenCalledWith('leitner_state');
+    expect(eqMock).toHaveBeenCalledWith('study_code_id', 'bearer-study-id');
+  });
+
+  it("ignores a valid cookie behind a garbage bearer: no Leitner read, anonymous rate key", async () => {
+    const res = await POST(
+      makeRequest(LEITNER_BODY, {
+        authorization: 'Bearer garbage',
+        cookie: `${getStudentCookieName()}=${createStudentSessionToken('cookie-study-id', 1)}`,
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(fromMock).not.toHaveBeenCalledWith('leitner_state');
+    expect(eqMock).not.toHaveBeenCalled();
+    const keys = checkRateLimitMock.mock.calls.map(([key]) => key);
+    expect(keys).toContain('generate-questions:anon:203.0.113.9');
+    expect(keys).not.toContain('generate-questions:session:cookie-study-id');
   });
 });

@@ -3,7 +3,7 @@ import { verifyCsrfProtection } from '@/lib/csrf';
 import { clearedStudentSessionCookie } from '@/lib/student-session';
 
 /**
- * Clears the student_session cookie. Idempotent — a missing, expired, or
+ * Clears the student session cookie. Idempotent: a missing, expired, or
  * already-cleared cookie is not an error, so this never requires a valid
  * session to call.
  */

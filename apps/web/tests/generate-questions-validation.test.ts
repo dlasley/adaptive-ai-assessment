@@ -31,6 +31,7 @@ vi.mock('@/lib/question-loader', async (importOriginal) => ({
 }));
 
 import { POST } from '@/app/api/generate-questions/route';
+import { createStudentSessionToken } from '@/lib/student-session';
 
 const PROD_URL = 'quiz.example.com';
 
@@ -45,6 +46,7 @@ function makeRequest(body: unknown, headers: Record<string, string> = {}): NextR
 const VALID = { unitId: 'unit-1', numQuestions: 5, difficulty: 'beginner', mode: 'practice' };
 
 beforeEach(() => {
+  process.env.STUDENT_SESSION_SECRET = 'test-student-secret-0123456789abcdef012345';
   process.env.VERCEL_PROJECT_PRODUCTION_URL = PROD_URL;
   delete process.env.VERCEL_URL;
   checkRateLimitMock.mockReset();
@@ -100,6 +102,15 @@ describe('POST /api/generate-questions input validation', () => {
       'generate-questions:anon:203.0.113.9',
       expect.objectContaining({ maxRequests: 10 }),
     );
+  });
+
+  it('keys a request with a valid bearer on its session, with the same budget', async () => {
+    await POST(makeRequest(VALID, { authorization: `Bearer ${createStudentSessionToken('bearer-study-id', 1)}` }));
+    expect(checkRateLimitMock).toHaveBeenCalledWith(
+      'generate-questions:session:bearer-study-id',
+      expect.objectContaining({ maxRequests: 10 }),
+    );
+    expect(checkRateLimitMock).not.toHaveBeenCalledWith('generate-questions:anon:203.0.113.9', expect.anything());
   });
 
   it('answers 429 once the per-caller budget is spent, with the IP backstop still open', async () => {

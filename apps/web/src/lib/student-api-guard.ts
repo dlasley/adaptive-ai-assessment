@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getStudentCookieName, verifyStudentSessionToken } from './student-session';
+import { readStudentSessionToken, verifyStudentSessionToken } from './student-session';
 import { supabaseAdmin, isSupabaseAdminAvailable } from './supabase-admin';
 import { isNoRowsError, supabaseErrorFields } from './supabase-error';
 import { createLogger } from './logger';
@@ -21,8 +21,8 @@ export interface StudentSession {
 export async function requireStudentSession(
   request: NextRequest
 ): Promise<StudentSession | NextResponse> {
-  const cookieValue = request.cookies.get(getStudentCookieName())?.value;
-  const payload = verifyStudentSessionToken(cookieValue);
+  const token = readStudentSessionToken(request);
+  const payload = verifyStudentSessionToken(token);
   if (!payload) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

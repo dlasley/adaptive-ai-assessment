@@ -15,7 +15,7 @@ vi.mock('@/lib/supabase-admin', () => ({
 }));
 
 import { requireStudentSession } from '@/lib/student-api-guard';
-import { createStudentSessionCookie, getStudentCookieName } from '@/lib/student-session';
+import { createStudentSessionCookie, createStudentSessionToken, getStudentCookieName } from '@/lib/student-session';
 
 function requestWithCookie(cookieValue?: string): NextRequest {
   const headers = new Headers();
@@ -23,6 +23,13 @@ function requestWithCookie(cookieValue?: string): NextRequest {
     headers.set('cookie', `${getStudentCookieName()}=${cookieValue}`);
   }
   return new NextRequest('https://example.com/api/student/dashboard', { headers });
+}
+
+function requestWith(headers: { authorization?: string; cookieValue?: string }): NextRequest {
+  const result = new Headers();
+  if (headers.authorization !== undefined) result.set('authorization', headers.authorization);
+  if (headers.cookieValue) result.set('cookie', `${getStudentCookieName()}=${headers.cookieValue}`);
+  return new NextRequest('https://example.com/api/student/dashboard', { headers: result });
 }
 
 beforeEach(() => {
@@ -82,5 +89,70 @@ describe('requireStudentSession', () => {
     const result = await requireStudentSession(requestWithCookie(cookie.value));
 
     expect((result as NextResponse).status).toBe(503);
+  });
+});
+
+describe('requireStudentSession with a bearer token', () => {
+  it('accepts a valid bearer with no cookie', async () => {
+    singleMock.mockResolvedValue({ data: { session_epoch: 2 }, error: null });
+
+    const result = await requireStudentSession(
+      requestWith({ authorization: `Bearer ${createStudentSessionToken('bearer-id', 2)}` })
+    );
+
+    expect(result).not.toBeInstanceOf(NextResponse);
+    expect((result as { studyCodeId: string }).studyCodeId).toBe('bearer-id');
+    expect(eqMock).toHaveBeenCalledWith('id', 'bearer-id');
+  });
+
+  it('rejects a garbage bearer even with a valid cookie, without querying the database', async () => {
+    const result = await requireStudentSession(
+      requestWith({ authorization: 'Bearer garbage', cookieValue: createStudentSessionToken('cookie-id', 1) })
+    );
+
+    expect((result as NextResponse).status).toBe(401);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-Bearer Authorization scheme even with a valid cookie', async () => {
+    const result = await requireStudentSession(
+      requestWith({ authorization: 'Basic dXNlcjpwYXNz', cookieValue: createStudentSessionToken('cookie-id', 1) })
+    );
+
+    expect((result as NextResponse).status).toBe(401);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a valid session token sent under the Basic scheme', async () => {
+    singleMock.mockResolvedValue({ data: { session_epoch: 1 }, error: null });
+
+    const result = await requireStudentSession(
+      requestWith({ authorization: `Basic ${createStudentSessionToken('bearer-id', 1)}` })
+    );
+
+    expect((result as NextResponse).status).toBe(401);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a bearer minted at epoch 2 once the live row is at epoch 5', async () => {
+    singleMock.mockResolvedValue({ data: { session_epoch: 5 }, error: null });
+
+    const result = await requireStudentSession(
+      requestWith({ authorization: `Bearer ${createStudentSessionToken('bearer-id', 2)}` })
+    );
+
+    expect((result as NextResponse).status).toBe(401);
+  });
+
+  it('rejects a bearer signed with a different secret', async () => {
+    process.env.STUDENT_SESSION_SECRET = 'another-student-secret-0123456789abcdef0123';
+    const foreign = createStudentSessionToken('bearer-id', 1);
+    process.env.STUDENT_SESSION_SECRET = 'test-student-secret-0123456789abcdef012345';
+    singleMock.mockResolvedValue({ data: { session_epoch: 1 }, error: null });
+
+    const result = await requireStudentSession(requestWith({ authorization: `Bearer ${foreign}` }));
+
+    expect((result as NextResponse).status).toBe(401);
+    expect(fromMock).not.toHaveBeenCalled();
   });
 });

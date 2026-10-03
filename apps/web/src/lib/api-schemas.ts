@@ -54,9 +54,17 @@ export const evaluateWritingSchema = z.object({
 
 const MAX_CODE_LENGTH = 200;
 
+/** Which client is asking for a session: 'native' receives a bearer token in the body instead of a cookie. */
+const platformSchema = z.enum(['web', 'native']).optional();
+
 export const verifyCodeSchema = z.object({
   code: z.string().max(MAX_CODE_LENGTH).optional(),
   turnstileToken: z.string().max(4000).optional(),
+  platform: platformSchema,
+});
+
+export const generateCodeSchema = z.object({
+  platform: platformSchema,
 });
 
 export const studyCodePatchSchema = z.object({
