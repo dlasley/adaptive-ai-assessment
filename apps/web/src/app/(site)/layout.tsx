@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "../globals.css";
 import Navigation from "@/components/navigation";
 import HeaderTitle from "@/components/header-title";
 import { getCourse } from "@adaptive/shared/course";

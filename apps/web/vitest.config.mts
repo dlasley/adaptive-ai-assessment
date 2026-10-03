@@ -5,7 +5,7 @@ export default defineConfig({
   cacheDir: path.resolve(import.meta.dirname, '../../node_modules/.vite/web'),
   test: {
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: [path.resolve(import.meta.dirname, '../../tests/setup.ts')],
   },
   resolve: {

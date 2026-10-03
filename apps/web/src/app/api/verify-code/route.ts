@@ -102,7 +102,14 @@ export async function POST(request: NextRequest) {
             turnstileRequired: true,
             turnstileSiteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
           },
-          { status: 403 },
+          // Retry-After tells a client that sent no token how long until the breaker resets and a
+          // plain retry can succeed. A client whose token failed needs a fresh token, not a wait.
+          {
+            status: 403,
+            headers: turnstileToken
+              ? undefined
+              : { 'Retry-After': String(await tightenedModeRetryAfterSeconds(store)) },
+          },
         );
       }
     } else {

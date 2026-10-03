@@ -3,7 +3,7 @@
   "workspaces": {
     "apps/web": {
       "entry": ["tests/stubs/server-only.ts"],
-      "project": ["src/**/*.{ts,tsx}", "tests/**/*.ts"],
+      "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
       "ignoreDependencies": ["postcss-load-config", "tailwindcss"]
     },
     "apps/pipeline": {
