@@ -21,13 +21,15 @@ function trackedFiles(pathspecs: string[]): string[] {
   return output.split('\n').filter(Boolean);
 }
 
-// apps/web/src, apps/pipeline, and packages/shared/src are the app, pipeline, and shared
-// code where identifiers live; supabase/schema.sql is where the DB-only renames (trigger
-// function, index prefix, boolean columns) live. Tests are excluded so this file's own
-// examples don't self-trigger.
+// apps/web/src, apps/mobile, apps/pipeline, and packages/shared/src are the web app, mobile app,
+// pipeline, and shared code where identifiers live; supabase/schema.sql is where the DB-only
+// renames (trigger function, index prefix, boolean columns) live. Tests are excluded so this file's
+// own examples don't self-trigger.
 const allSourceFiles = trackedFiles([
   'apps/web/src/**/*.ts',
   'apps/web/src/**/*.tsx',
+  'apps/mobile/**/*.ts',
+  'apps/mobile/**/*.tsx',
   'apps/pipeline/**/*.ts',
   'packages/shared/src/**/*.ts',
 ]).filter((f) => !f.endsWith('.test.ts'));
@@ -40,6 +42,8 @@ const schemaFile = 'supabase/schema.sql';
 const courseIdentityFiles = trackedFiles([
   'apps/web/src/**/*.ts',
   'apps/web/src/**/*.tsx',
+  'apps/mobile/**/*.ts',
+  'apps/mobile/**/*.tsx',
   'apps/pipeline/**/*.ts',
   'apps/pipeline/prompts/*.md',
   'packages/shared/src/**/*.ts',

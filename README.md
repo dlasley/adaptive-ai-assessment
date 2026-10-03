@@ -148,6 +148,7 @@ The `eval_*` tables and views belong to the evaluation framework and are service
 adaptive-ai-assessment/
 ├── apps/
 │   ├── web/             # Next.js App Router application (src/app, src/lib, tests)
+│   ├── mobile/          # Expo app for students (app, src, tests)
 │   └── pipeline/        # Content pipeline and evaluation commands (bin, src, prompts, tests)
 ├── packages/
 │   └── shared/          # Enums, model IDs, course settings, types, OpenRouter client
@@ -189,6 +190,24 @@ The app is empty until you add content:
 3. **Optional: register models for evaluation.** The model registry (`eval_models`) starts empty and no command fills it; see ["Registering a model"](docs/cli-guide-content-ingestion-and-question-pipeline.md#registering-a-model).
 
 `npm install` links the `pipeline` command. Run it from the repo root as `npx --no -- pipeline --help` (the `--no --` matters: without it, npx can fetch an unrelated public package named `pipeline`). Shell completion and guided mode are described in [`apps/pipeline/README.md`](apps/pipeline/README.md).
+
+### Mobile app
+
+`apps/mobile/` is an Expo app that talks to the web app's `/api/*` routes, never to Supabase. To run it in Expo Go on the iOS simulator, start the web app with `npm run dev`, then in another terminal:
+
+```bash
+cd apps/mobile
+npx expo start --ios
+```
+
+Two variables configure it, in `apps/mobile/.env.local` (copy `apps/mobile/.env.local.example`; Expo reads env files from `apps/mobile/` only, not from the repo root):
+
+- `EXPO_PUBLIC_API_BASE_URL`: the web deployment to call. Unset, it defaults to `http://localhost:3000` in development (`expo start`, Expo Go); a `preview` or `production` build requires an `https` URL and otherwise opens on a screen naming the problem.
+- `EXPO_PUBLIC_API_ORIGIN` (optional): the `Origin` header the app sends, which must be on the server's CSRF allow-list. It defaults to the base URL's origin. A physical device reaching `next dev` at your Mac's LAN address sets the base URL to that address and this to `http://localhost:3000`.
+
+Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who has it, so neither may hold a secret. Build profiles in `apps/mobile/eas.json` set `EXPO_PUBLIC_APP_PROFILE`, which is how the app tells development from `preview` and `production`.
+
+Expo SDK 57 expects TypeScript 6. The repo stays on TypeScript 5.9 until a repo-wide upgrade, so `apps/mobile/package.json` excludes `typescript` from Expo's version check (`expo.install.exclude`).
 
 ---
 
