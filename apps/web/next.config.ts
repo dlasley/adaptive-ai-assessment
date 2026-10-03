@@ -8,14 +8,18 @@ import { loadEnvConfig } from "@next/env";
 const isDev = process.env.NODE_ENV !== 'production';
 
 // The canonical .env.local/.env.test.local live at the repo root, not in
-// apps/web. @next/env is the same loader the Next CLI uses internally for
-// its own .env* handling (dev, build, and start all import this config
-// module before reading process.env), so this is the one place that needs
-// to point it somewhere other than the default (this file's own directory).
-// The `dev` argument controls whether .env.development(.local) or
-// .env.production(.local) is also considered, matching what the Next CLI
-// itself would pass for this phase.
-loadEnvConfig(path.resolve(__dirname, "../.."), isDev);
+// apps/web. Next has already called @next/env's loadEnvConfig for apps/web
+// (which has no env files) before it imports this module, and @next/env
+// caches that first result per process, so a plain second call for the root
+// returns the cached, empty result. `forceReload` (the fourth argument) makes
+// it read the root files; Next then copies whatever this adds to process.env
+// into its baseline, so the values survive dev-server env reloads. Shell and
+// Vercel variables still win: dotenv never overrides a key already set. Next
+// watches only apps/web for env-file edits, so a change to the root file
+// needs a dev-server restart. The `dev` argument selects
+// .env.development(.local) versus .env.production(.local), as the Next CLI
+// itself would for this phase.
+loadEnvConfig(path.resolve(__dirname, "../.."), isDev, console, true);
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 
@@ -33,6 +37,9 @@ const scriptSrc = [
 ].join(' ');
 
 const nextConfig: NextConfig = {
+  // Next 16 otherwise writes AGENTS.md and CLAUDE.md into apps/web on every dev start; the repo
+  // keeps its own agent instructions at the root.
+  agentRules: false,
   // @adaptive/shared ships its TypeScript source directly (no build step,
   // internal workspace package only) — Next only runs its own TS/JS
   // transform over app code and node_modules by default, so a workspace
