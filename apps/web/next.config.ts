@@ -51,6 +51,9 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
+          // Keeps every page and response out of search results and archives; robots.ts handles
+          // crawlers that honor robots.txt. Search engines must still be able to crawl to see this.
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },

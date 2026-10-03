@@ -4,6 +4,7 @@ import { getCourse } from "@adaptive/shared/course";
 
 export const metadata: Metadata = {
   title: getCourse().title,
+  robots: { index: false, follow: false },
   description: "",
 };
 
