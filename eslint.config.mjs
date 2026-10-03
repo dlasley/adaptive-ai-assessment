@@ -13,8 +13,25 @@ const nextVitalsFromWebRoot = nextVitals.map((config) => ({
   },
 }));
 
+// The Expo app keeps the React, React hooks and TypeScript rules eslint-config-next supplies to
+// every file, and drops the rules that only make sense for a Next.js app.
+const nextRulesOff = Object.fromEntries(
+  nextVitals
+    .flatMap((config) => Object.keys(config.rules ?? {}))
+    .filter((rule) => rule.startsWith('@next/next/'))
+    .map((rule) => [rule, 'off']),
+);
+
 const eslintConfig = defineConfig([
   ...nextVitalsFromWebRoot,
+  {
+    files: ['apps/mobile/**/*.{ts,tsx,js,mjs,cjs,mts}'],
+    rules: {
+      ...nextRulesOff,
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
   {
     files: ['**/*.{ts,tsx,js,mjs,cjs,mts}'],
     plugins: { unicorn: eslintPluginUnicorn },
@@ -23,10 +40,14 @@ const eslintConfig = defineConfig([
         'error',
         {
           case: 'kebabCase',
-          // Next.js reads a dynamic route segment's directory name as the
-          // route parameter (`params.unitId`), so it must be a valid
-          // identifier rather than kebab-case.
-          ignore: [/^\[.*\]$/],
+          // The rule checks directory names as well as file names. Next.js
+          // reads a dynamic route segment's directory name (`[unitId]/`) as the
+          // route parameter, and Expo Router reads a `[param].tsx` file name the
+          // same way, so both must stay valid identifiers rather than
+          // kebab-case. The rule already skips the `_`, `+` and parenthesis
+          // characters, so `_layout.tsx`, `+not-found.tsx` and `(group)/`
+          // pass on the kebab-case words inside them.
+          ignore: [/^\[.*\]$/, /^\[.*\]\.tsx?$/],
         },
       ],
     },
@@ -38,6 +59,11 @@ const eslintConfig = defineConfig([
     'coverage/**',
     '**/node_modules/**',
     '.private/**',
+    'apps/mobile/.expo/**',
+    'apps/mobile/dist/**',
+    'apps/mobile/expo-env.d.ts',
+    'apps/mobile/ios/**',
+    'apps/mobile/android/**',
     'apps/pipeline/archive/**',
     'apps/pipeline/content/pdf/**',
     'apps/pipeline/content/markdown/**',
