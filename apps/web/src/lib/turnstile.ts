@@ -23,6 +23,7 @@ const MAX_TOKEN_AGE_MS = 300_000;
  * verification for that host.
  */
 const APPROVED_HOSTNAMES = [
+  'french-2.amazingzebra.com',
   'french-1.vercel.app',
   'adaptive-ai-assessment-davids-projects-518494f9.vercel.app',
   'adaptive-ai-assessment-git-main-davids-projects-518494f9.vercel.app',
