@@ -211,7 +211,7 @@ set -a; source .env.test.local; set +a
 RUN_DB_TESTS=1 npm test
 ```
 
-`.env.test.local` holds the test project's `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SECRET_KEY`, plus `EXPECTED_SUPABASE_REF` set to that project's ref. With `RUN_DB_TESTS=1`, the credential guard checks the URL's host against that ref and throws if they differ, so a misconfigured run fails instead of running live-DB tests against an unexpected project. Never point this at a production project.
+There is no example for it: create a second Supabase project, apply `supabase/schema.sql` to it, and write `.env.test.local` by hand at the repo root. It holds the test project's `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SECRET_KEY`, plus `EXPECTED_SUPABASE_REF` set to that project's ref. With `RUN_DB_TESTS=1`, the credential guard checks the URL's host against that ref and throws if they differ, so a misconfigured run fails instead of running live-DB tests against an unexpected project. Never point this at a production project.
 
 ---
 
