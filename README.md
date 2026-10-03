@@ -75,6 +75,7 @@ Records:
 - Views compare models head to head or trace a model family across versions.
 
 See [`docs/pipeline-architecture.md`](docs/pipeline-architecture.md#evaluation-framework) for the tables and [`apps/pipeline/README.md`](apps/pipeline/README.md) for the commands.
+See [`docs/evaluation-findings.md`](docs/evaluation-findings.md) for what the framework has found so far.
 
 ---
 

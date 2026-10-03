@@ -148,6 +148,9 @@ Model names here are families. The exact OpenRouter slug for each row is the `MO
 
 ### Why Mistral is the default auditor
 
+The February 2026 comparison behind this choice is summarized in
+[evaluation-findings.md](evaluation-findings.md#earlier-sonnet-as-an-alternative-auditor-february-2026).
+
 - **Provider independence.** Sonnet already runs in Stage 2. Using it again in Stage 3 would let both safety nets share the same blind spots.
 - **More criteria.** `natural_language` and `register_appropriate` catch quality issues the Sonnet auditor does not evaluate.
 
@@ -498,6 +501,9 @@ GROUP BY 1, 2;
 ```
 
 ## Evaluation framework
+
+Results and conclusions are in [evaluation-findings.md](evaluation-findings.md); this section covers
+mechanics only.
 
 A separate set of tables and commands tests whether a different model, provider, or setting holds
 up on a given task before it is adopted, without touching production questions. The commands are
