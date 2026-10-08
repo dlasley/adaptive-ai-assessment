@@ -539,6 +539,49 @@ describe('eval-review-import main()', () => {
     expect((policyCall.patch.reference as { isCorrect: boolean }).isCorrect).toBe(true);
   });
 
+  it('skips a rejected typo/missing_accent item entirely with --policy-labels, and does not count it as skipped-approved', async () => {
+    const items = [
+      makeItem('i-1', { question: 'Q1', submitted_answer: 'a', correct_answer: 'a', type: 'fill-in-blank', difficulty: 'easy', label_class: 'correct' }),
+      makeItem('i-2', { question: 'Q2', submitted_answer: 'b', correct_answer: 'b', type: 'fill-in-blank', difficulty: 'easy', label_class: 'typo' }),
+      makeEvalItemRow({
+        id: 'i-3', item_key: 'i-3',
+        payload: { question: 'Q3', submitted_answer: 'c', correct_answer: 'c', type: 'fill-in-blank', difficulty: 'easy', label_class: 'typo' },
+        reference_status: 'rejected',
+        notes: "no adjacent-character swap changes '14'",
+      }),
+    ];
+    const { store, updateItemCalls, insertReviewRoundCalls } = makeFakeStore(items);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    // The sheet only reviews i-1; i-2 (a pending typo item) is approved by policy; i-3 (a rejected
+    // typo item, as eval-seed-grading leaves one it couldn't produce a variant for) gets neither.
+    const csvText = writeCsv(
+      ['item_id', 'question_group', 'key_incorrect', 'key_note', 'is_correct', 'borderline', 'reason'],
+      [['i-1', 'Q1', '', '', 'correct', '', '']],
+    );
+    const csvPath = join(dir, 'completed-grading-reference-policy-labels-rejected-item.csv');
+    writeFileSync(csvPath, csvText);
+
+    try {
+      await main({ argv: ['--set', 'set-1', '--from', csvPath, '--reviewer', 'jsmith', '--rubric-version', 'v1', '--policy-labels', '--write-db'], store });
+
+      expect(updateItemCalls.map((c) => c.id).sort()).toEqual(['i-1', 'i-2']);
+      const policyCall = updateItemCalls.find((c) => c.id === 'i-2')!;
+      expect(policyCall.patch.reviewed_by).toBe('policy');
+      expect(policyCall.patch.reference_status).toBe('approved');
+
+      expect(insertReviewRoundCalls).toHaveLength(1);
+      expect(insertReviewRoundCalls[0].reviewed_item_count).toBe(2);
+
+      // The summary line's "already approved and skipped" count stays 0: i-3 is neither written nor
+      // treated as an approved-and-skipped item.
+      const summaryLine = logSpy.mock.calls.map((call) => String(call[0])).find((line) => line.includes('already approved and skipped'));
+      expect(summaryLine).toContain('0 already approved and skipped');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
   it('does not approve typo/missing_accent items without --policy-labels', async () => {
     const items = [
       makeItem('i-1', { question: 'Q1', submitted_answer: 'a', correct_answer: 'a', type: 'fill-in-blank', difficulty: 'easy', label_class: 'correct' }),

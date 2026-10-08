@@ -168,6 +168,9 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
   if (options.policyLabels) {
     for (const item of items) {
       if (!(POLICY_LABEL_CLASSES as readonly string[]).includes(seededLabelClass(item) as GradingLabelClass)) continue;
+      // A rejected policy item has no usable seeded answer (the seeding step could not produce the
+      // typo or accent variant it was asked for), so there is nothing for the policy to approve.
+      if (item.reference_status === 'rejected') continue;
       if (item.reference_status === 'approved' && !options.overwrite) {
         skippedApproved.push(item.id);
         continue;
