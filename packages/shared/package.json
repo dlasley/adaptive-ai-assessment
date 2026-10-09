@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.6",
-    "typescript": "^5",
+    "typescript": "^7",
     "vitest": "^5"
   }
 }
