@@ -11,7 +11,8 @@
     "./models": "./src/models.ts",
     "./course": "./src/course.ts",
     "./types": "./src/types.ts",
-    "./meta-question-filter": "./src/meta-question-filter.ts"
+    "./meta-question-filter": "./src/meta-question-filter.ts",
+    "./api-contracts": "./src/api-contracts.ts"
   },
   "scripts": {
     "test": "vitest run",

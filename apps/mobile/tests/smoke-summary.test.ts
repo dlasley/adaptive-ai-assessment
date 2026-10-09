@@ -23,6 +23,9 @@ describe('loadSmokeSummary', () => {
         { id: 'unit-2', title: 'Unit 2', label: null, description: '', topics: [], sort_order: 2 },
       ],
       logout: async () => ({ status: 200, body: null }),
+      verifyCode: async () => ({ ok: true, body: { exists: false } }),
+      generateCode: async () => ({ ok: true, body: { code: 'brave purple penguin', token: 't' } }),
+      getSession: async () => ({ authenticated: false }),
     };
 
     await expect(loadSmokeSummary(client)).resolves.toEqual({

@@ -4,6 +4,7 @@ import { supabaseAdmin, isSupabaseAdminAvailable } from '@/lib/supabase-admin';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 import { verifyCsrfProtection } from '@/lib/csrf';
 import { createStudentSessionCookie, createStudentSessionToken } from '@/lib/student-session';
+import type { GenerateCodeResponse, NativeGenerateCodeResponse } from '@adaptive/shared/api-contracts';
 import { generateCodeSchema } from '@/lib/api-schemas';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
@@ -136,12 +137,12 @@ export async function POST(request: NextRequest) {
       if (!insertErr && inserted) {
         if (isNative) {
           // The body carries a credential, so no cache may ever store it.
-          return NextResponse.json(
+          return NextResponse.json<NativeGenerateCodeResponse>(
             { code, token: createStudentSessionToken(inserted.id, inserted.session_epoch) },
             { headers: { 'Cache-Control': 'no-store' } },
           );
         }
-        const response = NextResponse.json({ code });
+        const response = NextResponse.json<GenerateCodeResponse>({ code });
         const cookie = createStudentSessionCookie(inserted.id, inserted.session_epoch);
         response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2]);
         return response;

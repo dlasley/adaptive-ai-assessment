@@ -9,10 +9,16 @@
  * valid. Only the token that request sent is cleared, so a token stored while it was in flight
  * survives.
  *
- * Response types mirror what the routes in `apps/web/src/app/api/` return. They are declared here
- * rather than imported, since the app never imports web-app modules.
+ * The study code and session routes' response types come from `@adaptive/shared/api-contracts`,
+ * which the web client uses too. The remaining types mirror what the routes in
+ * `apps/web/src/app/api/` return and are declared here, since the app never imports web-app modules.
  */
 
+import type {
+  NativeGenerateCodeResponse,
+  NativeVerifyCodeResponse,
+  StudentSessionResponse,
+} from '@adaptive/shared/api-contracts';
 import type { ApiConfig } from '../config';
 import type { TokenStore } from '../auth/token-store';
 
@@ -55,6 +61,14 @@ export interface ApiResponse {
   body: unknown;
 }
 
+/**
+ * Outcome of a route whose non-2xx answers the caller acts on. `retryAfterSeconds` is the
+ * `Retry-After` header in whole seconds, or null when it is missing or not a positive number.
+ */
+export type ApiResult<T> =
+  | { ok: true; body: T }
+  | { ok: false; status: number; body: unknown; retryAfterSeconds: number | null };
+
 export class ApiError extends Error {
   constructor(
     readonly path: string,
@@ -68,7 +82,7 @@ export class ApiError extends Error {
 
 interface RequestOptions {
   /**
-   * Leaves out the `Origin` header. Used only by the smoke screen's negative check that the
+   * Leaves out the `Origin` header. Used only by the connection-check screen's negative check that the
    * server refuses a POST without it.
    */
   omitOrigin?: boolean;
@@ -85,6 +99,24 @@ export interface ApiClient {
   getUnits(): Promise<UnitRow[]>;
   /** Clears the web session cookie. Resolves with any status, so a caller can show a 403. */
   logout(options?: RequestOptions): Promise<ApiResponse>;
+  /** Looks up a normalized study code; on a hit, stores the session token the server returns. */
+  verifyCode(code: string): Promise<ApiResult<NativeVerifyCodeResponse>>;
+  /** Creates a new study code and stores the session token the server returns. */
+  generateCode(): Promise<ApiResult<NativeGenerateCodeResponse>>;
+  /**
+   * Whether the stored token carries a valid signature and has not expired. The session route
+   * does not check revocation; a revoked token surfaces as a 401 on the first guarded call.
+   */
+  getSession(): Promise<StudentSessionResponse>;
+}
+
+interface RawResponse extends ApiResponse {
+  retryAfterSeconds: number | null;
+}
+
+function readRetryAfter(response: Response): number | null {
+  const seconds = Number(response.headers.get('Retry-After'));
+  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
 }
 
 async function readBody(response: Response): Promise<unknown> {
@@ -103,7 +135,7 @@ export function createApiClient({ config, tokenStore, fetch: fetchImpl = fetch }
     path: string,
     body: unknown,
     options: RequestOptions = {},
-  ): Promise<ApiResponse> {
+  ): Promise<RawResponse> {
     const headers: Record<string, string> = {};
     if (!options.omitOrigin) headers.Origin = config.origin;
     if (method === 'POST') headers['Content-Type'] = 'application/json';
@@ -120,7 +152,11 @@ export function createApiClient({ config, tokenStore, fetch: fetchImpl = fetch }
 
     if (response.status === 401 && token) await tokenStore.clearIf(token);
 
-    return { status: response.status, body: await readBody(response) };
+    return {
+      status: response.status,
+      body: await readBody(response),
+      retryAfterSeconds: readRetryAfter(response),
+    };
   }
 
   async function getJson<T>(path: string): Promise<T> {
@@ -129,9 +165,34 @@ export function createApiClient({ config, tokenStore, fetch: fetchImpl = fetch }
     return body as T;
   }
 
+  async function postForResult<T>(path: string, body: unknown): Promise<ApiResult<T>> {
+    const response = await request('POST', path, body);
+    if (response.status >= 200 && response.status < 300) return { ok: true, body: response.body as T };
+    return { ok: false, ...response };
+  }
+
   return {
     getCourse: () => getJson<CourseResponse>('/api/course'),
     getUnits: () => getJson<UnitRow[]>('/api/units'),
-    logout: (options) => request('POST', '/api/student/logout', {}, options),
+    logout: async (options) => {
+      const { status, body } = await request('POST', '/api/student/logout', {}, options);
+      return { status, body };
+    },
+    verifyCode: async (code) => {
+      const result = await postForResult<NativeVerifyCodeResponse>('/api/verify-code', {
+        code,
+        platform: 'native',
+      });
+      if (result.ok && result.body.exists) await tokenStore.set(result.body.token);
+      return result;
+    },
+    generateCode: async () => {
+      const result = await postForResult<NativeGenerateCodeResponse>('/api/generate-code', {
+        platform: 'native',
+      });
+      if (result.ok) await tokenStore.set(result.body.token);
+      return result;
+    },
+    getSession: () => getJson<StudentSessionResponse>('/api/student/session'),
   };
 }

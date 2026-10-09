@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createMemoryTokenStore, createSecureTokenStore, type TokenStore } from '../src/auth/token-store';
+import {
+  createMemoryTokenStore,
+  createSecureTokenStore,
+  observeTokenStore,
+  type TokenStore,
+} from '../src/auth/token-store';
 import { items } from './stubs/expo-secure-store';
 
 describe.each<[string, () => TokenStore]>([
@@ -51,5 +56,24 @@ describe('secure token store', () => {
     await createSecureTokenStore().set('signed.token');
     expect([...items.keys()]).toEqual(['student-session-token']);
     expect([...items.keys()][0]).toMatch(/^[\w.-]+$/);
+  });
+});
+
+describe('observed token store', () => {
+  it('tells subscribers whether a token is stored after each write, until they unsubscribe', async () => {
+    const store = observeTokenStore(createMemoryTokenStore());
+    const seen: boolean[] = [];
+    const unsubscribe = store.subscribe((hasToken) => seen.push(hasToken));
+
+    await store.set('first');
+    await store.clearIf('other');
+    await store.clearIf('first');
+    await store.set('second');
+    await store.clear();
+    unsubscribe();
+    await store.set('third');
+
+    expect(seen).toEqual([true, true, false, true, false]);
+    expect(await store.get()).toBe('third');
   });
 });

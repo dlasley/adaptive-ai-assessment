@@ -22,8 +22,8 @@ const course: CourseResponse = {
   limits: { maxQuestions: 50, wrongAnswerCountdownSeconds: 15, wrongAnswerMinWaitSeconds: 3 },
 };
 
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
 }
 
 function setup(respond: () => Response, token: string | null = null) {
@@ -146,5 +146,92 @@ describe('API client token clearing', () => {
     await client.getCourse().catch(() => undefined);
     await client.logout();
     expect(await tokenStore.get()).toBe('good.token');
+  });
+});
+
+describe('API client study code and session routes', () => {
+  const details = {
+    id: 'id-1',
+    code: 'brave purple penguin',
+    display_name: null,
+    created_at: '2026-10-01T12:00:00Z',
+    total_quizzes: 0,
+    total_questions: 0,
+    correct_answers: 0,
+  };
+
+  it('verifies a code as a native caller and stores the returned token', async () => {
+    const { client, tokenStore, lastCall } = setup(() =>
+      jsonResponse(200, { exists: true, details, token: 'minted.token' }),
+    );
+
+    await expect(client.verifyCode('brave purple penguin')).resolves.toEqual({
+      ok: true,
+      body: { exists: true, details, token: 'minted.token' },
+    });
+    const { url, init, headers } = lastCall();
+    expect(url).toBe('https://pratique.amazingzebra.com/api/verify-code');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body))).toEqual({ code: 'brave purple penguin', platform: 'native' });
+    expect(headers['Content-Type']).toBe('application/json');
+    expect(headers.Origin).toBe('https://pratique.amazingzebra.com');
+    expect(await tokenStore.get()).toBe('minted.token');
+  });
+
+  it('stores nothing when the code does not exist', async () => {
+    const { client, tokenStore } = setup(() => jsonResponse(200, { exists: false }));
+
+    await expect(client.verifyCode('nope')).resolves.toEqual({ ok: true, body: { exists: false } });
+    expect(await tokenStore.get()).toBeNull();
+  });
+
+  it('returns a refusal with its status, body and Retry-After in whole seconds', async () => {
+    const challenge = { error: 'Verification required', turnstileRequired: true, turnstileSiteKey: 'k' };
+    const { client } = setup(() => jsonResponse(403, challenge, { 'Retry-After': '119.2' }));
+
+    await expect(client.verifyCode('brave purple penguin')).resolves.toEqual({
+      ok: false,
+      status: 403,
+      body: challenge,
+      retryAfterSeconds: 120,
+    });
+  });
+
+  it.each([null, '0', 'Wed, 21 Oct 2026 07:28:00 GMT'])('reports no wait for a Retry-After of %s', async (value) => {
+    const { client } = setup(() =>
+      jsonResponse(429, { error: 'x' }, value === null ? {} : { 'Retry-After': value }),
+    );
+
+    await expect(client.verifyCode('brave purple penguin')).resolves.toMatchObject({ retryAfterSeconds: null });
+  });
+
+  it('generates a code as a native caller and stores the returned token', async () => {
+    const { client, tokenStore, lastCall } = setup(() =>
+      jsonResponse(200, { code: 'calm green otter', token: 'minted.token' }),
+    );
+
+    await expect(client.generateCode()).resolves.toEqual({
+      ok: true,
+      body: { code: 'calm green otter', token: 'minted.token' },
+    });
+    expect(lastCall().url).toBe('https://pratique.amazingzebra.com/api/generate-code');
+    expect(JSON.parse(String(lastCall().init.body))).toEqual({ platform: 'native' });
+    expect(await tokenStore.get()).toBe('minted.token');
+  });
+
+  it('stores nothing when generating fails', async () => {
+    const { client, tokenStore } = setup(() => jsonResponse(503, { error: 'Service unavailable' }));
+
+    await expect(client.generateCode()).resolves.toMatchObject({ ok: false, status: 503 });
+    expect(await tokenStore.get()).toBeNull();
+  });
+
+  it('asks for the session with the stored bearer', async () => {
+    const { client, lastCall } = setup(() => jsonResponse(200, { authenticated: true }), 'held.token');
+
+    await expect(client.getSession()).resolves.toEqual({ authenticated: true });
+    expect(lastCall().url).toBe('https://pratique.amazingzebra.com/api/student/session');
+    expect(lastCall().init.method).toBe('GET');
+    expect(lastCall().headers.Authorization).toBe('Bearer held.token');
   });
 });

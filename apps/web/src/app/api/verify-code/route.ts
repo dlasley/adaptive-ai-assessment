@@ -14,6 +14,11 @@ import {
 } from '@/lib/verify-code-guard';
 import { isTurnstileConfigured, verifyTurnstileToken } from '@/lib/turnstile';
 import { isProductionMode } from '@/lib/environment';
+import type {
+  NativeVerifyCodeResponse,
+  VerifyCodeChallengeResponse,
+  VerifyCodeResponse,
+} from '@adaptive/shared/api-contracts';
 import { verifyCodeSchema } from '@/lib/api-schemas';
 import { createLogger } from '@/lib/logger';
 import { isNoRowsError, supabaseErrorFields } from '@/lib/supabase-error';
@@ -96,7 +101,7 @@ export async function POST(request: NextRequest) {
       const result = await verifyTurnstileToken(turnstileToken, ip);
       if (!result.success) {
         logger.warn('Turnstile verification failed', { reason: result.reason, platform: platform ?? 'web' });
-        return NextResponse.json(
+        return NextResponse.json<VerifyCodeChallengeResponse>(
           {
             error: 'Verification required',
             turnstileRequired: true,
@@ -139,7 +144,7 @@ export async function POST(request: NextRequest) {
       await recordCodeLookupFailure(store, code);
       await recordGlobalLookupFailure(store);
       await recordIpMiss(store, ip);
-      return NextResponse.json({ exists: false });
+      return NextResponse.json<VerifyCodeResponse>({ exists: false });
     }
 
     // session_epoch is internal-only: used to mint the session, never echoed
@@ -149,13 +154,13 @@ export async function POST(request: NextRequest) {
 
     if (platform === 'native') {
       // The body carries a credential, so no cache may ever store it.
-      return NextResponse.json(
+      return NextResponse.json<NativeVerifyCodeResponse>(
         { exists: true, details, token: createStudentSessionToken(data.id, sessionEpoch) },
         { headers: { 'Cache-Control': 'no-store' } },
       );
     }
 
-    const response = NextResponse.json({ exists: true, details });
+    const response = NextResponse.json<VerifyCodeResponse>({ exists: true, details });
     const cookie = createStudentSessionCookie(data.id, sessionEpoch);
     response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2]);
     return response;

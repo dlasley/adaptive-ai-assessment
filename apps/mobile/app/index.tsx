@@ -1,89 +1,214 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { createApiClient, type ApiClient, type ApiResponse } from '../src/api/client';
-import { createSecureTokenStore } from '../src/auth/token-store';
-import { apiConfigLoad, type ApiConfig } from '../src/config';
-import { loadSmokeSummary, type SmokeSummary } from '../src/smoke/smoke-summary';
+import * as Clipboard from 'expo-clipboard';
+import { Link, Redirect } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import type { ApiClient } from '../src/api/client';
+import {
+  canSubmit,
+  shouldLeaveCodeEntry,
+  type CodeEntryStore,
+} from '../src/features/code-entry/code-entry-store';
+import { loadCourseHeading } from '../src/features/code-entry/course-heading';
+import { codeEntryMessage, type CodeEntryMessage } from '../src/features/code-entry/messages';
+import type { SessionStore } from '../src/features/code-entry/session-store';
+import { services } from '../src/services';
+import { ActionButton } from '../src/ui/action-button';
+import { StudyCodeText } from '../src/ui/study-code-text';
 
-// The root layout renders an error screen instead of this route when the config failed to load.
-const client = apiConfigLoad.config
-  ? createApiClient({ config: apiConfigLoad.config, tokenStore: createSecureTokenStore() })
-  : null;
-
-type Load =
-  | { state: 'loading' }
-  | { state: 'loaded'; summary: SmokeSummary }
-  | { state: 'failed'; message: string };
-
-function describeResponse(response: ApiResponse): string {
-  return `${response.status} ${JSON.stringify(response.body)}`;
+export default function CodeEntry() {
+  return services ? (
+    <CodeEntryScreen
+      client={services.client}
+      session={services.session}
+      codeEntry={services.codeEntry}
+      showConnectionCheck={services.config.profile === 'development'}
+    />
+  ) : null;
 }
 
-/**
- * Connection check against the configured API: course title, unit count and the shared
- * difficulty count, plus the logout POST sent with and without the `Origin` header.
- */
-export default function Index() {
-  const { config } = apiConfigLoad;
-  return client && config ? <SmokeScreen client={client} config={config} /> : null;
+const TONE_COLORS: Record<CodeEntryMessage['tone'], string> = {
+  problem: '#b91c1c',
+  notice: '#92400e',
+  neutral: '#374151',
+};
+
+function MessageText({ message, testID }: { message: CodeEntryMessage; testID: string }) {
+  return (
+    <Text style={[styles.message, { color: TONE_COLORS[message.tone] }]} testID={testID}>
+      {message.text}
+    </Text>
+  );
 }
 
-function SmokeScreen({ client, config }: { client: ApiClient; config: ApiConfig }) {
-  const [load, setLoad] = useState<Load>({ state: 'loading' });
-  const [withOrigin, setWithOrigin] = useState<string | null>(null);
-  const [withoutOrigin, setWithoutOrigin] = useState<string | null>(null);
+function CodeEntryScreen({
+  client,
+  session,
+  codeEntry,
+  showConnectionCheck,
+}: {
+  client: ApiClient;
+  session: SessionStore;
+  codeEntry: CodeEntryStore;
+  showConnectionCheck: boolean;
+}) {
+  const sessionState = useSyncExternalStore(session.subscribe, session.getState);
+  const entry = useSyncExternalStore(codeEntry.subscribe, codeEntry.getState);
+  const headerHeight = useHeaderHeight();
+  const [courseHeading, setCourseHeading] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    loadSmokeSummary(client)
-      .then((summary) => setLoad({ state: 'loaded', summary }))
-      .catch((error: unknown) => setLoad({ state: 'failed', message: String(error) }));
+    void loadCourseHeading(client).then(setCourseHeading);
   }, [client]);
 
-  const logout = useCallback(async (omitOrigin: boolean) => {
-    const show = omitOrigin ? setWithoutOrigin : setWithOrigin;
-    show('sending...');
-    try {
-      show(describeResponse(await client.logout({ omitOrigin })));
-    } catch (error) {
-      show(`request failed: ${String(error)}`);
-    }
-  }, [client]);
+  // Every outcome is announced explicitly, and no message carries a live region, so Android does
+  // not read it twice.
+  const announcement = entry.announcement;
+  useEffect(() => {
+    if (announcement) AccessibilityInfo.announceForAccessibility(announcement.text);
+  }, [announcement]);
+
+  if (shouldLeaveCodeEntry(sessionState, entry)) return <Redirect href="/home" />;
+
+  if (sessionState.phase === 'restoring') {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator accessibilityLabel="Checking your session" size="large" />
+      </View>
+    );
+  }
+
+  if (entry.phase.status === 'creating') {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.body}>Creating your study code...</Text>
+      </View>
+    );
+  }
+
+  if (entry.phase.status === 'created') {
+    const { code } = entry.phase;
+    return (
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.heading} accessibilityRole="header">
+          Save Your Study Code
+        </Text>
+        <StudyCodeText code={code} />
+        <Text style={styles.body}>
+          This code is the only way back to your progress. Write it down or take a screenshot before you continue.
+        </Text>
+        <ActionButton
+          title={copied ? 'Copied' : 'Copy code'}
+          variant="secondary"
+          accessibilityLabel={copied ? 'Code copied' : 'Copy code'}
+          onPress={() => {
+            void Clipboard.setStringAsync(code).then(() => setCopied(true));
+          }}
+          testID="copy-code"
+        />
+        <ActionButton title="I wrote it down, continue" onPress={codeEntry.continueAfterCreate} />
+      </ScrollView>
+    );
+  }
+
+  const submitting = entry.phase.status === 'submitting';
+  const message = codeEntryMessage(entry.phase);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.label}>API</Text>
-      <Text selectable>
-        {config.baseUrl} (Origin {config.origin}, profile {config.profile})
-      </Text>
+    <KeyboardAvoidingView
+      style={styles.fill}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={headerHeight}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        {courseHeading && (
+          <Text style={styles.course} accessibilityRole="header" testID="course-heading">
+            {courseHeading}
+          </Text>
+        )}
+        <Text style={styles.heading} accessibilityRole="header">
+          Enter Your Study Code
+        </Text>
+        <TextInput
+          value={entry.input}
+          onChangeText={codeEntry.setInput}
+          onSubmitEditing={() => void codeEntry.submit()}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder="e.g. brave purple penguin"
+          accessibilityLabel="Study code"
+          accessibilityHint="Three words, for example brave purple penguin"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+          spellCheck={false}
+          returnKeyType="go"
+          editable={!submitting}
+          style={[styles.input, focused && styles.inputFocused]}
+          testID="study-code-input"
+        />
+        {message?.place === 'code' && <MessageText message={message} testID="code-entry-message" />}
+        <ActionButton
+          title={submitting ? 'Checking...' : 'Continue'}
+          accessibilityLabel={submitting ? 'Checking your study code' : 'Continue with this study code'}
+          onPress={() => void codeEntry.submit()}
+          disabled={!canSubmit(entry)}
+          busy={submitting}
+          testID="submit-code"
+        />
 
-      {load.state === 'loading' && <Text>Loading...</Text>}
-      {load.state === 'failed' && <Text style={styles.error}>{load.message}</Text>}
-      {load.state === 'loaded' && (
-        <View>
-          <Text style={styles.label}>Course title</Text>
-          <Text testID="course-title">{load.summary.courseTitle}</Text>
-          <Text style={styles.label}>Units</Text>
-          <Text testID="unit-count">{load.summary.unitCount}</Text>
-          <Text style={styles.label}>Difficulties (from @adaptive/shared)</Text>
-          <Text testID="difficulty-count">{load.summary.difficultyCount}</Text>
-        </View>
-      )}
+        <View style={styles.divider} />
+        <Text style={styles.body}>New here? Get a study code of your own.</Text>
+        <ActionButton
+          title="I'm new, create a code"
+          variant="secondary"
+          onPress={() => void codeEntry.create()}
+          disabled={submitting}
+          testID="create-code"
+        />
+        {message?.place === 'create' && <MessageText message={message} testID="create-code-message" />}
 
-      <View style={styles.section}>
-        <Button title="POST /api/student/logout" onPress={() => logout(false)} />
-        <Text selectable testID="logout-with-origin">{withOrigin ?? 'not sent'}</Text>
-      </View>
-      <View style={styles.section}>
-        <Button title="Same POST without Origin" onPress={() => logout(true)} />
-        <Text selectable testID="logout-without-origin">{withoutOrigin ?? 'not sent'}</Text>
-      </View>
-    </ScrollView>
+        {showConnectionCheck && (
+          <Link href="/connection-check" style={styles.devLink} accessibilityRole="link">
+            Connection check
+          </Link>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 4 },
-  label: { marginTop: 12, fontWeight: '600' },
-  error: { color: '#b00020' },
-  section: { marginTop: 24, gap: 4 },
+  fill: { flex: 1 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 },
+  container: { padding: 24, gap: 16 },
+  course: { fontSize: 18, fontWeight: '600', color: '#3730a3' },
+  heading: { fontSize: 22, fontWeight: '600' },
+  body: { fontSize: 16, color: '#374151' },
+  input: {
+    borderWidth: 2,
+    borderColor: '#6b7280',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 20,
+    fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }),
+  },
+  inputFocused: { borderColor: '#4f46e5' },
+  message: { fontSize: 15 },
+  divider: { height: 1, backgroundColor: '#e5e7eb', marginVertical: 8 },
+  devLink: { marginTop: 24, fontSize: 14, color: '#6b7280', textDecorationLine: 'underline' },
 });

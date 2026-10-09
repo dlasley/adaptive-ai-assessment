@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { StudentSessionResponse } from '@adaptive/shared/api-contracts';
 import { readStudentSessionToken, verifyStudentSessionToken } from '@/lib/student-session';
 
 export async function GET(request: NextRequest) {
   const token = readStudentSessionToken(request);
   const payload = verifyStudentSessionToken(token);
 
-  return NextResponse.json({ authenticated: payload !== null });
+  return NextResponse.json<StudentSessionResponse>({ authenticated: payload !== null });
 }

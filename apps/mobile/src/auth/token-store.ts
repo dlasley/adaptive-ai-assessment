@@ -48,3 +48,40 @@ export function createMemoryTokenStore(initial: string | null = null): TokenStor
     },
   };
 }
+
+export interface ObservedTokenStore extends TokenStore {
+  /** Calls `listener` after every write with whether a token is stored now. Returns the unsubscribe. */
+  subscribe(listener: (hasToken: boolean) => void): () => void;
+}
+
+/**
+ * Wraps a store so the app hears about every change to the token, including the clear the API
+ * client makes on a 401, and can send the student back to code entry when the token is gone.
+ */
+export function observeTokenStore(inner: TokenStore): ObservedTokenStore {
+  const listeners = new Set<(hasToken: boolean) => void>();
+  const notify = (hasToken: boolean) => {
+    for (const listener of listeners) listener(hasToken);
+  };
+  return {
+    get: () => inner.get(),
+    set: async (token) => {
+      await inner.set(token);
+      notify(true);
+    },
+    clear: async () => {
+      await inner.clear();
+      notify(false);
+    },
+    clearIf: async (expected) => {
+      await inner.clearIf(expected);
+      notify((await inner.get()) !== null);
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}

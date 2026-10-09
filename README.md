@@ -202,6 +202,8 @@ cd apps/mobile
 npx expo start --ios
 ```
 
+The app opens on study code entry. In the development profile that screen also links to a connection check, which shows the course title and unit count the API returns and sends the logout POST with and without the `Origin` header.
+
 Two variables configure it, in `apps/mobile/.env.local` (copy `apps/mobile/.env.local.example`; Expo reads env files from `apps/mobile/` only, not from the repo root):
 
 - `EXPO_PUBLIC_API_BASE_URL`: the web deployment to call. Unset, it defaults to `http://localhost:3000` in development (`expo start`, Expo Go); a `preview` or `production` build requires an `https` URL and otherwise opens on a screen naming the problem.

@@ -1,9 +1,15 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { apiConfigLoad } from '../src/config';
+import { services } from '../src/services';
 
 export default function RootLayout() {
+  useEffect(() => {
+    void services?.session.restore();
+  }, []);
+
   if (apiConfigLoad.error !== null) {
     return (
       <ScrollView contentContainerStyle={styles.error}>
@@ -16,7 +22,11 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="auto" />
-      <Stack screenOptions={{ title: 'Connection check' }} />
+      <Stack>
+        <Stack.Screen name="index" options={{ title: 'Study code' }} />
+        <Stack.Screen name="(signed-in)" options={{ headerShown: false }} />
+        <Stack.Screen name="connection-check" options={{ title: 'Connection check' }} />
+      </Stack>
     </>
   );
 }

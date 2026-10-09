@@ -9,6 +9,12 @@
  * source).
  */
 
+import type {
+  GenerateCodeResponse,
+  StudentSessionResponse,
+  VerifyCodeChallengeResponse,
+  VerifyCodeResponse,
+} from '@adaptive/shared/api-contracts';
 import { QuizHistory, ConceptMastery } from './supabase';
 import { STORAGE_KEYS } from './storage-keys';
 import { fetchWithRetryAfter, retryAfterSeconds } from './retry-after';
@@ -109,7 +115,7 @@ export async function createStudyCode(onBusy?: () => void): Promise<string | nul
       return null;
     }
 
-    const { code } = await response.json();
+    const { code }: GenerateCodeResponse = await response.json();
     if (code) {
       storeStudyCode(code);
       return code;
@@ -149,7 +155,7 @@ export async function verifyStudyCode(code: string, turnstileToken?: string): Pr
     });
 
     if (response.status === 403) {
-      const body = await response.json().catch(() => ({}));
+      const body: Partial<VerifyCodeChallengeResponse> = await response.json().catch(() => ({}));
       if (body.turnstileRequired && typeof body.turnstileSiteKey === 'string') {
         return { status: 'turnstile_required', siteKey: body.turnstileSiteKey };
       }
@@ -162,7 +168,7 @@ export async function verifyStudyCode(code: string, turnstileToken?: string): Pr
 
     if (!response.ok) return { status: 'error' };
 
-    const { exists } = await response.json();
+    const { exists }: VerifyCodeResponse = await response.json();
     return { status: exists === true ? 'valid' : 'invalid' };
   } catch (error) {
     console.error('Error verifying study code:', error);
@@ -177,7 +183,7 @@ export async function hasActiveStudentSession(): Promise<boolean> {
   try {
     const response = await fetch('/api/student/session');
     if (!response.ok) return false;
-    const { authenticated } = await response.json();
+    const { authenticated }: StudentSessionResponse = await response.json();
     return authenticated === true;
   } catch (error) {
     console.error('Error checking student session:', error);
