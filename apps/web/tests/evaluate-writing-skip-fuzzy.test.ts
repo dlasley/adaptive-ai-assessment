@@ -113,7 +113,7 @@ describe('SKIP_FUZZY_LOGIC in /api/evaluate-writing', () => {
 
     expect(res.status).toBe(200);
     expect(callLlmMock).not.toHaveBeenCalled();
-    expect(body.metadata.evaluationTier).toBe('fuzzy_logic');
+    expect(body.metadata.evaluationTier).toBe('fuzzy_match');
   });
 
   it('sends an answer the fuzzy tier does not match on to the model, flag off', async () => {
@@ -124,7 +124,7 @@ describe('SKIP_FUZZY_LOGIC in /api/evaluate-writing', () => {
 
     expect(res.status).toBe(200);
     expect(callLlmMock).toHaveBeenCalledTimes(1);
-    expect(body.metadata.evaluationTier).toBe('claude_api');
+    expect(body.metadata.evaluationTier).toBe('semantic');
   });
 
   it('sends the same near-miss to the model when the flag is on', async () => {
@@ -135,7 +135,7 @@ describe('SKIP_FUZZY_LOGIC in /api/evaluate-writing', () => {
 
     expect(res.status).toBe(200);
     expect(callLlmMock).toHaveBeenCalledTimes(1);
-    expect(body.metadata.evaluationTier).toBe('claude_api');
+    expect(body.metadata.evaluationTier).toBe('semantic');
     expect(body.metadata.evaluationReason).toMatch(/disabled by SKIP_FUZZY_LOGIC/);
   });
 });

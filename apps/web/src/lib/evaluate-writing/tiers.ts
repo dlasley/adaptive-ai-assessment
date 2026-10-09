@@ -34,7 +34,7 @@ function emptyCheckTier(ctx: TierContext): EvaluationResult | null {
     result.metadata = {
       difficulty: ctx.difficulty,
       evaluationTier: 'empty_check',
-      usedClaudeAPI: false,
+      usedSemanticTier: false,
       matchedAgainst: 'none',
       evaluationReason: 'Answer too short (less than 2 characters)'
     };
@@ -79,7 +79,7 @@ export function exactMatchTier(ctx: TierContext): EvaluationResult | null {
       difficulty: ctx.difficulty,
       evaluationTier: 'exact_match',
       matchKind: 'exact',
-      usedClaudeAPI: false,
+      usedSemanticTier: false,
       matchedAgainst: 'primary_answer',
       evaluationReason: 'Exact match against primary answer (after normalization)'
     };
@@ -90,8 +90,9 @@ export function exactMatchTier(ctx: TierContext): EvaluationResult | null {
 
 /** Tier 3: accepts an answer that, after normalization, equals an acceptable variation or differs
  * from the correct answer or a variation by one pair of adjacent characters exchanged. Returns null
- * (falls through to Semantic API) for anything else, including when the feature flag disables fuzzy
- * logic or there's no correct answer to compare against. Never grades an answer incorrect. */
+ * (falls through to the semantic tier) for anything else, including when the feature flag disables
+ * the fuzzy-match tier or there's no correct answer to compare against. Never grades an answer
+ * incorrect. */
 export function fuzzyTier(ctx: TierContext): EvaluationResult | null {
   const { userAnswer, correctAnswer, acceptableVariations, difficulty, questionType } = ctx;
   if (FEATURES.SKIP_FUZZY_LOGIC || !correctAnswer) return null;
@@ -104,7 +105,7 @@ export function fuzzyTier(ctx: TierContext): EvaluationResult | null {
   );
 
   if (!fuzzyResult) {
-    logger.debug('Tier 3: no exact or single-swap match, falling through to Semantic API');
+    logger.debug('Tier 3: no exact or single-swap match, falling through to the semantic tier');
     return null;
   }
 
@@ -116,9 +117,9 @@ export function fuzzyTier(ctx: TierContext): EvaluationResult | null {
   if (ctx.includeSuperuserMetadata) {
     fuzzyResult.metadata = {
       difficulty,
-      evaluationTier: 'fuzzy_logic',
+      evaluationTier: 'fuzzy_match',
       matchKind: matchInfo.matchKind,
-      usedClaudeAPI: false,
+      usedSemanticTier: false,
       matchedAgainst: matchInfo.matchedAgainst,
       matchedVariationIndex: matchInfo.matchedVariationIndex,
       evaluationReason: matchInfo.evaluationReason
@@ -165,7 +166,7 @@ export function noiseCheckTier(ctx: TierContext): EvaluationResult | null {
     result.metadata = {
       difficulty: ctx.difficulty,
       evaluationTier: 'noise_check',
-      usedClaudeAPI: false,
+      usedSemanticTier: false,
       matchedAgainst: 'none',
       evaluationReason: 'Answer has no letters or digits or is mostly symbols; not sent to the model'
     };
@@ -174,11 +175,11 @@ export function noiseCheckTier(ctx: TierContext): EvaluationResult | null {
   return result;
 }
 
-/** Tiers 1-3b, in the order the route tries them before falling back to the Semantic API (tier 4,
- * `model-grading.ts`). Named so `logOutcome` can record which one resolved a request. */
-export const EVALUATION_TIERS: { name: 'empty_check' | 'exact_match' | 'fuzzy_logic' | 'noise_check'; run: (ctx: TierContext) => EvaluationResult | null }[] = [
+/** Tiers 1-3b, in the order the route tries them before falling back to the semantic tier (tier 4,
+ * `semantic-tier.ts`). Named so `logOutcome` can record which one resolved a request. */
+export const EVALUATION_TIERS: { name: 'empty_check' | 'exact_match' | 'fuzzy_match' | 'noise_check'; run: (ctx: TierContext) => EvaluationResult | null }[] = [
   { name: 'empty_check', run: emptyCheckTier },
   { name: 'exact_match', run: exactMatchTier },
-  { name: 'fuzzy_logic', run: fuzzyTier },
+  { name: 'fuzzy_match', run: fuzzyTier },
   { name: 'noise_check', run: noiseCheckTier },
 ];

@@ -133,9 +133,9 @@ describe('evaluate-writing when every grading attempt fails', () => {
 
     await POST(requestWithAnswer());
 
-    const semanticApiCall = errorSpy.mock.calls.find(([line]) => String(line).includes('Semantic API error'));
-    expect(semanticApiCall).toBeDefined();
-    expect(semanticApiCall?.[1]).toEqual({ name: 'Error' });
+    const semanticTierCall = errorSpy.mock.calls.find(([line]) => String(line).includes('Semantic tier error'));
+    expect(semanticTierCall).toBeDefined();
+    expect(semanticTierCall?.[1]).toEqual({ name: 'Error' });
   });
 
   it('logs only the error name for an LlmError, stripping its message even when it names the model', async () => {
@@ -146,8 +146,8 @@ describe('evaluate-writing when every grading attempt fails', () => {
 
     await POST(requestWithAnswer());
 
-    const semanticApiCall = errorSpy.mock.calls.find(([line]) => String(line).includes('Semantic API error'));
-    expect(semanticApiCall?.[1]).toEqual({ name: 'LlmError' });
+    const semanticTierCall = errorSpy.mock.calls.find(([line]) => String(line).includes('Semantic tier error'));
+    expect(semanticTierCall?.[1]).toEqual({ name: 'LlmError' });
   });
 
   it('never logs the student-authored answer at any level on a deployed build once every attempt has failed', async () => {

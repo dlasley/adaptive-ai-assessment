@@ -13,9 +13,9 @@ describe('getEvaluationTierLabel', () => {
   it('labels every known tier with a stable hyphenated format', () => {
     expect(getEvaluationTierLabel('empty_check')).toBe('1 - Empty Check');
     expect(getEvaluationTierLabel('exact_match')).toBe('2 - Exact Match');
-    expect(getEvaluationTierLabel('fuzzy_logic')).toBe('3 - Fuzzy Logic');
+    expect(getEvaluationTierLabel('fuzzy_match')).toBe('3 - Fuzzy Match');
     expect(getEvaluationTierLabel('noise_check')).toBe('3b - Noise Check');
-    expect(getEvaluationTierLabel('claude_api')).toBe('4 - Semantic API');
+    expect(getEvaluationTierLabel('semantic')).toBe('4 - Semantic');
   });
 
   it('falls back to the raw value for an unknown tier', () => {
@@ -66,8 +66,8 @@ describe('getMatchKindLabel', () => {
 describe('buildCommonEvaluationMetadataFields', () => {
   const baseMetadata = {
     difficulty: 'beginner',
-    evaluationTier: 'fuzzy_logic',
-    usedClaudeAPI: false,
+    evaluationTier: 'fuzzy_match',
+    usedSemanticTier: false,
     matchedAgainst: 'primary_answer',
     evaluationReason: 'Single adjacent-character swap against primary answer',
   } as const;
@@ -82,9 +82,9 @@ describe('buildCommonEvaluationMetadataFields', () => {
   it('omits the match kind for a tier that does not match against an answer', () => {
     const fields = buildCommonEvaluationMetadataFields({
       ...baseMetadata,
-      evaluationTier: 'claude_api',
+      evaluationTier: 'semantic',
       matchedAgainst: 'none',
-      usedClaudeAPI: true,
+      usedSemanticTier: true,
     });
     expect(fields.map((f) => f.label)).not.toContain('Match Kind');
   });

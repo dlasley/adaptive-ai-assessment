@@ -12,9 +12,9 @@ export const FEATURES = {
   ADMIN_PANEL: process.env.NEXT_PUBLIC_ENABLE_ADMIN_PANEL === 'true',
 
   /**
-   * Skip fuzzy logic evaluation (applies to both 'writing' and 'fill-in-blank' questions)
-   * - When false: the fuzzy tier grades an answer it matches, and the Semantic API grades the rest
-   * - When true: Skip fuzzy logic, always use Semantic API (higher accuracy, higher cost)
+   * Disables the fuzzy-match tier (applies to both 'writing' and 'fill-in-blank' questions)
+   * - When false: the fuzzy-match tier grades an answer it matches, and the semantic tier grades the rest
+   * - When true: skip the fuzzy-match tier, always use the semantic tier (higher accuracy, higher cost)
    */
   SKIP_FUZZY_LOGIC: false,
 
@@ -32,8 +32,8 @@ export const FEATURES = {
  * Score thresholds for deciding whether a graded answer counts as correct.
  */
 export const CORRECTNESS_THRESHOLDS = {
-  /** Semantic API: score >= this value = correct */
-  SEMANTIC_API_PASS: 70,
+  /** Semantic tier: score >= this value = correct */
+  SEMANTIC_PASS: 70,
 } as const;
 
 logger.debug('Feature flags', FEATURES);

@@ -55,10 +55,10 @@ export function EvaluationResultDisplay({
       label: 'Evaluation Tier',
       value: getEvaluationTierLabel(metadata.evaluationTier),
     });
-    if (metadata.evaluationTier === 'exact_match' || metadata.evaluationTier === 'fuzzy_logic') {
+    if (metadata.evaluationTier === 'exact_match' || metadata.evaluationTier === 'fuzzy_match') {
       evaluationMetadataFields.push({ label: 'Match Score', value: `${evaluation.score}%` });
     }
-    if (metadata.evaluationTier === 'claude_api') {
+    if (metadata.evaluationTier === 'semantic') {
       evaluationMetadataFields.push({ label: 'Semantic Score', value: `${evaluation.score}%` });
     }
     if (metadata.matchKind !== undefined) {

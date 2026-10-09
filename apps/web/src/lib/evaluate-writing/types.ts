@@ -20,10 +20,10 @@ export interface EvaluationResult {
   // Superuser metadata (only included when is_superuser=true)
   metadata?: {
     difficulty: string;
-    evaluationTier: 'empty_check' | 'exact_match' | 'fuzzy_logic' | 'noise_check' | 'claude_api';
-    matchKind?: 'exact' | 'adjacent_swap'; // How the answer matched (exact_match and fuzzy_logic tiers)
-    modelConfidence?: number; // 0-100, the model's self-reported confidence (only for claude_api tier)
-    usedClaudeAPI: boolean;
+    evaluationTier: 'empty_check' | 'exact_match' | 'fuzzy_match' | 'noise_check' | 'semantic';
+    matchKind?: 'exact' | 'adjacent_swap'; // How the answer matched (exact_match and fuzzy_match tiers)
+    modelConfidence?: number; // 0-100, the model's self-reported confidence (only for the semantic tier)
+    usedSemanticTier: boolean;
     modelUsed?: string;
     matchedAgainst: 'primary_answer' | 'acceptable_variation' | 'none';
     matchedVariationIndex?: number; // Which variation was matched (0-indexed)

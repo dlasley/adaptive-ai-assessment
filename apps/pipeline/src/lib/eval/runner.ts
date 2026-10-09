@@ -62,7 +62,7 @@ export function planAuditGroupCalls<T, V>(
 // ── Grading label -> expected outcome ────────────────────────────────────────
 
 /** Score at or above which a grading verdict counts as "correct" — mirrors
- * `CORRECTNESS_THRESHOLDS.SEMANTIC_API_PASS` in apps/web/src/lib/feature-flags.ts, kept as its own
+ * `CORRECTNESS_THRESHOLDS.SEMANTIC_PASS` in apps/web/src/lib/feature-flags.ts, kept as its own
  * constant here since the eval lib doesn't depend on the web app. Used to build the model's own
  * evaluation prompt; reference carries a reviewer verdict, not a score (see `GradingReference`). */
 export const GRADING_PASS_SCORE_THRESHOLD = 70;

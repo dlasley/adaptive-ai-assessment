@@ -182,12 +182,12 @@ export function useQuizSession() {
           correctedAnswer: 'Je suis étudiant',
           metadata: {
             difficulty: 'intermediate',
-            evaluationTier: 'fuzzy_logic',
+            evaluationTier: 'fuzzy_match',
             matchKind: 'exact',
             matchedAgainst: 'acceptable_variation',
             matchedVariationIndex: 0,
             evaluationReason: 'Exact match against acceptable variation #1',
-            usedClaudeAPI: false,
+            usedSemanticTier: false,
           },
         },
         'mock-3': {
@@ -202,7 +202,7 @@ export function useQuizSession() {
             matchKind: 'exact',
             matchedAgainst: 'primary_answer',
             evaluationReason: 'Exact match found',
-            usedClaudeAPI: false,
+            usedSemanticTier: false,
           },
         },
       });
@@ -310,7 +310,7 @@ export function useQuizSession() {
         evaluationResult.metadata = {
           difficulty: currentQuestion.difficulty,
           evaluationTier: 'exact_match',
-          usedClaudeAPI: false,
+          usedSemanticTier: false,
           matchedAgainst: 'primary_answer',
           evaluationReason: 'Exact match for multiple choice/true-false question'
         };

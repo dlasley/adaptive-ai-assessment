@@ -14,9 +14,9 @@ type MatchedAgainst = EvaluationMetadata['matchedAgainst'];
 export const EVALUATION_TIER_LABELS: Record<EvaluationTier, string> = {
   empty_check: '1 - Empty Check',
   exact_match: '2 - Exact Match',
-  fuzzy_logic: '3 - Fuzzy Logic',
+  fuzzy_match: '3 - Fuzzy Match',
   noise_check: '3b - Noise Check',
-  claude_api: '4 - Semantic API',
+  semantic: '4 - Semantic',
 };
 
 /** Falls back to the raw tier value for any tier not in the map. */

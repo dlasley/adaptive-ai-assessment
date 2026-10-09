@@ -12,11 +12,11 @@ import { COURSE_CONTENT } from '@adaptive/shared/course';
 import { isSuperuser } from '@/lib/evaluate-writing/superuser-check';
 import { EVALUATION_TIERS, type TierContext } from '@/lib/evaluate-writing/tiers';
 import {
-  evaluateWithModel,
+  evaluateSemanticTier,
   gradingUnavailableResult,
   GRADING_PROMPT_HASH,
   type GradingCallUsage,
-} from '@/lib/evaluate-writing/model-grading';
+} from '@/lib/evaluate-writing/semantic-tier';
 import { reserveModelGrading } from '@/lib/evaluate-writing/daily-cap';
 import type { EvaluationResult } from '@/lib/evaluate-writing/types';
 
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         questionType,
         difficulty,
         durationMs: Date.now() - startedAt,
-        ...(tier === 'claude_api' ? { prompt_hash: GRADING_PROMPT_HASH } : {}),
+        ...(tier === 'semantic' ? { prompt_hash: GRADING_PROMPT_HASH } : {}),
         ...(meta?.parseFailure ? { parse_failure: true } : {}),
         ...(meta?.usage?.costUsd !== undefined ? { cost_usd: meta.usage.costUsd } : {}),
         ...(meta?.usage?.servedModel !== undefined ? { served_model: meta.usage.servedModel } : {}),
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     const includeSuperuserMetadata = await isSuperuser(session.studyCodeId);
 
     // Tiers 1-3: empty check, exact match, fuzzy match — each returns null to fall through to the
-    // next tier, ending with the Semantic API (tier 4) below if none of them resolve the answer.
+    // next tier, ending with the semantic tier (tier 4) below if none of them resolve the answer.
     const tierContext: TierContext = {
       userAnswer,
       correctAnswer,
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Tier 4: AI Evaluation with the configured writing-evaluation model (for accuracy or as fallback)
-    const { evaluation, modelConfidence, parseFailure, usage } = await evaluateWithModel(
+    const { evaluation, modelConfidence, parseFailure, usage } = await evaluateSemanticTier(
       question,
       userAnswer,
       correctAnswer,
@@ -166,18 +166,18 @@ export async function POST(request: NextRequest) {
     if (includeSuperuserMetadata) {
       evaluation.metadata = {
         difficulty,
-        evaluationTier: 'claude_api',
+        evaluationTier: 'semantic',
         modelConfidence, // the model's self-reported confidence
-        usedClaudeAPI: true,
+        usedSemanticTier: true,
         modelUsed: MODELS.writingEvaluation,
         matchedAgainst: 'none', // the model evaluates semantically, not by matching
         evaluationReason: FEATURES.SKIP_FUZZY_LOGIC
-          ? 'Fuzzy logic disabled by SKIP_FUZZY_LOGIC; used Semantic API for semantic evaluation'
-          : 'No exact or single-swap match; used Semantic API for semantic evaluation'
+          ? 'Fuzzy match disabled by SKIP_FUZZY_LOGIC; used the semantic tier'
+          : 'No exact or single-swap match; used the semantic tier for semantic evaluation'
       };
     }
 
-    logOutcome('claude_api', evaluation.isCorrect, evaluation.score, { parseFailure, usage });
+    logOutcome('semantic', evaluation.isCorrect, evaluation.score, { parseFailure, usage });
     return NextResponse.json<EvaluationResult>(evaluation);
   } catch (error) {
     logger.error('Error evaluating answer', supabaseErrorFields(error));

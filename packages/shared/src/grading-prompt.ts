@@ -1,5 +1,5 @@
 /**
- * Tier 4 (model) grading prompt and response handling for typed-answer questions
+ * Tier 4 (semantic) grading prompt and response handling for typed-answer questions
  * (`apps/web/src/app/api/evaluate-writing/route.ts`), extracted here so another caller can use the
  * exact prompt and parser production uses instead of a copy that can drift from it.
  *
@@ -23,7 +23,7 @@ export interface BuildEvaluationMessagesParams {
   questionType: string;
   difficulty: string;
   /** Score at or above which an answer counts as correct — the caller's
-   * `CORRECTNESS_THRESHOLDS.SEMANTIC_API_PASS` equivalent, kept out of this module so it stays free
+   * `CORRECTNESS_THRESHOLDS.SEMANTIC_PASS` equivalent, kept out of this module so it stays free
    * of any one caller's policy constants. */
   correctnessThreshold: number;
 }

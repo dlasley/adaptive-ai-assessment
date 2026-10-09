@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { exactMatchTier, fuzzyTier, isNoiseAnswer, noiseCheckTier, type TierContext } from '@/lib/evaluate-writing/tiers';
 
 /** A single adjacent-character swap ("Bonjuor" for "Bonjour"), which Tier 3 accepts, so it does not
- * reach the exact-match tier or fall through to the Semantic API. */
+ * reach the exact-match tier or fall through to the semantic tier. */
 function fuzzyMatchContext(overrides: Partial<TierContext> = {}): TierContext {
   return {
     userAnswer: 'Bonjuor',
@@ -31,7 +31,7 @@ describe('fuzzyTier', () => {
     expect(result).not.toBeNull();
     expect(result).not.toHaveProperty('_matchInfo');
     expect(result?.metadata).toMatchObject({
-      evaluationTier: 'fuzzy_logic',
+      evaluationTier: 'fuzzy_match',
       matchedAgainst: 'primary_answer',
       matchKind: 'adjacent_swap',
     });
@@ -46,7 +46,7 @@ describe('fuzzyTier', () => {
     expect(results.map((r) => r?.score)).toEqual([95, 95, 95]);
   });
 
-  it('falls through to the Semantic API for a one-letter substitution, at every difficulty', () => {
+  it('falls through to the semantic tier for a one-letter substitution, at every difficulty', () => {
     for (const difficulty of ['beginner', 'intermediate', 'advanced'] as const) {
       expect(
         fuzzyTier(

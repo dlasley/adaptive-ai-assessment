@@ -33,7 +33,7 @@ export interface GradingCallUsage {
 }
 
 /** Identifies the grading prompt in the structured log, so a prompt change can be lined up with a shift in outcomes. */
-export const GRADING_PROMPT_HASH = gradingPromptHash(CORRECTNESS_THRESHOLDS.SEMANTIC_API_PASS);
+export const GRADING_PROMPT_HASH = gradingPromptHash(CORRECTNESS_THRESHOLDS.SEMANTIC_PASS);
 
 /** The score-50 result returned when the model cannot or may not grade an answer. */
 export function gradingUnavailableResult(feedback: string): EvaluationResult {
@@ -53,7 +53,7 @@ export function gradingUnavailableResult(feedback: string): EvaluationResult {
  * A retry is a second model call, so `reserveRetry` must grant a second unit of the daily
  * allowance first; when it declines, the first failure stands and the fallback result is returned.
  */
-export async function evaluateWithModel(
+export async function evaluateSemanticTier(
   question: string,
   userAnswer: string,
   correctAnswer: string | undefined,
@@ -61,7 +61,7 @@ export async function evaluateWithModel(
   difficulty: string,
   reserveRetry: () => Promise<boolean>
 ): Promise<{ evaluation: EvaluationResult; modelConfidence?: number; parseFailure?: boolean; usage: GradingCallUsage }> {
-  const correctnessThreshold = CORRECTNESS_THRESHOLDS.SEMANTIC_API_PASS;
+  const correctnessThreshold = CORRECTNESS_THRESHOLDS.SEMANTIC_PASS;
   const messages = buildEvaluationMessages({
     question,
     userAnswer,
@@ -118,7 +118,7 @@ export async function evaluateWithModel(
       // one more attempt.
       if (!(err instanceof EvaluationParseError) && !isRetryableContentError(err)) throw err;
       if (!(await reserveRetry())) throw err;
-      logger.warn('Semantic API response failed to parse, validate, or returned no content; retrying once');
+      logger.warn('Semantic tier response failed to parse, validate, or returned no content; retrying once');
       try {
         modelResponse = await callAndParse();
       } catch (retryErr) {
@@ -136,7 +136,7 @@ export async function evaluateWithModel(
       usage
     };
   } catch (error) {
-    logger.error('Semantic API error', supabaseErrorFields(error));
+    logger.error('Semantic tier error', supabaseErrorFields(error));
 
     // Fallback evaluation
     return {
