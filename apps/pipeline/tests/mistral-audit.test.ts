@@ -27,10 +27,8 @@ import {
   sumResultUsage,
 } from '../src/lib/mistral-audit';
 
-/** Records every write as a `{ table, update, id }` triple, whether it came in through the batched
- * `.upsert()` path or the per-row `.update().eq()` fallback, instead of touching a real database.
- * A batch containing any `failIds` row fails as a whole (as a real upsert would), so
- * `applyAuditWrites`'s row-by-row fallback is what actually exercises per-row failure. */
+/** Records every `.update(data).eq('id', id)` call as a `{ table, update, id }` triple, instead of
+ * touching a real database. A row whose id is in `failIds` returns an error from that call. */
 function makeFakeSupabase(opts: { failIds?: Set<string> } = {}) {
   const calls: { table: string; update: Record<string, unknown>; id: string }[] = [];
   const client = {
@@ -46,15 +44,6 @@ function makeFakeSupabase(opts: { failIds?: Set<string> } = {}) {
               return Promise.resolve({ error: null });
             },
           };
-        },
-        upsert(rows: Record<string, unknown>[]) {
-          if (rows.some((row) => opts.failIds?.has(row.id as string))) {
-            return Promise.resolve({ error: { message: 'simulated batch failure' } });
-          }
-          for (const { id, ...update } of rows) {
-            calls.push({ table, update, id: id as string });
-          }
-          return Promise.resolve({ error: null });
         },
       };
     },
@@ -501,6 +490,65 @@ describe('applyAuditResultsForGroup', () => {
     expect(summary).toEqual({ activeCount: 1, flaggedCount: 0, errorCount: 0, difficultyRelabeled: 1, variationsRemoved: 1 });
     const call = calls.find((c) => c.id === 'q')!;
     expect(call.update.difficulty).toBe('intermediate');
+    expect(call.update.acceptable_variations).toEqual(['bonjour']);
+  });
+
+  it('sends neither difficulty nor acceptable_variations for a flagged (gate-fail) row', async () => {
+    const questions = [makeQuestion({ id: 'q', difficulty: 'beginner', acceptable_variations: ['bonjour', 'salut'] })];
+    const results: MistralAuditResult[] = [
+      makeMistralResult({
+        id: 'q',
+        answer_correct: false,
+        suggested_difficulty: 'intermediate',
+        invalid_variations: ['salut'],
+      }),
+    ];
+    const { supabase, calls } = makeFakeSupabase();
+
+    await applyAuditResultsForGroup(supabase, results, questions, opts);
+
+    const call = calls.find((c) => c.id === 'q')!;
+    expect('difficulty' in call.update).toBe(false);
+    expect('acceptable_variations' in call.update).toBe(false);
+  });
+
+  it('sends neither difficulty nor acceptable_variations for a passing row with no relabel and no invalid variation', async () => {
+    const questions = [makeQuestion({ id: 'q', difficulty: 'beginner', acceptable_variations: ['bonjour', 'salut'] })];
+    const results: MistralAuditResult[] = [makeMistralResult({ id: 'q' })];
+    const { supabase, calls } = makeFakeSupabase();
+
+    await applyAuditResultsForGroup(supabase, results, questions, opts);
+
+    const call = calls.find((c) => c.id === 'q')!;
+    expect('difficulty' in call.update).toBe(false);
+    expect('acceptable_variations' in call.update).toBe(false);
+  });
+
+  it('sends difficulty only for a passing row with a relabel and no invalid variation', async () => {
+    const questions = [makeQuestion({ id: 'q', difficulty: 'beginner', acceptable_variations: ['bonjour', 'salut'] })];
+    const results: MistralAuditResult[] = [
+      makeMistralResult({ id: 'q', suggested_difficulty: 'intermediate' }),
+    ];
+    const { supabase, calls } = makeFakeSupabase();
+
+    await applyAuditResultsForGroup(supabase, results, questions, opts);
+
+    const call = calls.find((c) => c.id === 'q')!;
+    expect(call.update.difficulty).toBe('intermediate');
+    expect('acceptable_variations' in call.update).toBe(false);
+  });
+
+  it('sends acceptable_variations only, as the cleaned list, for a passing row with an invalid variation and no relabel', async () => {
+    const questions = [makeQuestion({ id: 'q', difficulty: 'beginner', acceptable_variations: ['bonjour', 'salut'] })];
+    const results: MistralAuditResult[] = [
+      makeMistralResult({ id: 'q', invalid_variations: ['salut'] }),
+    ];
+    const { supabase, calls } = makeFakeSupabase();
+
+    await applyAuditResultsForGroup(supabase, results, questions, opts);
+
+    const call = calls.find((c) => c.id === 'q')!;
+    expect('difficulty' in call.update).toBe(false);
     expect(call.update.acceptable_variations).toEqual(['bonjour']);
   });
 

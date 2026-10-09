@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createLogger } from '../src/lib/logger';
+import type { Logger } from '../src/lib/logger';
 import { applyAuditWrites } from '../src/lib/audit-write';
 
 interface FakeResult {
@@ -13,12 +13,9 @@ function makeResult(id: string, pass: boolean, isError = false): FakeResult {
   return { id, pass, isError };
 }
 
-/** Records every write, whether it came in through the batched `.upsert()` path or the per-row
- * `.update().eq()` fallback, instead of touching a real database. A batch containing any
- * `failIds` row fails as a whole (as a real upsert would), so the fallback is what actually
- * exercises per-row failure. */
+/** Records every `.update(data).eq('id', id)` call instead of touching a real database. A row
+ * whose id is in `failIds` returns an error from that call, as a failed Postgres write would. */
 function makeFakeSupabase(opts: { failIds?: Set<string> } = {}) {
-  const upsertCalls: Record<string, unknown>[][] = [];
   const updateCalls: { id: string; data: Record<string, unknown> }[] = [];
   const client = {
     from() {
@@ -34,91 +31,87 @@ function makeFakeSupabase(opts: { failIds?: Set<string> } = {}) {
             },
           };
         },
-        upsert(rows: Record<string, unknown>[]) {
-          upsertCalls.push(rows);
-          if (rows.some((row) => opts.failIds?.has(row.id as string))) {
-            return Promise.resolve({ error: { message: 'simulated batch failure' } });
-          }
-          return Promise.resolve({ error: null });
-        },
       };
     },
   };
-  return { supabase: client as unknown as SupabaseClient, upsertCalls, updateCalls };
+  return { supabase: client as unknown as SupabaseClient, updateCalls };
 }
 
-const logger = createLogger('audit-write-test');
+function makeFakeLogger(): Logger {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
 
-const baseOpts = {
-  logger,
-  isError: (r: FakeResult) => r.isError === true,
-  isGatePass: (r: FakeResult) => r.pass,
-  buildMetadata: (r: FakeResult) => ({ pass: r.pass }),
-};
+function baseOpts(logger: Logger) {
+  return {
+    logger,
+    isError: (r: FakeResult) => r.isError === true,
+    isGatePass: (r: FakeResult) => r.pass,
+    buildMetadata: (r: FakeResult) => ({ pass: r.pass }),
+  };
+}
 
 describe('applyAuditWrites', () => {
-  it('writes every valid result via a single batched upsert when nothing fails', async () => {
+  it('writes every valid result via one update().eq() call per row, with the right quality_status and audit_metadata', async () => {
     const results = [makeResult('a', true), makeResult('b', false)];
-    const { supabase, upsertCalls, updateCalls } = makeFakeSupabase();
+    const { supabase, updateCalls } = makeFakeSupabase();
 
-    const summary = await applyAuditWrites(supabase, results, baseOpts);
+    const summary = await applyAuditWrites(supabase, results, baseOpts(makeFakeLogger()));
 
     expect(summary).toEqual({ activeIds: ['a'], flaggedIds: ['b'], errorCount: 0 });
-    expect(upsertCalls).toHaveLength(1);
-    expect(upsertCalls[0]).toHaveLength(2);
-    expect(updateCalls).toHaveLength(0);
+    expect(updateCalls).toHaveLength(2);
+    const byId = Object.fromEntries(updateCalls.map((c) => [c.id, c.data]));
+    expect(byId.a).toEqual({ quality_status: 'active', audit_metadata: { pass: true } });
+    expect(byId.b).toEqual({ quality_status: 'flagged', audit_metadata: { pass: false } });
   });
 
   it('excludes error results from the write entirely', async () => {
     const results = [makeResult('a', true), makeResult('broken', true, true)];
-    const { supabase, upsertCalls } = makeFakeSupabase();
+    const { supabase, updateCalls } = makeFakeSupabase();
 
-    const summary = await applyAuditWrites(supabase, results, baseOpts);
+    const summary = await applyAuditWrites(supabase, results, baseOpts(makeFakeLogger()));
 
     expect(summary).toEqual({ activeIds: ['a'], flaggedIds: [], errorCount: 1 });
-    expect(upsertCalls[0].map((r) => r.id)).toEqual(['a']);
+    expect(updateCalls.map((c) => c.id)).toEqual(['a']);
   });
 
-  // The one behavior most likely to silently regress under batching: a single bad row in a batch
-  // must not take the rest of that batch down with it, matching the pre-batching per-row loop's
-  // isolation.
-  it('falls back to one write per row when the batch fails, so one bad row does not take down its siblings', async () => {
+  it('logs and skips a row whose update fails, while its siblings still write and land in the result', async () => {
     const results = [makeResult('good-1', true), makeResult('bad', true), makeResult('good-2', false)];
-    const { supabase, upsertCalls, updateCalls } = makeFakeSupabase({ failIds: new Set(['bad']) });
+    const logger = makeFakeLogger();
+    const { supabase, updateCalls } = makeFakeSupabase({ failIds: new Set(['bad']) });
 
-    const summary = await applyAuditWrites(supabase, results, baseOpts);
+    const summary = await applyAuditWrites(supabase, results, baseOpts(logger));
 
-    // The batch upsert was attempted (and failed) before falling back.
-    expect(upsertCalls).toHaveLength(1);
-    expect(upsertCalls[0].map((r) => r.id).sort()).toEqual(['bad', 'good-1', 'good-2']);
+    // Every row was attempted, in order.
+    expect(updateCalls.map((c) => c.id)).toEqual(['good-1', 'bad', 'good-2']);
 
-    // Every row was retried individually, and only the bad one failed.
-    expect(updateCalls.map((c) => c.id).sort()).toEqual(['bad', 'good-1', 'good-2']);
-    expect(summary.activeIds.sort()).toEqual(['good-1']);
+    // Only the failing row was logged, and only it is missing from the returned ids.
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    expect((logger.error as ReturnType<typeof vi.fn>).mock.calls[0][0]).toContain('bad');
+    expect(summary.activeIds).toEqual(['good-1']);
     expect(summary.flaggedIds).toEqual(['good-2']);
     expect(summary.errorCount).toBe(0);
   });
 
-  it('carries extra columns from buildExtraColumns on every row, including unchanged ones', async () => {
+  it('carries extra columns from buildExtraColumns on the rows that return them', async () => {
     const results = [makeResult('a', true), makeResult('b', false)];
-    const { supabase, upsertCalls } = makeFakeSupabase();
+    const { supabase, updateCalls } = makeFakeSupabase();
 
     await applyAuditWrites(supabase, results, {
-      ...baseOpts,
-      buildExtraColumns: (r) => ({ difficulty: r.pass ? 'advanced' : 'beginner' }),
+      ...baseOpts(makeFakeLogger()),
+      buildExtraColumns: (r) => (r.pass ? { difficulty: 'advanced' } : {}),
     });
 
-    const byId = Object.fromEntries(upsertCalls[0].map((r) => [r.id, r]));
+    const byId = Object.fromEntries(updateCalls.map((c) => [c.id, c.data]));
     expect(byId.a.difficulty).toBe('advanced');
-    expect(byId.b.difficulty).toBe('beginner');
+    expect('difficulty' in byId.b).toBe(false);
   });
 
   it('omits extra columns entirely when buildExtraColumns is not given (Sonnet has none)', async () => {
     const results = [makeResult('a', true)];
-    const { supabase, upsertCalls } = makeFakeSupabase();
+    const { supabase, updateCalls } = makeFakeSupabase();
 
-    await applyAuditWrites(supabase, results, baseOpts);
+    await applyAuditWrites(supabase, results, baseOpts(makeFakeLogger()));
 
-    expect(Object.keys(upsertCalls[0][0]).sort()).toEqual(['audit_metadata', 'id', 'quality_status']);
+    expect(Object.keys(updateCalls[0].data).sort()).toEqual(['audit_metadata', 'quality_status']);
   });
 });

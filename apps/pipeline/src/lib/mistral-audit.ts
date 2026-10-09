@@ -743,15 +743,16 @@ export async function applyAuditResultsForGroup(
     prompt_hash: opts.promptHash ?? null,
   });
 
-  // Keyed by id so the counts below only credit a relabel/cleanup once the batched write of that
-  // row is actually confirmed (see `activeIds` below) — a row whose write fails, batched or not,
-  // must not count as relabeled or cleaned up.
+  // Keyed by id so the counts below only credit a relabel/cleanup once the write of that row is
+  // actually confirmed (see `activeIds` below) — a row whose write fails must not count as
+  // relabeled or cleaned up.
   const relabels = new Map<string, { from: string | undefined; to: string }>();
   const variationRemovals = new Map<string, { removed: number; from: number; to: number }>();
 
-  // Flagged rows never get remediation, but every row in the same batched upsert must carry the
-  // same columns (see audit-write.ts's doc comment) — flagged rows carry their current,
-  // unchanged difficulty/variations so the shared upsert can't blank them for a passing sibling.
+  // Only the columns this audit changes are sent: `difficulty` when relabeled, and
+  // `acceptable_variations` when an invalid one is removed. Writing a column's current value back
+  // would overwrite an edit made between the fetch and the write, which on the batch-resume apply
+  // path can be hours apart. Flagged rows never get remediation, so they carry nothing extra.
   const buildExtraColumns = (r: MistralAuditResult) => {
     const question = questionMap.get(r.id);
     if (!question) {
@@ -761,7 +762,7 @@ export async function applyAuditResultsForGroup(
     const currentVariations = question.acceptable_variations || [];
 
     if (!isGatePass(r)) {
-      return { difficulty: currentDifficulty, acceptable_variations: currentVariations };
+      return {};
     }
 
     const suggestedDifficulty = r.suggested_difficulty;
@@ -786,10 +787,10 @@ export async function applyAuditResultsForGroup(
       });
     }
 
-    return {
-      difficulty: shouldRelabel ? suggestedDifficulty : currentDifficulty,
-      acceptable_variations: cleanedVariations,
-    };
+    const extra: Record<string, unknown> = {};
+    if (shouldRelabel) extra.difficulty = suggestedDifficulty;
+    if (cleanedVariations.length !== currentVariations.length) extra.acceptable_variations = cleanedVariations;
+    return extra;
   };
 
   const { activeIds, flaggedIds, errorCount } = await applyAuditWrites(supabase, results, {
