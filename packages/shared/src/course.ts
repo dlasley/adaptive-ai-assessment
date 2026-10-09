@@ -50,16 +50,10 @@ export interface CourseFeedback {
   variationExactMissingAccents: string;
   /** Correction shown alongside variationExactMissingAccents and variationCloseMatch. */
   variationCorrectIs: (variation: string) => string;
-  /** Similarity match (>=95%) against an acceptable variation, not exact. */
+  /** Single adjacent-character swap against an acceptable variation. */
   variationCloseMatch: string;
-  /** Fuzzy match at or above the minor-typo similarity band. */
+  /** Single adjacent-character swap against the correct answer. */
   fuzzyMinorTypo: string;
-  /** Fuzzy match in the beginner-pass band, for a beginner-difficulty question. */
-  fuzzyBeginnerPass: string;
-  /** Fuzzy match in the beginner-pass band, for a non-beginner-difficulty question (counted incorrect). */
-  fuzzyBeginnerPassIneligible: string;
-  /** Fuzzy match below the beginner-pass band. */
-  fuzzyBelowThreshold: string;
   /** Client-side fallback when the evaluation request itself fails (network error). English, not
    * the target language — an operational error message for the student, not grading feedback on
    * their answer, unlike every other string in this interface. */
@@ -139,9 +133,6 @@ export const COURSE_CONTENT: {
     variationCorrectIs: (variation) => `Une variation correcte est: "${variation}"`,
     variationCloseMatch: 'Presque parfait ! Petite erreur dans une variation acceptable.',
     fuzzyMinorTypo: 'Presque parfait ! Attention aux petites erreurs.',
-    fuzzyBeginnerPass: 'Bon effort ! Quelques petites erreurs à corriger.',
-    fuzzyBeginnerPassIneligible: 'Pas mal, mais il y a des erreurs à corriger.',
-    fuzzyBelowThreshold: 'Vous êtes sur la bonne voie, mais il y a plusieurs erreurs.',
     evaluationRequestFailed: 'Unable to evaluate. Please try again.',
     evaluationApiFailed: 'Unable to evaluate automatically. Please try again or ask your teacher for feedback.',
     evaluationDailyLimit: 'The automatic grader is unavailable until tomorrow (UTC). Ask your teacher for feedback on this answer.',

@@ -1,6 +1,5 @@
-import { FEATURES, getFuzzyLogicThreshold } from '@/lib/feature-flags';
-import { fuzzyEvaluateAnswer, calculateSimilarity, normalizeText, normalizePunctuationSpacing, hasCorrectAccents } from '@/lib/typed-answer-evaluation';
-import type { Difficulty } from '@adaptive/shared/enums';
+import { FEATURES } from '@/lib/feature-flags';
+import { fuzzyEvaluateAnswer, normalizeText, normalizePunctuationSpacing, hasCorrectAccents } from '@/lib/typed-answer-evaluation';
 import { COURSE_CONTENT } from '@adaptive/shared/course';
 import { createLogger } from '@/lib/logger';
 import type { EvaluationResult } from './types';
@@ -76,11 +75,10 @@ export function exactMatchTier(ctx: TierContext): EvaluationResult | null {
   };
 
   if (ctx.includeSuperuserMetadata) {
-    const similarity = calculateSimilarity(userAnswer, correctAnswer);
     result.metadata = {
       difficulty: ctx.difficulty,
       evaluationTier: 'exact_match',
-      levenshteinSimilarity: Math.round(similarity * 100),
+      matchKind: 'exact',
       usedClaudeAPI: false,
       matchedAgainst: 'primary_answer',
       evaluationReason: 'Exact match against primary answer (after normalization)'
@@ -90,37 +88,23 @@ export function exactMatchTier(ctx: TierContext): EvaluationResult | null {
   return result;
 }
 
-/** Tier 3: fuzzy match against the correct answer or an acceptable variation, gated by the
- * per-difficulty confidence threshold. Returns null (falls through to Semantic API) when the
- * feature flag disables fuzzy logic, there's no correct answer to compare against, or confidence
- * is too low. */
+/** Tier 3: accepts an answer that, after normalization, equals an acceptable variation or differs
+ * from the correct answer or a variation by one pair of adjacent characters exchanged. Returns null
+ * (falls through to Semantic API) for anything else, including when the feature flag disables fuzzy
+ * logic or there's no correct answer to compare against. Never grades an answer incorrect. */
 export function fuzzyTier(ctx: TierContext): EvaluationResult | null {
   const { userAnswer, correctAnswer, acceptableVariations, difficulty, questionType } = ctx;
   if (FEATURES.SKIP_FUZZY_LOGIC || !correctAnswer) return null;
-
-  const similarity = calculateSimilarity(userAnswer, correctAnswer);
-  const confidenceScore = Math.round(similarity * 100);
-
-  // Get fuzzy logic threshold for this difficulty
-  const threshold = getFuzzyLogicThreshold(difficulty);
-
-  logger.debug('Tier 3: fuzzy logic similarity', {
-    similarity: confidenceScore,
-    threshold,
-    meetsThreshold: confidenceScore >= threshold
-  });
 
   const fuzzyResult = fuzzyEvaluateAnswer(
     userAnswer,
     correctAnswer,
     acceptableVariations,
-    difficulty as Difficulty,
     questionType
   );
 
-  // If fuzzy evaluation didn't reach a high-confidence match, fall through to Semantic API.
   if (!fuzzyResult) {
-    logger.debug('Tier 3: confidence too low, falling through to Semantic API');
+    logger.debug('Tier 3: no exact or single-swap match, falling through to Semantic API');
     return null;
   }
 
@@ -130,19 +114,14 @@ export function fuzzyTier(ctx: TierContext): EvaluationResult | null {
   delete fuzzyResult._matchInfo;
 
   if (ctx.includeSuperuserMetadata) {
-    // Use the similarity to the matched answer, not the primary answer
-    const displaySimilarity = matchInfo.matchedSimilarity ?? confidenceScore;
-
     fuzzyResult.metadata = {
       difficulty,
       evaluationTier: 'fuzzy_logic',
-      levenshteinSimilarity: displaySimilarity,
-      levenshteinThreshold: threshold,
+      matchKind: matchInfo.matchKind,
       usedClaudeAPI: false,
       matchedAgainst: matchInfo.matchedAgainst,
       matchedVariationIndex: matchInfo.matchedVariationIndex,
-      evaluationReason: matchInfo.evaluationReason,
-      correctnessBand: matchInfo.correctnessBand
+      evaluationReason: matchInfo.evaluationReason
     };
   }
 

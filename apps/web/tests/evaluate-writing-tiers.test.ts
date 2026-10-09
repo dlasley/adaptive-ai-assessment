@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { exactMatchTier, fuzzyTier, isNoiseAnswer, noiseCheckTier, type TierContext } from '@/lib/evaluate-writing/tiers';
 
-/** A near-miss ("Bonjor" vs "Bonjour") that's close enough to clear the beginner fuzzy-logic
- * threshold (70%) and the beginner-pass correctness band (85%+), so it resolves at Tier 3
- * without reaching the exact-match tier or falling through to the Semantic API. */
+/** A single adjacent-character swap ("Bonjuor" for "Bonjour"), which Tier 3 accepts, so it does not
+ * reach the exact-match tier or fall through to the Semantic API. */
 function fuzzyMatchContext(overrides: Partial<TierContext> = {}): TierContext {
   return {
-    userAnswer: 'Bonjor',
+    userAnswer: 'Bonjuor',
     correctAnswer: 'Bonjour',
     difficulty: 'beginner',
     acceptableVariations: [],
@@ -34,7 +33,31 @@ describe('fuzzyTier', () => {
     expect(result?.metadata).toMatchObject({
       evaluationTier: 'fuzzy_logic',
       matchedAgainst: 'primary_answer',
+      matchKind: 'adjacent_swap',
     });
+  });
+
+  it('grades the same answer the same way at every difficulty', () => {
+    const results = (['beginner', 'intermediate', 'advanced'] as const).map((difficulty) =>
+      fuzzyTier(fuzzyMatchContext({ difficulty }))
+    );
+
+    expect(results.map((r) => r?.isCorrect)).toEqual([true, true, true]);
+    expect(results.map((r) => r?.score)).toEqual([95, 95, 95]);
+  });
+
+  it('falls through to the Semantic API for a one-letter substitution, at every difficulty', () => {
+    for (const difficulty of ['beginner', 'intermediate', 'advanced'] as const) {
+      expect(
+        fuzzyTier(
+          fuzzyMatchContext({
+            difficulty,
+            userAnswer: 'Amadou et Chloé sont soif.',
+            correctAnswer: 'Amadou et Chloé ont soif.',
+          })
+        )
+      ).toBeNull();
+    }
   });
 });
 

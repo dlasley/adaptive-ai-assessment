@@ -67,9 +67,20 @@ export interface SuperuserMetadataField {
   capitalize?: boolean;
 }
 
+/** Display label for how an answer matched what it was compared against. */
+const MATCH_KIND_LABELS: Record<NonNullable<EvaluationMetadata['matchKind']>, string> = {
+  exact: 'Exact',
+  adjacent_swap: 'Adjacent Swap',
+};
+
+/** Falls back to the raw value for any match kind not in the map. */
+export function getMatchKindLabel(matchKind: string): string {
+  return MATCH_KIND_LABELS[matchKind as NonNullable<EvaluationMetadata['matchKind']>] ?? matchKind;
+}
+
 /**
  * The evaluation-metadata fields shared by every call site regardless of
- * question type: similarity/threshold/confidence (each shown only when the
+ * question type: match kind and model confidence (each shown only when the
  * evaluation tier that produces it was used), the matched-against reason,
  * the model, and the evaluation reason.
  */
@@ -77,11 +88,8 @@ export function buildCommonEvaluationMetadataFields(
   metadata: EvaluationMetadata
 ): SuperuserMetadataField[] {
   const fields: SuperuserMetadataField[] = [];
-  if (metadata.levenshteinSimilarity !== undefined) {
-    fields.push({ label: 'Levenshtein Similarity', value: `${metadata.levenshteinSimilarity}%` });
-  }
-  if (metadata.levenshteinThreshold !== undefined) {
-    fields.push({ label: 'Fuzzy Logic Threshold', value: `${metadata.levenshteinThreshold}%` });
+  if (metadata.matchKind !== undefined) {
+    fields.push({ label: 'Match Kind', value: getMatchKindLabel(metadata.matchKind) });
   }
   if (metadata.modelConfidence !== undefined) {
     fields.push({ label: 'Semantic Confidence', value: `${metadata.modelConfidence}%` });

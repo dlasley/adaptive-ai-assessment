@@ -43,17 +43,21 @@ import { FEATURES } from '@/lib/feature-flags';
 
 const PROD_URL = 'french-1.vercel.app';
 
-// "Bonjuor" is a one-transposition typo of "Bonjour": not an exact match, but well above the
-// beginner fuzzy threshold, so fuzzy logic accepts it without a model call.
-function typoRequest(): NextRequest {
+// "Bonjuor" is "Bonjour" with one pair of adjacent characters exchanged: not an exact match, but
+// the kind of typo the fuzzy tier accepts without a model call.
+function answerRequest(userAnswer: string): NextRequest {
   return new NextRequest('https://example.com/api/evaluate-writing', {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin: `https://${PROD_URL}` },
     body: JSON.stringify({
       questionId: QUESTION_ID,
-      userAnswer: 'Bonjuor',
+      userAnswer,
     }),
   });
+}
+
+function typoRequest(): NextRequest {
+  return answerRequest('Bonjuor');
 }
 
 const flags = FEATURES as { SKIP_FUZZY_LOGIC: boolean };
@@ -110,6 +114,17 @@ describe('SKIP_FUZZY_LOGIC in /api/evaluate-writing', () => {
     expect(res.status).toBe(200);
     expect(callLlmMock).not.toHaveBeenCalled();
     expect(body.metadata.evaluationTier).toBe('fuzzy_logic');
+  });
+
+  it('sends an answer the fuzzy tier does not match on to the model, flag off', async () => {
+    flags.SKIP_FUZZY_LOGIC = false;
+
+    const res = await POST(answerRequest('Bonjoir'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(callLlmMock).toHaveBeenCalledTimes(1);
+    expect(body.metadata.evaluationTier).toBe('claude_api');
   });
 
   it('sends the same near-miss to the model when the flag is on', async () => {

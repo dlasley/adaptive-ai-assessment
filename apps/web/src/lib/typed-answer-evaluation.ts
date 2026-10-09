@@ -3,14 +3,10 @@
  * Fuzzy-matching and grading for typed-answer questions (writing and fill-in-blank)
  */
 
-import { getFuzzyLogicThreshold, CORRECTNESS_THRESHOLDS } from './feature-flags';
-import type { Difficulty } from '@adaptive/shared/enums';
 import { COURSE_CONTENT } from '@adaptive/shared/course';
 import type { EvaluationResult } from '@/lib/evaluate-writing/types';
 import { fetchWithRetryAfter, retryAfterSeconds } from './retry-after';
 
-// Not destructured to `feedback` — fuzzyEvaluateAnswer already has a local
-// `feedback` variable for the string it's building up.
 const courseFeedback = COURSE_CONTENT.feedback;
 
 /**
@@ -25,8 +21,14 @@ function stripTerminalPunctuation(text: string): string {
   return stripped.length > 0 ? stripped : text;
 }
 
+/** Ligatures, folded to the two-letter form a keyboard without the ligature key produces. NFD
+ * decomposition leaves them intact, so stripping diacritical marks alone does nothing to "s\u0153ur".
+ * Matched after case folding, so only the lowercase forms need an entry. */
+const LIGATURE_FOLDS: Record<string, string> = { '\u0153': 'oe', '\u00e6': 'ae' };
+const LIGATURE_RE = /[\u0153\u00e6]/g;
+
 /**
- * Normalize text for comparison (remove accents, lowercase, trim, strip a trailing
+ * Normalize text for comparison (remove accents, fold ligatures, lowercase, trim, strip a trailing
  * sentence-ending mark)
  */
 export function normalizeText(text: string): string {
@@ -34,6 +36,7 @@ export function normalizeText(text: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks
     .toLowerCase()
+    .replace(LIGATURE_RE, (ligature) => LIGATURE_FOLDS[ligature])
     .trim()
     .replace(/\s+/g, ' '); // Normalize whitespace
   return stripTerminalPunctuation(normalized);
@@ -49,34 +52,18 @@ export function normalizePunctuationSpacing(text: string): string {
 }
 
 /**
- * Calculate Levenshtein distance between two strings
+ * Normalize whitespace, case, and French punctuation spacing while keeping accents, so "Café" and
+ * "café" compare equal but "cafe" does not, and a punctuation-spacing or terminal-punctuation
+ * difference is never read as an accent difference. Ligatures are kept as written, so "soeur"
+ * against "sœur" still reads as a missing accent.
+ *
+ * Composed to NFC first: a decomposed accent (a bare vowel followed by a combining mark, which a
+ * mobile keyboard can emit) carries the same accent as its precomposed form.
  */
-function levenshteinDistance(str1: string, str2: string): number {
-  const matrix: number[][] = [];
-
-  for (let i = 0; i <= str2.length; i++) {
-    matrix[i] = [i];
-  }
-
-  for (let j = 0; j <= str1.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  for (let i = 1; i <= str2.length; i++) {
-    for (let j = 1; j <= str1.length; j++) {
-      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
-        );
-      }
-    }
-  }
-
-  return matrix[str2.length][str1.length];
+function foldKeepingAccents(text: string): string {
+  return stripTerminalPunctuation(
+    normalizePunctuationSpacing(text.normalize('NFC').trim().toLowerCase().replace(/\s+/g, ' '))
+  );
 }
 
 /**
@@ -84,52 +71,85 @@ function levenshteinDistance(str1: string, str2: string): number {
  * Compares accents but ignores capitalization
  */
 export function hasCorrectAccents(userAnswer: string, correctAnswer: string): boolean {
-  // Normalize whitespace, case, and French punctuation spacing, but keep accents
-  // This means "Café" and "café" are both correct, but "cafe" is not
-  // Also prevents a punctuation-spacing or terminal-punctuation difference from being
-  // misreported as an accent issue
-  const normalize = (text: string) =>
-    stripTerminalPunctuation(normalizePunctuationSpacing(text.trim().toLowerCase().replace(/\s+/g, ' ')));
-  return normalize(userAnswer) === normalize(correctAnswer);
+  return foldKeepingAccents(userAnswer) === foldKeepingAccents(correctAnswer);
 }
 
 /**
- * Calculate similarity between two strings (0-1)
- * Uses normalized Levenshtein distance
+ * True when two strings are the same length and differ only by one pair of adjacent letters
+ * exchanged ("chosiit" against "choisit"): exactly two positions differ, those positions are next
+ * to each other, each holds the character the other string has, and both are letters. Equal strings
+ * are not a swap, so exchanging a doubled letter ("ll") is not one either.
+ *
+ * Both characters have to be letters because exchanging digits or crossing a space or punctuation
+ * mark produces a different answer rather than a slip: "41" is not a typo for "14", nor "jes uis"
+ * for "je suis".
  */
-export function calculateSimilarity(str1: string, str2: string): number {
-  const normalized1 = normalizePunctuationSpacing(normalizeText(str1));
-  const normalized2 = normalizePunctuationSpacing(normalizeText(str2));
+export function isSingleAdjacentSwap(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
 
-  const maxLength = Math.max(normalized1.length, normalized2.length);
-  if (maxLength === 0) return 1.0; // Both empty = identical
+  const differing: number[] = [];
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] === b[i]) continue;
+    if (differing.length === 2) return false;
+    differing.push(i);
+  }
+  if (differing.length !== 2) return false;
 
-  const distance = levenshteinDistance(normalized1, normalized2);
-  return 1 - (distance / maxLength);
+  const [first, second] = differing;
+  const isLetter = (char: string) => /\p{L}/u.test(char);
+  return second === first + 1
+    && a[first] === b[second]
+    && a[second] === b[first]
+    && isLetter(a[first])
+    && isLetter(a[second]);
+}
+
+type MatchKind = 'exact' | 'adjacent_swap';
+
+/** How the answer matches one candidate under the comparison normalization, or null if it doesn't. */
+function matchAgainst(userAnswer: string, candidate: string): MatchKind | null {
+  const user = normalizePunctuationSpacing(normalizeText(userAnswer));
+  const target = normalizePunctuationSpacing(normalizeText(candidate));
+  if (user === target) return 'exact';
+  return isSingleAdjacentSwap(user, target) ? 'adjacent_swap' : null;
 }
 
 /**
- * Evaluate answer using fuzzy logic with confidence scoring
- * Returns null if confidence is too low (should fall back to API)
+ * Whether the answer carries the candidate's accents, judged on the same terms as the match: an
+ * exact match has to agree accent for accent, a swap match has to agree once the same single
+ * transposition is allowed.
+ */
+function accentsMatch(userAnswer: string, candidate: string, kind: MatchKind): boolean {
+  if (kind === 'exact') return hasCorrectAccents(userAnswer, candidate);
+  return isSingleAdjacentSwap(foldKeepingAccents(userAnswer), foldKeepingAccents(candidate));
+}
+
+/** Score for a swap match: a near-perfect answer, below both exact-match scores. */
+const ADJACENT_SWAP_SCORE = 95;
+
+/**
+ * Grade a typed answer by comparison alone: accepted when, after normalization, it equals the
+ * correct answer or an acceptable variation, or differs from one of them by a single adjacent-
+ * character swap. Anything else returns null for the caller to grade with a model; this never
+ * returns an incorrect verdict.
+ *
+ * Scores: 100 for an exact match on the correct answer (98 with accents missing), 98 for an exact
+ * match on a variation (96 with accents missing), and 95 for a swap match against either.
  */
 export function fuzzyEvaluateAnswer(
   userAnswer: string,
   correctAnswer: string | null,
   acceptableVariations: string[],
-  difficulty: Difficulty,
   questionType: string
 ): EvaluationResult | null {
-  // Can't fuzzy evaluate open-ended questions without a correct answer
   if (!correctAnswer) {
     return null;
   }
 
-  // Check exact match first (ignoring accents and French punctuation spacing)
-  const normalizedUser = normalizePunctuationSpacing(normalizeText(userAnswer));
-  const normalizedCorrect = normalizePunctuationSpacing(normalizeText(correctAnswer));
+  const primaryMatch = matchAgainst(userAnswer, correctAnswer);
 
-  if (normalizedUser === normalizedCorrect) {
-    const hasAccents = hasCorrectAccents(userAnswer, correctAnswer);
+  if (primaryMatch === 'exact') {
+    const hasAccents = accentsMatch(userAnswer, correctAnswer, 'exact');
     return {
       isCorrect: true,
       score: hasAccents ? 100 : 98,
@@ -142,116 +162,80 @@ export function fuzzyEvaluateAnswer(
       },
       _matchInfo: {
         matchedAgainst: 'primary_answer',
-        matchedSimilarity: 100, // Exact match
+        matchKind: 'exact',
         evaluationReason: 'Exact match against primary answer (after normalization)'
       }
     };
   }
 
-  // Check acceptable variations (exact match first, then similarity)
-  for (let i = 0; i < acceptableVariations.length; i++) {
-    const variation = acceptableVariations[i];
-    const normalizedVariation = normalizePunctuationSpacing(normalizeText(variation));
+  // An exact match against any variation outranks a swap against the correct answer, so every
+  // variation is tried before the correct answer's swap match is used.
+  const variationMatches = acceptableVariations.map((variation) => matchAgainst(userAnswer, variation));
+  const exactVariationIndex = variationMatches.indexOf('exact');
 
-    // Exact match against variation
-    if (normalizedVariation === normalizedUser) {
-      const hasAccents = hasCorrectAccents(userAnswer, variation);
-      return {
-        isCorrect: true,
-        score: hasAccents ? 98 : 96,
-        hasCorrectAccents: hasAccents,
-        feedback: hasAccents
-          ? courseFeedback.variationExactWithAccents
-          : courseFeedback.variationExactMissingAccents,
-        corrections: hasAccents ? {} : {
-          accents: [courseFeedback.variationCorrectIs(variation)]
-        },
-        _matchInfo: {
-          matchedAgainst: 'acceptable_variation',
-          matchedVariationIndex: i,
-          matchedSimilarity: 100, // Exact match
-          evaluationReason: `Exact match against acceptable variation #${i + 1}`
-        }
-      };
-    }
-
-    // Similarity match against variation (catches typos in acceptable answers)
-    const variationSimilarity = calculateSimilarity(userAnswer, variation);
-    if (variationSimilarity >= 0.95) {
-      const hasAccents = hasCorrectAccents(userAnswer, variation);
-      return {
-        isCorrect: true,
-        score: Math.round(variationSimilarity * 100) - 2, // Slight penalty for not being exact
-        hasCorrectAccents: hasAccents,
-        feedback: courseFeedback.variationCloseMatch,
-        corrections: {
-          suggestions: [courseFeedback.variationCorrectIs(variation)]
-        },
-        correctedAnswer: variation,
-        _matchInfo: {
-          matchedAgainst: 'acceptable_variation',
-          matchedVariationIndex: i,
-          matchedSimilarity: Math.round(variationSimilarity * 100),
-          evaluationReason: `Similarity match (${Math.round(variationSimilarity * 100)}%) against acceptable variation #${i + 1}`
-        }
-      };
-    }
+  if (exactVariationIndex !== -1) {
+    const variation = acceptableVariations[exactVariationIndex];
+    const hasAccents = accentsMatch(userAnswer, variation, 'exact');
+    return {
+      isCorrect: true,
+      score: hasAccents ? 98 : 96,
+      hasCorrectAccents: hasAccents,
+      feedback: hasAccents
+        ? courseFeedback.variationExactWithAccents
+        : courseFeedback.variationExactMissingAccents,
+      corrections: hasAccents ? {} : {
+        accents: [courseFeedback.variationCorrectIs(variation)]
+      },
+      _matchInfo: {
+        matchedAgainst: 'acceptable_variation',
+        matchedVariationIndex: exactVariationIndex,
+        matchKind: 'exact',
+        evaluationReason: `Exact match against acceptable variation #${exactVariationIndex + 1}`
+      }
+    };
   }
 
-  // Calculate similarity for fuzzy matching
-  const similarity = calculateSimilarity(userAnswer, correctAnswer);
-  const threshold = getFuzzyLogicThreshold(difficulty) / 100; // Convert percentage to decimal
-
-  // If similarity is below threshold, return null (need API evaluation)
-  if (similarity < threshold) {
-    return null; // Low confidence - use API
+  if (primaryMatch === 'adjacent_swap') {
+    return {
+      isCorrect: true,
+      score: ADJACENT_SWAP_SCORE,
+      hasCorrectAccents: accentsMatch(userAnswer, correctAnswer, 'adjacent_swap'),
+      feedback: courseFeedback.fuzzyMinorTypo,
+      corrections: {
+        suggestions: [courseFeedback.correctAnswerIs(correctAnswer)]
+      },
+      correctedAnswer: correctAnswer,
+      _matchInfo: {
+        matchedAgainst: 'primary_answer',
+        matchKind: 'adjacent_swap',
+        evaluationReason: 'Single adjacent-character swap against primary answer'
+      }
+    };
   }
 
-  // High confidence fuzzy match
-  // Check if it's "close enough" based on correctness thresholds
-  const similarityPercent = Math.round(similarity * 100);
-  let isCorrect = false;
-  let score = similarityPercent;
-  let feedback = '';
-  let correctnessBand = '';
+  const swapVariationIndex = variationMatches.indexOf('adjacent_swap');
 
-  if (similarityPercent >= CORRECTNESS_THRESHOLDS.MINOR_TYPO) {
-    // Very close - probably a minor typo
-    isCorrect = true;
-    feedback = courseFeedback.fuzzyMinorTypo;
-    correctnessBand = `${CORRECTNESS_THRESHOLDS.MINOR_TYPO}%+ (minor typo)`;
-  } else if (similarityPercent >= CORRECTNESS_THRESHOLDS.BEGINNER_PASS) {
-    // Close - some errors but recognizable
-    isCorrect = difficulty === 'beginner'; // Only count as correct for beginners
-    feedback = isCorrect
-      ? courseFeedback.fuzzyBeginnerPass
-      : courseFeedback.fuzzyBeginnerPassIneligible;
-    correctnessBand = `${CORRECTNESS_THRESHOLDS.BEGINNER_PASS}-${CORRECTNESS_THRESHOLDS.MINOR_TYPO - 1}% (beginner pass only)`;
-  } else {
-    // Below beginner pass threshold
-    isCorrect = false;
-    feedback = courseFeedback.fuzzyBelowThreshold;
-    correctnessBand = `below ${CORRECTNESS_THRESHOLDS.BEGINNER_PASS}% (incorrect)`;
+  if (swapVariationIndex !== -1) {
+    const variation = acceptableVariations[swapVariationIndex];
+    return {
+      isCorrect: true,
+      score: ADJACENT_SWAP_SCORE,
+      hasCorrectAccents: accentsMatch(userAnswer, variation, 'adjacent_swap'),
+      feedback: courseFeedback.variationCloseMatch,
+      corrections: {
+        suggestions: [courseFeedback.variationCorrectIs(variation)]
+      },
+      correctedAnswer: variation,
+      _matchInfo: {
+        matchedAgainst: 'acceptable_variation',
+        matchedVariationIndex: swapVariationIndex,
+        matchKind: 'adjacent_swap',
+        evaluationReason: `Single adjacent-character swap against acceptable variation #${swapVariationIndex + 1}`
+      }
+    };
   }
 
-  const hasAccents = hasCorrectAccents(userAnswer, correctAnswer);
-
-  return {
-    isCorrect,
-    score,
-    hasCorrectAccents: hasAccents,
-    feedback,
-    corrections: {
-      suggestions: [courseFeedback.correctAnswerIs(correctAnswer)]
-    },
-    correctedAnswer: correctAnswer,
-    _matchInfo: {
-      matchedAgainst: 'primary_answer',
-      matchedSimilarity: similarityPercent,
-      evaluationReason: `Fuzzy match against primary answer (${similarityPercent}% similarity)`,
-      correctnessBand
-    }
-  };
+  return null;
 }
 
 /** Stands in for a grade when the server refused to grade the answer; `retryAfterSeconds` is its Retry-After. */

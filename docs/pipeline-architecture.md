@@ -474,7 +474,7 @@ A question with no matching audit result (see "Parser strictness" above) is left
 
 **Difficulty relabeling**: Stage 2 (Sonnet validation) does a first-pass difficulty check. Stage 3 (Mistral audit) re-assesses it. The `audit_metadata` records the audit's finding (`suggested_difficulty`), and the `difficulty` column is updated to match.
 
-**Variation removal** (subtractive only): invalid variations identified by Mistral are removed from `acceptable_variations` on passing questions. This is safe because removal's worst case (rejecting a correct answer) is caught by the evaluation fallback tiers (fuzzy matching, then the semantic LLM call), while leaving invalid variations in place would silently accept wrong answers with no safety net. `missing_variations` are stored in `audit_metadata` but not applied: adding variations is an additive content modification with no fallback safety net.
+**Variation removal** (subtractive only): invalid variations identified by Mistral are removed from `acceptable_variations` on passing questions. This is safe because removal's worst case (rejecting a correct answer) is caught by the semantic LLM tier, which grades every answer the string-matching tiers do not accept, while leaving invalid variations in place would silently accept wrong answers with no safety net. `missing_variations` are stored in `audit_metadata` but not applied: adding variations is an additive content modification with no fallback safety net.
 
 ### Querying audit metadata
 

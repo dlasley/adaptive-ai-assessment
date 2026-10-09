@@ -175,7 +175,7 @@ export function useQuizSession() {
       setEvaluationResults({
         'mock-2': {
           isCorrect: true,
-          score: 85,
+          score: 96,
           hasCorrectAccents: false,
           feedback: 'Good translation! Watch the accent on "étudiant".',
           corrections: {},
@@ -183,10 +183,10 @@ export function useQuizSession() {
           metadata: {
             difficulty: 'intermediate',
             evaluationTier: 'fuzzy_logic',
-            levenshteinSimilarity: 92,
-            levenshteinThreshold: 80,
-            matchedAgainst: 'primary_answer',
-            evaluationReason: 'Fuzzy match passed threshold',
+            matchKind: 'exact',
+            matchedAgainst: 'acceptable_variation',
+            matchedVariationIndex: 0,
+            evaluationReason: 'Exact match against acceptable variation #1',
             usedClaudeAPI: false,
           },
         },
@@ -199,7 +199,7 @@ export function useQuizSession() {
           metadata: {
             difficulty: 'beginner',
             evaluationTier: 'exact_match',
-            levenshteinSimilarity: 100,
+            matchKind: 'exact',
             matchedAgainst: 'primary_answer',
             evaluationReason: 'Exact match found',
             usedClaudeAPI: false,

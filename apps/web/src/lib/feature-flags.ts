@@ -13,7 +13,7 @@ export const FEATURES = {
 
   /**
    * Skip fuzzy logic evaluation (applies to both 'writing' and 'fill-in-blank' questions)
-   * - When false: Use fuzzy logic first, then Semantic API only when confidence is low
+   * - When false: the fuzzy tier grades an answer it matches, and the Semantic API grades the rest
    * - When true: Skip fuzzy logic, always use Semantic API (higher accuracy, higher cost)
    */
   SKIP_FUZZY_LOGIC: false,
@@ -29,38 +29,11 @@ export const FEATURES = {
 } as const;
 
 /**
- * Fuzzy logic thresholds by difficulty level
- * Determines minimum similarity required to use fuzzy logic instead of falling back to Semantic API
- * NOTE: This is NOT the "passing" threshold - see CORRECTNESS_THRESHOLDS for that
- * Values are percentages (0-100)
- */
-const FUZZY_LOGIC_THRESHOLDS = {
-  beginner: 70,
-  intermediate: 85,
-  advanced: 95,
-} as const;
-
-/**
- * Correctness thresholds for fuzzy logic evaluation
- * These determine whether an answer is marked correct based on similarity score
+ * Score thresholds for deciding whether a graded answer counts as correct.
  */
 export const CORRECTNESS_THRESHOLDS = {
-  /** 95%+ similarity = correct (minor typo) */
-  MINOR_TYPO: 95,
-  /** 85-94% similarity = correct only for beginners */
-  BEGINNER_PASS: 85,
-  /** Below 85% = incorrect (even if above fuzzy logic threshold) */
   /** Semantic API: score >= this value = correct */
   SEMANTIC_API_PASS: 70,
 } as const;
-
-type DifficultyLevel = keyof typeof FUZZY_LOGIC_THRESHOLDS;
-
-/**
- * Get the fuzzy logic threshold for a given difficulty level
- */
-export function getFuzzyLogicThreshold(difficulty: string): number {
-  return FUZZY_LOGIC_THRESHOLDS[difficulty as DifficultyLevel] ?? FUZZY_LOGIC_THRESHOLDS.intermediate;
-}
 
 logger.debug('Feature flags', FEATURES);

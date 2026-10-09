@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildCommonEvaluationMetadataFields,
   EVALUATION_TIER_LABELS,
   formatQuestionTypeLabel,
   formatTypedAnswerQuestionTypeLabel,
   getEvaluationTierLabel,
   getMatchedAgainstLabel,
+  getMatchKindLabel,
 } from '@/lib/superuser-metadata-labels';
 
 describe('getEvaluationTierLabel', () => {
@@ -47,6 +49,44 @@ describe('getMatchedAgainstLabel', () => {
 
   it('falls back to the raw value for an unknown match type', () => {
     expect(getMatchedAgainstLabel('something_else')).toBe('something_else');
+  });
+});
+
+describe('getMatchKindLabel', () => {
+  it('labels both match kinds', () => {
+    expect(getMatchKindLabel('exact')).toBe('Exact');
+    expect(getMatchKindLabel('adjacent_swap')).toBe('Adjacent Swap');
+  });
+
+  it('falls back to the raw value for an unknown match kind', () => {
+    expect(getMatchKindLabel('something_else')).toBe('something_else');
+  });
+});
+
+describe('buildCommonEvaluationMetadataFields', () => {
+  const baseMetadata = {
+    difficulty: 'beginner',
+    evaluationTier: 'fuzzy_logic',
+    usedClaudeAPI: false,
+    matchedAgainst: 'primary_answer',
+    evaluationReason: 'Single adjacent-character swap against primary answer',
+  } as const;
+
+  it('shows the match kind when the tier reported one', () => {
+    const fields = buildCommonEvaluationMetadataFields({ ...baseMetadata, matchKind: 'adjacent_swap' });
+    expect(fields).toEqual(
+      expect.arrayContaining([{ label: 'Match Kind', value: 'Adjacent Swap' }])
+    );
+  });
+
+  it('omits the match kind for a tier that does not match against an answer', () => {
+    const fields = buildCommonEvaluationMetadataFields({
+      ...baseMetadata,
+      evaluationTier: 'claude_api',
+      matchedAgainst: 'none',
+      usedClaudeAPI: true,
+    });
+    expect(fields.map((f) => f.label)).not.toContain('Match Kind');
   });
 });
 

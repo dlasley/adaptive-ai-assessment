@@ -14,6 +14,7 @@ import {
   formatTypedAnswerQuestionTypeLabel,
   getEvaluationTierLabel,
   getMatchedAgainstLabel,
+  getMatchKindLabel,
   type SuperuserMetadataField,
 } from '@/lib/superuser-metadata-labels';
 
@@ -55,19 +56,13 @@ export function EvaluationResultDisplay({
       value: getEvaluationTierLabel(metadata.evaluationTier),
     });
     if (metadata.evaluationTier === 'exact_match' || metadata.evaluationTier === 'fuzzy_logic') {
-      evaluationMetadataFields.push({ label: 'Levenshtein Score', value: `${evaluation.score}%` });
+      evaluationMetadataFields.push({ label: 'Match Score', value: `${evaluation.score}%` });
     }
     if (metadata.evaluationTier === 'claude_api') {
       evaluationMetadataFields.push({ label: 'Semantic Score', value: `${evaluation.score}%` });
     }
-    if (metadata.levenshteinThreshold !== undefined) {
-      evaluationMetadataFields.push({
-        label: 'Fuzzy Logic Threshold',
-        value: `${metadata.levenshteinThreshold}%`,
-      });
-    }
-    if (metadata.correctnessBand) {
-      evaluationMetadataFields.push({ label: 'Correctness Band', value: metadata.correctnessBand });
+    if (metadata.matchKind !== undefined) {
+      evaluationMetadataFields.push({ label: 'Match Kind', value: getMatchKindLabel(metadata.matchKind) });
     }
     if (metadata.modelConfidence !== undefined) {
       evaluationMetadataFields.push({

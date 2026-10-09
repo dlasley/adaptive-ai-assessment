@@ -185,9 +185,6 @@ describe('COURSE_CONTENT.feedback literal text', () => {
     expect(feedback.variationExactMissingAccents).toBe('Bien ! Attention aux accents. Variation acceptable.');
     expect(feedback.variationCloseMatch).toBe('Presque parfait ! Petite erreur dans une variation acceptable.');
     expect(feedback.fuzzyMinorTypo).toBe('Presque parfait ! Attention aux petites erreurs.');
-    expect(feedback.fuzzyBeginnerPass).toBe('Bon effort ! Quelques petites erreurs à corriger.');
-    expect(feedback.fuzzyBeginnerPassIneligible).toBe('Pas mal, mais il y a des erreurs à corriger.');
-    expect(feedback.fuzzyBelowThreshold).toBe('Vous êtes sur la bonne voie, mais il y a plusieurs erreurs.');
     expect(feedback.evaluationRequestFailed).toBe('Unable to evaluate. Please try again.');
     expect(feedback.evaluationApiFailed).toBe(
       'Unable to evaluate automatically. Please try again or ask your teacher for feedback.'

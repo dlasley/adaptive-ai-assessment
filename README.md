@@ -37,12 +37,12 @@ Using a different vendor for the audit reduces the chance that generator and rev
 
 ```text
 Student answer → Empty check → Exact match → Fuzzy match → Semantic (LLM) → Result
-                                (normalized)  (Levenshtein)
+                                (normalized)  (one swap)
 ```
 
 - **Empty check**: rejects an empty or too-short answer.
 - **Exact match**: normalized string comparison (case, whitespace, accents).
-- **Fuzzy match**: Levenshtein distance thresholds scaled by difficulty.
+- **Fuzzy match**: accepts an answer that equals an acceptable variation, or that differs from the correct answer or a variation by one pair of adjacent characters exchanged. It never marks an answer wrong.
 - **Semantic fallback**: an LLM evaluates the cases the first three tiers cannot settle.
 
 ### Web app
@@ -85,7 +85,7 @@ See [`docs/evaluation-findings.md`](docs/evaluation-findings.md) for what the fr
 - Four question types: multiple choice, true/false, fill-in-the-blank, writing
 - Practice and assessment quiz modes
 - Adaptive Leitner spaced-repetition scheduling, per-topic mastery tracking, and quiz history
-- Tiered typed-answer grading: exact match, fuzzy match, then an LLM semantic fallback
+- Tiered typed-answer grading: exact match, a single-swap match, then an LLM semantic fallback
 - Anonymous study codes for identity (no accounts; the app collects no names, though an owner can label a code with a name directly in the database)
 
 **Admin**

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  calculateSimilarity,
   fuzzyEvaluateAnswer,
   hasCorrectAccents,
+  isSingleAdjacentSwap,
   normalizePunctuationSpacing,
   normalizeText,
 } from '@/lib/typed-answer-evaluation';
@@ -32,6 +32,13 @@ describe('normalizeText', () => {
   it('does not collapse a punctuation-only answer to an empty string', () => {
     expect(normalizeText('.')).toBe('.');
     expect(normalizeText('!')).not.toBe(normalizeText('.'));
+  });
+
+  it('folds the œ and æ ligatures to their two-letter forms, in both cases', () => {
+    expect(normalizeText('sœur')).toBe('soeur');
+    expect(normalizeText('Œuf')).toBe('oeuf');
+    expect(normalizeText('curriculum vitæ')).toBe('curriculum vitae');
+    expect(normalizeText('Æsop')).toBe('aesop');
   });
 });
 
@@ -91,75 +98,111 @@ describe('hasCorrectAccents', () => {
   it('does not strip an internal period (abbreviation)', () => {
     expect(hasCorrectAccents('M. Dupont est là', 'M Dupont est là')).toBe(false);
   });
+
+  it('treats a decomposed accent as the accent it renders as', () => {
+    const decomposed = 'café'; // "café" written as e + combining acute
+    expect(decomposed).not.toBe('café');
+    expect(hasCorrectAccents(decomposed, 'café')).toBe(true);
+  });
+
+  it('treats a ligature written as two letters as a missing accent', () => {
+    expect(hasCorrectAccents('soeur', 'sœur')).toBe(false);
+  });
 });
 
-describe('calculateSimilarity', () => {
-  it('returns 1.0 for identical strings', () => {
-    expect(calculateSimilarity('bonjour', 'bonjour')).toBe(1);
+describe('isSingleAdjacentSwap', () => {
+  it('accepts one pair of adjacent characters exchanged', () => {
+    expect(isSingleAdjacentSwap('chosiit', 'choisit')).toBe(true);
+    expect(isSingleAdjacentSwap('setp, douze', 'sept, douze')).toBe(true);
   });
 
-  it('returns 1.0 when both strings are empty', () => {
-    expect(calculateSimilarity('', '')).toBe(1);
+  it('rejects equal strings, so exchanging a doubled letter is not a swap', () => {
+    expect(isSingleAdjacentSwap('elle', 'elle')).toBe(false);
   });
 
-  it('is insensitive to accents and case (normalized before comparison)', () => {
-    expect(calculateSimilarity('Café', 'cafe')).toBe(1);
+  it('rejects a substitution', () => {
+    expect(isSingleAdjacentSwap('chas', 'chat')).toBe(false);
+    expect(isSingleAdjacentSwap('bonjoir', 'bonjour')).toBe(false);
   });
 
-  it('is insensitive to punctuation spacing', () => {
-    expect(calculateSimilarity('bonjour ?', 'bonjour?')).toBe(1);
+  it('rejects two adjacent substitutions that are not an exchange of each other\'s characters', () => {
+    // 'ab' to 'cd': the differing positions are adjacent, but neither holds the character
+    // the other position has, so this is a double substitution, not a swap.
+    expect(isSingleAdjacentSwap('ab', 'cd')).toBe(false);
   });
 
-  it('returns a value between 0 and 1 for partially similar strings', () => {
-    const sim = calculateSimilarity('bonjour', 'bonjoir');
-    expect(sim).toBeGreaterThan(0);
-    expect(sim).toBeLessThan(1);
+  it('rejects a different length (a dropped or added letter)', () => {
+    expect(isSingleAdjacentSwap('bonjor', 'bonjour')).toBe(false);
+    expect(isSingleAdjacentSwap('bonjourr', 'bonjour')).toBe(false);
   });
 
-  it('returns a low similarity for completely different strings', () => {
-    const sim = calculateSimilarity('bonjour', 'xyz');
-    expect(sim).toBeLessThan(0.5);
+  it('rejects a different length even when the shorter string, read alone, looks like a swap of the longer one\'s start', () => {
+    // The first two characters of 'bac' read as 'a' and 'b' swapped against 'ab', but 'bac' carries
+    // a trailing character 'ab' doesn't have, so this is a length difference, not a swap.
+    expect(isSingleAdjacentSwap('ab', 'bac')).toBe(false);
+  });
+
+  it('rejects two swaps', () => {
+    expect(isSingleAdjacentSwap('ohcisit', 'choisit')).toBe(false);
+  });
+
+  it('rejects a non-adjacent exchange', () => {
+    expect(isSingleAdjacentSwap('tac', 'cat')).toBe(false);
+  });
+
+  // The seeder's typo definition (apps/pipeline/src/lib/eval/grading-seed.ts) excludes these for
+  // the same reason: they produce a different answer rather than a slip.
+  it('rejects a swap of two digits', () => {
+    expect(isSingleAdjacentSwap('41', '14')).toBe(false);
+    expect(isSingleAdjacentSwap('le 41 juillet', 'le 14 juillet')).toBe(false);
+  });
+
+  it('rejects a swap across a space', () => {
+    expect(isSingleAdjacentSwap('jes uis', 'je suis')).toBe(false);
+  });
+
+  it('rejects a swap of a letter with punctuation', () => {
+    expect(isSingleAdjacentSwap('le ,la', 'le, la')).toBe(false);
+  });
+
+  it('still accepts a swap of two letters next to a space or digit', () => {
+    expect(isSingleAdjacentSwap('setp, douze', 'sept, douze')).toBe(true);
+    expect(isSingleAdjacentSwap('le 14 jiullet', 'le 14 juillet')).toBe(true);
   });
 });
 
 describe('fuzzyEvaluateAnswer', () => {
-  const difficulty = 'intermediate' as const;
-
   it('returns null immediately when correctAnswer is null (open-ended question)', () => {
-    const result = fuzzyEvaluateAnswer('anything', null, [], difficulty, 'writing');
+    const result = fuzzyEvaluateAnswer('anything', null, [], 'writing');
     expect(result).toBeNull();
   });
 
   it('returns a perfect exact match with correct accents', () => {
-    const result = fuzzyEvaluateAnswer('café', 'café', [], difficulty, 'writing');
+    const result = fuzzyEvaluateAnswer('café', 'café', [], 'writing');
     expect(result).not.toBeNull();
     expect(result!.isCorrect).toBe(true);
     expect(result!.score).toBe(100);
     expect(result!.hasCorrectAccents).toBe(true);
     expect(result!._matchInfo?.matchedAgainst).toBe('primary_answer');
-    expect(result!._matchInfo?.matchedSimilarity).toBe(100);
+    expect(result!._matchInfo?.matchKind).toBe('exact');
   });
 
-  it('treats a trailing-period-only difference as an exact match, not a fuzzy one', () => {
-    // Regression: previously fell through to the general similarity branch instead of the
-    // internal exact-match check above, scoring 96% ("Presque parfait") and misreporting a
-    // correct-accent answer as an accent mismatch.
-    const result = fuzzyEvaluateAnswer('Nous allons à la plage', 'Nous allons à la plage.', [], difficulty, 'writing');
+  it('treats a trailing-period-only difference as an exact match', () => {
+    const result = fuzzyEvaluateAnswer('Nous allons à la plage', 'Nous allons à la plage.', [], 'writing');
     expect(result).not.toBeNull();
     expect(result!.isCorrect).toBe(true);
     expect(result!.score).toBe(100);
     expect(result!.hasCorrectAccents).toBe(true);
-    expect(result!._matchInfo?.matchedSimilarity).toBe(100);
+    expect(result!._matchInfo?.matchKind).toBe('exact');
     expect(result!._matchInfo?.evaluationReason).toContain('Exact match');
   });
 
   it('accepts an exact match missing accents, scored slightly lower', () => {
-    const result = fuzzyEvaluateAnswer('cafe', 'café', [], difficulty, 'writing');
+    const result = fuzzyEvaluateAnswer('cafe', 'café', [], 'writing');
     expect(result).not.toBeNull();
     expect(result!.isCorrect).toBe(true);
     expect(result!.score).toBe(98);
     expect(result!.hasCorrectAccents).toBe(false);
-    expect(result!.corrections.accents).toBeDefined();
     expect(result!.feedback).toBe(courseFeedback.exactMatchMissingAccents);
     expect(result!.corrections.accents).toEqual([courseFeedback.correctAnswerIs('café')]);
   });
@@ -169,7 +212,6 @@ describe('fuzzyEvaluateAnswer', () => {
       'Bonjour, je m\'appelle Paul.',
       'Salut, je m\'appelle Paul.',
       ["Bonjour, je m'appelle Paul."],
-      difficulty,
       'writing'
     );
     expect(result).not.toBeNull();
@@ -177,64 +219,116 @@ describe('fuzzyEvaluateAnswer', () => {
     expect(result!.score).toBe(98);
     expect(result!._matchInfo?.matchedAgainst).toBe('acceptable_variation');
     expect(result!._matchInfo?.matchedVariationIndex).toBe(0);
+    expect(result!._matchInfo?.matchKind).toBe('exact');
     expect(result!.feedback).toBe(courseFeedback.variationExactWithAccents);
   });
 
-  it('matches an acceptable variation via similarity (>=95%) when not exact', () => {
-    // Missing comma is a 1-character diff on a 53-char string — 98% similarity, above the 95% bar.
-    const userAnswer = "Je voudrais du cafe et un croissant s'il vous plait";
-    const variation = "Je voudrais du cafe et un croissant, s'il vous plait";
-    const result = fuzzyEvaluateAnswer(userAnswer, 'no match at all', [variation], difficulty, 'writing');
+  it('accepts a single adjacent swap against the correct answer', () => {
+    const result = fuzzyEvaluateAnswer('Il chosiit', 'Il choisit', [], 'writing');
     expect(result).not.toBeNull();
     expect(result!.isCorrect).toBe(true);
-    expect(result!._matchInfo?.matchedAgainst).toBe('acceptable_variation');
-    expect(result!.correctedAnswer).toBe(variation);
+    expect(result!.score).toBe(95);
+    expect(result!.feedback).toBe(courseFeedback.fuzzyMinorTypo);
+    expect(result!.correctedAnswer).toBe('Il choisit');
+    expect(result!.corrections.suggestions).toEqual([courseFeedback.correctAnswerIs('Il choisit')]);
+    expect(result!._matchInfo?.matchedAgainst).toBe('primary_answer');
+    expect(result!._matchInfo?.matchKind).toBe('adjacent_swap');
+  });
+
+  it('accepts a single adjacent swap against an acceptable variation, with its index', () => {
+    const result = fuzzyEvaluateAnswer(
+      'Il chosiit',
+      'Elle décide',
+      ['Elle choisit', 'Il choisit'],
+      'writing'
+    );
+    expect(result).not.toBeNull();
+    expect(result!.isCorrect).toBe(true);
+    expect(result!.score).toBe(95);
     expect(result!.feedback).toBe(courseFeedback.variationCloseMatch);
-    expect(result!.corrections.suggestions).toEqual([courseFeedback.variationCorrectIs(variation)]);
+    expect(result!.correctedAnswer).toBe('Il choisit');
+    expect(result!._matchInfo?.matchedAgainst).toBe('acceptable_variation');
+    expect(result!._matchInfo?.matchedVariationIndex).toBe(1);
+    expect(result!._matchInfo?.matchKind).toBe('adjacent_swap');
   });
 
-  it('returns null (defers to API) when similarity is below the difficulty threshold', () => {
-    // intermediate fuzzy-logic threshold is 85% — a wildly different answer falls below it.
-    const result = fuzzyEvaluateAnswer('xyz complete nonsense', 'Je mange une pomme.', [], difficulty, 'writing');
-    expect(result).toBeNull();
-  });
-
-  it('classifies >=95% similarity as MINOR_TYPO and correct', () => {
-    // "advanced" has a 95% fuzzy-logic threshold, so only near-exact matches reach the banding logic.
-    const result = fuzzyEvaluateAnswer('Nous allons au marche ensemble', 'Nous allons au march ensemble', [], 'advanced', 'writing');
+  it('accepts a swap inside one blank of a two-blank answer', () => {
+    const result = fuzzyEvaluateAnswer('setp, douze', 'sept, douze', [], 'fill-in-blank');
     expect(result).not.toBeNull();
     expect(result!.isCorrect).toBe(true);
-    expect(result!._matchInfo?.evaluationReason).toContain('Fuzzy match');
+    expect(result!.score).toBe(95);
+    expect(result!._matchInfo?.matchKind).toBe('adjacent_swap');
   });
 
-  it('classifies 85-94% similarity as correct for a beginner', () => {
-    const result = fuzzyEvaluateAnswer('Je mage une pome', 'Je mange une pomme', [], 'beginner', 'fill-in-blank');
-    const sim = calculateSimilarity('Je mage une pome', 'Je mange une pomme');
-    expect(sim * 100).toBeGreaterThanOrEqual(85);
-    expect(sim * 100).toBeLessThan(95);
+  it('accepts a swap in an accented answer and keeps the accents correct', () => {
+    const result = fuzzyEvaluateAnswer('Il préfère le hté', 'Il préfère le thé', [], 'writing');
     expect(result).not.toBeNull();
     expect(result!.isCorrect).toBe(true);
+    expect(result!.score).toBe(95);
+    expect(result!.hasCorrectAccents).toBe(true);
   });
 
-  it('classifies 85-94% similarity as incorrect for a non-beginner', () => {
-    const result = fuzzyEvaluateAnswer('Je mage une pome', 'Je mange une pomme', [], 'intermediate', 'fill-in-blank');
-    const sim = calculateSimilarity('Je mage une pome', 'Je mange une pomme');
-    expect(sim * 100).toBeGreaterThanOrEqual(85);
-    expect(sim * 100).toBeLessThan(95);
+  it('accepts a ligature written as two letters, reported as missing accents', () => {
+    const result = fuzzyEvaluateAnswer('soeur', 'sœur', [], 'fill-in-blank');
     expect(result).not.toBeNull();
-    expect(result!.isCorrect).toBe(false);
+    expect(result!.isCorrect).toBe(true);
+    expect(result!.score).toBe(98);
+    expect(result!.hasCorrectAccents).toBe(false);
+    expect(result!._matchInfo?.matchKind).toBe('exact');
+    expect(result!.corrections.accents).toEqual([courseFeedback.correctAnswerIs('sœur')]);
   });
 
-  it('classifies below-BEGINNER_PASS similarity (but above the fuzzy threshold) as incorrect', () => {
-    // beginner fuzzy-logic threshold is 70%, BEGINNER_PASS band starts at 85% —
-    // an answer in between reaches the banding logic but fails every band.
-    const result = fuzzyEvaluateAnswer('Je mag un pom', 'Je mange une pomme', [], 'beginner', 'fill-in-blank');
-    const sim = calculateSimilarity('Je mag un pom', 'Je mange une pomme');
-    expect(sim * 100).toBeGreaterThanOrEqual(70);
-    expect(sim * 100).toBeLessThan(85);
+  it('scores a decomposed accent as a perfect match', () => {
+    const result = fuzzyEvaluateAnswer('café', 'café', [], 'fill-in-blank');
     expect(result).not.toBeNull();
-    expect(result!.isCorrect).toBe(false);
-    expect(result!._matchInfo?.correctnessBand).toContain('incorrect');
-    expect(result!.feedback).toBe(courseFeedback.fuzzyBelowThreshold);
+    expect(result!.score).toBe(100);
+    expect(result!.hasCorrectAccents).toBe(true);
+  });
+
+  it('returns null for a swap of two digits', () => {
+    expect(fuzzyEvaluateAnswer('41', '14', [], 'fill-in-blank')).toBeNull();
+    expect(fuzzyEvaluateAnswer('le 41 juillet', 'le 14 juillet', [], 'fill-in-blank')).toBeNull();
+  });
+
+  it('returns null for a swap across a space or punctuation mark', () => {
+    expect(fuzzyEvaluateAnswer('jes uis', 'je suis', [], 'writing')).toBeNull();
+    expect(fuzzyEvaluateAnswer('le ,la', 'le, la', [], 'fill-in-blank')).toBeNull();
+  });
+
+  it('reports missing accents on a swap match when the accent is absent', () => {
+    // "ecoutze" is "écoutez" with the last two letters exchanged and the accent dropped.
+    const result = fuzzyEvaluateAnswer('ecoutze', 'écoutez', [], 'writing');
+    expect(result).not.toBeNull();
+    expect(result!.isCorrect).toBe(true);
+    expect(result!.hasCorrectAccents).toBe(false);
+    expect(result!._matchInfo?.matchKind).toBe('adjacent_swap');
+  });
+
+  it('returns null for a single substitution', () => {
+    expect(fuzzyEvaluateAnswer('Amadou et Chloé sont soif.', 'Amadou et Chloé ont soif.', [], 'writing')).toBeNull();
+    expect(fuzzyEvaluateAnswer('bonjoir', 'bonjour', [], 'writing')).toBeNull();
+  });
+
+  it('returns null for a dropped letter', () => {
+    expect(fuzzyEvaluateAnswer('Bonjor', 'Bonjour', [], 'writing')).toBeNull();
+  });
+
+  it('returns null for two swaps', () => {
+    expect(fuzzyEvaluateAnswer('Il ohcisit', 'Il choisit', [], 'writing')).toBeNull();
+  });
+
+  it('returns null for an unrelated answer', () => {
+    expect(fuzzyEvaluateAnswer('xyz complete nonsense', 'Je mange une pomme.', [], 'writing')).toBeNull();
+  });
+
+  it('returns null for a one-letter difference in a long sentence', () => {
+    expect(
+      fuzzyEvaluateAnswer(
+        "Je voudrais du cafe et un croissant s'il vous plait",
+        "Je voudrais du cafe et un croissant, s'il vous plait",
+        [],
+        'writing'
+      )
+    ).toBeNull();
   });
 });

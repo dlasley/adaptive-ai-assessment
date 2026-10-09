@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FEATURES } from '@/lib/feature-flags';
-import { calculateSimilarity } from '@/lib/typed-answer-evaluation';
 import { MODELS } from '@adaptive/shared/models';
 import { loadQuestionsByIds } from '@/lib/question-loader';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
@@ -165,18 +164,16 @@ export async function POST(request: NextRequest) {
     );
 
     if (includeSuperuserMetadata) {
-      const similarity = correctAnswer ? calculateSimilarity(userAnswer, correctAnswer) : undefined;
       evaluation.metadata = {
         difficulty,
         evaluationTier: 'claude_api',
-        levenshteinSimilarity: similarity !== undefined ? Math.round(similarity * 100) : undefined,
         modelConfidence, // the model's self-reported confidence
         usedClaudeAPI: true,
         modelUsed: MODELS.writingEvaluation,
         matchedAgainst: 'none', // the model evaluates semantically, not by matching
         evaluationReason: FEATURES.SKIP_FUZZY_LOGIC
           ? 'Fuzzy logic disabled by SKIP_FUZZY_LOGIC; used Semantic API for semantic evaluation'
-          : 'Fuzzy logic confidence below threshold; used Semantic API for semantic evaluation'
+          : 'No exact or single-swap match; used Semantic API for semantic evaluation'
       };
     }
 

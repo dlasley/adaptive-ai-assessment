@@ -575,8 +575,9 @@ Every row is validated before anything is written: unknown or duplicate `item_id
 verdict cells, and a missing `reason` where one is required. The whole import is refused if any row
 fails. An item already `approved` is left alone unless `--overwrite` is given. For grading,
 `--policy-labels` also approves every `typo`/`missing_accent` item directly: they are excluded from
-the export by default and need no reviewer judgment, since the app's fuzzy-match tier accepts those
-answers by policy.
+the export by default and need no reviewer judgment, since the app accepts those answers by policy.
+A typo seed is one pair of adjacent characters exchanged, which the fuzzy-match tier accepts, and a
+missing-accent seed matches exactly once comparison strips accents.
 
 `--rubric-version` labels which version of the labeling instructions the reviewer worked from (a
 plain string such as `v1`), so a later re-review under a revised rubric can be told apart. Each

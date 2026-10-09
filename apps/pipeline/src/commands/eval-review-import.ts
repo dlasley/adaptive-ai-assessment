@@ -8,8 +8,9 @@
  * applying a submission with errors in it.
  *
  * `--policy-labels` (grading only) approves every `typo`/`missing_accent` item directly, without a
- * sheet row for it: the app's fuzzy-match tier already accepts those answers by policy, so there's
- * nothing for a reviewer to judge.
+ * sheet row for it: the app accepts those answers by policy — a typo seed is the single adjacent-
+ * character swap the fuzzy-match tier accepts, and a missing-accent seed matches exactly once
+ * comparison strips accents — so there's nothing for a reviewer to judge.
  *
  * Dry run by default; `--write-db` performs the writes. An item already `reference_status: 'approved'`
  * is left alone unless `--overwrite` is given. A successful `--write-db` run also records one

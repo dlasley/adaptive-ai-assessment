@@ -14,22 +14,19 @@ export interface EvaluationResult {
   _matchInfo?: {
     matchedAgainst: 'primary_answer' | 'acceptable_variation' | 'none';
     matchedVariationIndex?: number;
-    matchedSimilarity?: number; // 0-100, similarity to the matched answer (not necessarily primary)
+    matchKind?: 'exact' | 'adjacent_swap'; // How the answer matched what it was compared against
     evaluationReason: string;
-    correctnessBand?: string; // Which correctness band this fell into (e.g., "95%+ (minor typo)")
   };
   // Superuser metadata (only included when is_superuser=true)
   metadata?: {
     difficulty: string;
     evaluationTier: 'empty_check' | 'exact_match' | 'fuzzy_logic' | 'noise_check' | 'claude_api';
-    levenshteinSimilarity?: number; // 0-100, similarity score from Levenshtein distance
-    levenshteinThreshold?: number; // 0-100, threshold for this difficulty
+    matchKind?: 'exact' | 'adjacent_swap'; // How the answer matched (exact_match and fuzzy_logic tiers)
     modelConfidence?: number; // 0-100, the model's self-reported confidence (only for claude_api tier)
     usedClaudeAPI: boolean;
     modelUsed?: string;
     matchedAgainst: 'primary_answer' | 'acceptable_variation' | 'none';
     matchedVariationIndex?: number; // Which variation was matched (0-indexed)
     evaluationReason: string; // Human-readable explanation of why this tier was used
-    correctnessBand?: string; // Which correctness band this fell into (for fuzzy_logic tier)
   };
 }
