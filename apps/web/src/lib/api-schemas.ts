@@ -20,9 +20,12 @@ const questionSummarySchema = z.object({
   difficulty: difficultySchema,
 });
 
+// `gradedBy` is a bounded string, not the enum: an unrecognized value is stored as NULL by the
+// route rather than failing the whole submission.
 const evaluationResultSummarySchema = z.object({
   isCorrect: z.boolean(),
   score: z.number().min(0).max(100).optional(),
+  gradedBy: z.string().max(32).optional(),
 });
 
 export const quizResultsSchema = z

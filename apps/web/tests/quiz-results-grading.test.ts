@@ -205,6 +205,91 @@ describe('POST /api/student/quiz-results — grading correctness', () => {
     ]);
   });
 
+  it('stores the client-reported grading path for a typed answer', async () => {
+    const res = await quizResultsPost(
+      makeRequest({
+        ...BASE,
+        questions: [{ id: TYPED_QUESTION_ID, topic: 'greetings', difficulty: 'beginner' }],
+        userAnswers: { [TYPED_QUESTION_ID]: 'Salut' },
+        evaluationResults: { [TYPED_QUESTION_ID]: { isCorrect: true, score: 95, gradedBy: 'variation_swap' } },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(insertQuestionResultsMock).toHaveBeenCalledWith([
+      expect.objectContaining({ question_id: TYPED_QUESTION_ID, graded_by: 'variation_swap' }),
+    ]);
+  });
+
+  it.each(['fuzzy_match', 'EXACT', '', 'drop table question_results'])(
+    'stores null rather than the unrecognized grading path %j',
+    async (gradedBy) => {
+      const res = await quizResultsPost(
+        makeRequest({
+          ...BASE,
+          questions: [{ id: TYPED_QUESTION_ID, topic: 'greetings', difficulty: 'beginner' }],
+          userAnswers: { [TYPED_QUESTION_ID]: 'Salut' },
+          evaluationResults: { [TYPED_QUESTION_ID]: { isCorrect: true, score: 95, gradedBy } },
+        })
+      );
+
+      expect(res.status).toBe(200);
+      expect(insertQuestionResultsMock).toHaveBeenCalledWith([
+        expect.objectContaining({ question_id: TYPED_QUESTION_ID, graded_by: null }),
+      ]);
+    }
+  );
+
+  it('stores null for a multiple-choice row even when the client claims a grading path', async () => {
+    const res = await quizResultsPost(
+      makeRequest({
+        ...BASE,
+        questions: [{ id: QUESTION_ID, topic: 'greetings', difficulty: 'beginner' }],
+        userAnswers: { [QUESTION_ID]: 'Bonjour' },
+        evaluationResults: { [QUESTION_ID]: { isCorrect: true, score: 100, gradedBy: 'semantic' } },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(insertQuestionResultsMock).toHaveBeenCalledWith([
+      expect.objectContaining({ question_id: QUESTION_ID, graded_by: null }),
+    ]);
+  });
+
+  it('stores null for the score-50 result the evaluate route returns when it cannot grade', async () => {
+    const res = await quizResultsPost(
+      makeRequest({
+        ...BASE,
+        correctAnswers: 0,
+        scorePercentage: 50,
+        questions: [{ id: TYPED_QUESTION_ID, topic: 'greetings', difficulty: 'beginner' }],
+        userAnswers: { [TYPED_QUESTION_ID]: 'Salut' },
+        evaluationResults: { [TYPED_QUESTION_ID]: { isCorrect: false, score: 50 } },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(insertQuestionResultsMock).toHaveBeenCalledWith([
+      expect.objectContaining({ question_id: TYPED_QUESTION_ID, score: 50, graded_by: null }),
+    ]);
+  });
+
+  it('stores null for a typed answer the client reported no grading path for', async () => {
+    const res = await quizResultsPost(
+      makeRequest({
+        ...BASE,
+        questions: [{ id: TYPED_QUESTION_ID, topic: 'greetings', difficulty: 'beginner' }],
+        userAnswers: { [TYPED_QUESTION_ID]: 'Salut' },
+        evaluationResults: { [TYPED_QUESTION_ID]: { isCorrect: true, score: 95 } },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(insertQuestionResultsMock).toHaveBeenCalledWith([
+      expect.objectContaining({ question_id: TYPED_QUESTION_ID, graded_by: null }),
+    ]);
+  });
+
   it('stores one row for a question id that appears twice', async () => {
     const question = { id: QUESTION_ID, topic: 'greetings', difficulty: 'beginner' };
     const res = await quizResultsPost(

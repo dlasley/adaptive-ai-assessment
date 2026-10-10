@@ -115,6 +115,7 @@ describe('evaluate-writing when every grading attempt fails', () => {
       feedback: COURSE_CONTENT.feedback.evaluationApiFailed,
       corrections: {},
     });
+    expect(body).not.toHaveProperty('gradedBy');
   });
 
   it('never includes the model id or the question text in the response body', async () => {

@@ -27,6 +27,27 @@ export const WRITING_TYPES = [
 export type WritingType = (typeof WRITING_TYPES)[number];
 
 /**
+ * Value set for `question_results.graded_by`: which grading path settled a typed answer. Mirrors
+ * that column's CHECK constraint in supabase/schema.sql. `variation` and `variation_swap` are
+ * matches against an acceptable variation rather than the primary answer; `swap` and
+ * `variation_swap` differ from what they matched by one pair of adjacent characters exchanged.
+ */
+export const GRADED_BY_VALUES = [
+  'empty',
+  'exact',
+  'variation',
+  'swap',
+  'variation_swap',
+  'noise',
+  'semantic',
+] as const;
+export type GradedBy = (typeof GRADED_BY_VALUES)[number];
+
+export function isGradedBy(value: string): value is GradedBy {
+  return (GRADED_BY_VALUES as readonly string[]).includes(value);
+}
+
+/**
  * Value sets for the evaluation framework's CHECK constraints (`task` on eval_sets, eval_runs and
  * eval_findings, `status` on eval_runs and eval_experiments, `kind` on eval_findings,
  * `reference_status` on eval_items). The pipeline imports `EVAL_TASKS`; the other lists are drift

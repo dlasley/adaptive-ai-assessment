@@ -2,7 +2,8 @@ import { FEATURES } from '@/lib/feature-flags';
 import { fuzzyEvaluateAnswer, normalizeText, normalizePunctuationSpacing, hasCorrectAccents } from '@/lib/typed-answer-evaluation';
 import { COURSE_CONTENT } from '@adaptive/shared/course';
 import { createLogger } from '@/lib/logger';
-import type { EvaluationResult } from './types';
+import { gradedByForTier } from './graded-by';
+import type { EvaluationResult, EvaluationTierName } from './types';
 
 const logger = createLogger('evaluate-writing');
 const courseFeedback = COURSE_CONTENT.feedback;
@@ -27,7 +28,8 @@ function emptyCheckTier(ctx: TierContext): EvaluationResult | null {
     feedback: courseFeedback.answerTooShort,
     corrections: {
       suggestions: [courseFeedback.answerTooShortSuggestion]
-    }
+    },
+    gradedBy: gradedByForTier('empty_check')
   };
 
   if (ctx.includeSuperuserMetadata) {
@@ -71,7 +73,8 @@ export function exactMatchTier(ctx: TierContext): EvaluationResult | null {
       : courseFeedback.exactMatchMissingAccents,
     corrections: accentsMatch ? {} : {
       accents: [courseFeedback.correctAnswerIs(correctAnswer)]
-    }
+    },
+    gradedBy: gradedByForTier('exact_match')
   };
 
   if (ctx.includeSuperuserMetadata) {
@@ -113,6 +116,8 @@ export function fuzzyTier(ctx: TierContext): EvaluationResult | null {
   // unconditionally: it must never reach a response, superuser or not.
   const matchInfo = fuzzyResult._matchInfo || { matchedAgainst: 'primary_answer', evaluationReason: 'Fuzzy match' };
   delete fuzzyResult._matchInfo;
+
+  fuzzyResult.gradedBy = gradedByForTier('fuzzy_match', matchInfo);
 
   if (ctx.includeSuperuserMetadata) {
     fuzzyResult.metadata = {
@@ -159,7 +164,8 @@ export function noiseCheckTier(ctx: TierContext): EvaluationResult | null {
     feedback: courseFeedback.answerTooShort,
     corrections: {
       suggestions: [courseFeedback.answerTooShortSuggestion]
-    }
+    },
+    gradedBy: gradedByForTier('noise_check')
   };
 
   if (ctx.includeSuperuserMetadata) {
@@ -177,7 +183,7 @@ export function noiseCheckTier(ctx: TierContext): EvaluationResult | null {
 
 /** Tiers 1-3b, in the order the route tries them before falling back to the semantic tier (tier 4,
  * `semantic-tier.ts`). Named so `logOutcome` can record which one resolved a request. */
-export const EVALUATION_TIERS: { name: 'empty_check' | 'exact_match' | 'fuzzy_match' | 'noise_check'; run: (ctx: TierContext) => EvaluationResult | null }[] = [
+export const EVALUATION_TIERS: { name: Exclude<EvaluationTierName, 'semantic'>; run: (ctx: TierContext) => EvaluationResult | null }[] = [
   { name: 'empty_check', run: emptyCheckTier },
   { name: 'exact_match', run: exactMatchTier },
   { name: 'fuzzy_match', run: fuzzyTier },

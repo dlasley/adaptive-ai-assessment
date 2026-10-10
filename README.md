@@ -45,6 +45,8 @@ Student answer → Empty check → Exact match → Fuzzy match → Semantic (LLM
 - **Fuzzy match**: accepts an answer that equals an acceptable variation, or that differs from the correct answer or a variation by one pair of adjacent characters exchanged. It never marks an answer wrong.
 - **Semantic fallback**: an LLM evaluates the cases the first three tiers cannot settle.
 
+Each stored result records which tier settled it, in `question_results.graded_by`.
+
 ### Web app
 
 The Next.js app (`apps/web/`) has no student accounts. A student enters or generates a study code, and the server answers with a signed session cookie (`student_session`, HMAC-signed, `httpOnly`). A native client that asks with `platform: "native"` receives the same signed value in the response body instead and sends it back as an `Authorization: Bearer` header; when that header is present it is the only credential the server considers. The native client stores that token itself, so the cookie's `httpOnly` protection does not apply to it; signing out on a native client means deleting the stored token, and for either transport an admin force-logout revokes the session by bumping its epoch. Admins log in with a shared password and receive a separately signed cookie (`admin_session`). `src/proxy.ts` redirects unauthenticated `/admin` page requests, and every `/api/admin/*` route verifies the cookie signature itself.

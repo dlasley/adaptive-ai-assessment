@@ -13,6 +13,7 @@ import {
 } from '@adaptive/shared/grading-prompt';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
+import { gradedByForTier } from './graded-by';
 import type { EvaluationResult } from './types';
 
 const logger = createLogger('evaluate-writing');
@@ -35,7 +36,8 @@ export interface GradingCallUsage {
 /** Identifies the grading prompt in the structured log, so a prompt change can be lined up with a shift in outcomes. */
 export const GRADING_PROMPT_HASH = gradingPromptHash(CORRECTNESS_THRESHOLDS.SEMANTIC_PASS);
 
-/** The score-50 result returned when the model cannot or may not grade an answer. */
+/** The score-50 result returned when the model cannot or may not grade an answer. Carries no
+ * `gradedBy`: no tier settled the answer, so the stored row records no grading path. */
 export function gradingUnavailableResult(feedback: string): EvaluationResult {
   return {
     isCorrect: false,
@@ -131,7 +133,7 @@ export async function evaluateSemanticTier(
     const { confidenceScore, ...evaluationResult } = modelResponse;
 
     return {
-      evaluation: evaluationResult as EvaluationResult,
+      evaluation: { ...evaluationResult, gradedBy: gradedByForTier('semantic') },
       modelConfidence: confidenceScore,
       usage
     };

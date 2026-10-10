@@ -18,7 +18,7 @@ export interface QuizResult {
   timeSpentSeconds?: number;
   questions: Question[];
   userAnswers: Record<string, string>;
-  evaluationResults?: Record<string, { isCorrect: boolean; score?: number }>;
+  evaluationResults?: Record<string, { isCorrect: boolean; score?: number; gradedBy?: string }>;
 }
 
 /**

@@ -37,6 +37,23 @@ describe('fuzzyTier', () => {
     });
   });
 
+  it('reports the grading path whether or not the session is a superuser', () => {
+    expect(fuzzyTier(fuzzyMatchContext({ includeSuperuserMetadata: false }))?.gradedBy).toBe('swap');
+    expect(fuzzyTier(fuzzyMatchContext({ includeSuperuserMetadata: true }))?.gradedBy).toBe('swap');
+  });
+
+  it('reports a variation match separately from a match against the correct answer', () => {
+    const exactVariation = fuzzyTier(
+      fuzzyMatchContext({ userAnswer: 'Salut', acceptableVariations: ['Salut'] })
+    );
+    const swappedVariation = fuzzyTier(
+      fuzzyMatchContext({ userAnswer: 'Saltu', acceptableVariations: ['Salut'] })
+    );
+
+    expect(exactVariation?.gradedBy).toBe('variation');
+    expect(swappedVariation?.gradedBy).toBe('variation_swap');
+  });
+
   it('grades the same answer the same way at every difficulty', () => {
     const results = (['beginner', 'intermediate', 'advanced'] as const).map((difficulty) =>
       fuzzyTier(fuzzyMatchContext({ difficulty }))
@@ -83,6 +100,7 @@ describe('exactMatchTier', () => {
     expect(result!.score).toBe(100);
     expect(result!.hasCorrectAccents).toBe(true);
     expect(result!.metadata?.evaluationTier).toBe('exact_match');
+    expect(result!.gradedBy).toBe('exact');
   });
 
   it('still flags a real missing accent when a trailing period also differs', () => {
@@ -127,7 +145,7 @@ describe('noiseCheckTier', () => {
   it('scores noise 0 with the too-short feedback and no model call, and adds metadata only for a superuser', () => {
     const base = { ...fuzzyMatchContext(), userAnswer: '{}{}{}' };
 
-    expect(noiseCheckTier(base)).toMatchObject({ isCorrect: false, score: 0 });
+    expect(noiseCheckTier(base)).toMatchObject({ isCorrect: false, score: 0, gradedBy: 'noise' });
     expect(noiseCheckTier(base)?.metadata).toBeUndefined();
     expect(noiseCheckTier({ ...base, includeSuperuserMetadata: true })?.metadata?.evaluationTier).toBe('noise_check');
   });

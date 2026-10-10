@@ -202,13 +202,15 @@ describe('evaluate-writing global daily cap on model grading', () => {
     const res = await POST(requestWith('Bonjuor'));
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
+    const body = await res.json();
+    expect(body).toEqual({
       isCorrect: false,
       score: 50,
       hasCorrectAccents: false,
       feedback: COURSE_CONTENT.feedback.evaluationDailyLimit,
       corrections: {},
     });
+    expect(body).not.toHaveProperty('gradedBy');
     expect(callLlmMock).not.toHaveBeenCalled();
   });
 

@@ -6,6 +6,7 @@ import {
   EVAL_TASKS,
   EXPERIMENT_STATUSES,
   FINDING_KINDS,
+  GRADED_BY_VALUES,
   QUESTION_TYPES,
   REFERENCE_STATUSES,
   RUN_STATUSES,
@@ -62,6 +63,10 @@ describe('shared enums match every CHECK constraint in supabase/schema.sql', () 
 
   it('WRITING_TYPES matches every `writing_type IN (...)` constraint', () => {
     expectEnumMatchesSchema('writing_type', WRITING_TYPES);
+  });
+
+  it('GRADED_BY_VALUES matches `graded_by IN (...)` on question_results', () => {
+    expectEnumMatchesSchema('graded_by', GRADED_BY_VALUES, 'question_results');
   });
 
   it('EVAL_TASKS matches every `task IN (...)` constraint', () => {

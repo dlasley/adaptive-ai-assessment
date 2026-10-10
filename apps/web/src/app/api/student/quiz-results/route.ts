@@ -4,6 +4,7 @@ import { loadQuestionsByIds } from '@/lib/question-loader';
 import { requireStudentSession } from '@/lib/student-api-guard';
 import { verifyCsrfProtection } from '@/lib/csrf';
 import { quizResultsSchema } from '@/lib/api-schemas';
+import { isGradedBy } from '@adaptive/shared/enums';
 import { createLogger } from '@/lib/logger';
 import { supabaseErrorFields } from '@/lib/supabase-error';
 
@@ -139,6 +140,10 @@ export async function POST(request: NextRequest) {
           ? evalResult.isCorrect
           : result.userAnswers[question.id] === dbQuestion.correctAnswer;
 
+        // The client reports which grading path the evaluate route took; a value the enum does not
+        // recognize is stored as NULL rather than trusted.
+        const gradedBy = evalResult?.gradedBy;
+
         return {
           quiz_history_id: quizHistoryId,
           study_code_id: studyCodeId,
@@ -149,6 +154,7 @@ export async function POST(request: NextRequest) {
           user_answer: result.userAnswers[question.id] || null,
           correct_answer: dbQuestion.correctAnswer,
           score: evalResult?.score ?? (isCorrect ? 100 : 0),
+          graded_by: gradedBy !== undefined && isGradedBy(gradedBy) ? gradedBy : null,
         };
       })
       .filter((row): row is NonNullable<typeof row> => row !== null);

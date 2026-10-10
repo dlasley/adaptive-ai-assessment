@@ -164,6 +164,74 @@ describe('POST /api/evaluate-writing', () => {
   });
 });
 
+describe('POST /api/evaluate-writing reports which tier settled the answer', () => {
+  beforeEach(() => {
+    requireStudentSessionMock.mockResolvedValue({ studyCodeId: 'study-id' });
+    singleMock.mockResolvedValue({ data: { is_superuser: false }, error: null });
+  });
+
+  /** The stored question with 'Salut' accepted alongside the correct answer. */
+  function withVariation(): void {
+    loadQuestionsByIdsMock.mockResolvedValue(
+      new Map([[QUESTION_ID, { ...DB_QUESTION, acceptableVariations: ['Salut'] }]])
+    );
+  }
+
+  it.each([
+    ['a', 'empty'],
+    ['Bonjour', 'exact'],
+    ['Bonjuor', 'swap'],
+    ['{}{}{}', 'noise'],
+    ['Wrong answer', 'semantic'],
+  ])('answers %j with gradedBy %j', async (userAnswer, gradedBy) => {
+    const res = await POST(evaluationRequest({ userAnswer }));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).gradedBy).toBe(gradedBy);
+  });
+
+  it.each([
+    ['Salut', 'variation'],
+    ['Saltu', 'variation_swap'],
+  ])('answers %j with gradedBy %j once the question accepts a variation', async (userAnswer, gradedBy) => {
+    withVariation();
+
+    const res = await POST(evaluationRequest({ userAnswer }));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).gradedBy).toBe(gradedBy);
+  });
+
+  it('reports no grading path on the fallback result when the model call fails', async () => {
+    callLlmMock.mockRejectedValue(new Error('network down'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await POST(evaluationRequest({ userAnswer: 'Wrong answer' }));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.score).toBe(50);
+    expect(body).not.toHaveProperty('gradedBy');
+
+    errorSpy.mockRestore();
+  });
+
+  it('reports a grading path a superuser result can be read alongside its tier metadata', async () => {
+    singleMock.mockResolvedValue({ data: { is_superuser: true }, error: null });
+    withVariation();
+
+    const res = await POST(evaluationRequest({ userAnswer: 'Saltu' }));
+    const body = await res.json();
+
+    expect(body.gradedBy).toBe('variation_swap');
+    expect(body.metadata).toMatchObject({
+      evaluationTier: 'fuzzy_match',
+      matchedAgainst: 'acceptable_variation',
+      matchKind: 'adjacent_swap',
+    });
+  });
+});
+
 describe('production logging', () => {
   afterEach(() => {
     vi.unstubAllEnvs();

@@ -128,6 +128,7 @@ CREATE TABLE question_results (
   user_answer TEXT,
   correct_answer TEXT NOT NULL,
   score INTEGER DEFAULT NULL CHECK (score IS NULL OR (score >= 0 AND score <= 100)),
+  graded_by TEXT DEFAULT NULL CHECK (graded_by IN ('empty', 'exact', 'variation', 'swap', 'variation_swap', 'noise', 'semantic')),
   attempted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -348,6 +349,7 @@ COMMENT ON COLUMN questions.quality_status IS 'Audit status: pending (awaiting a
 COMMENT ON COLUMN questions.audit_metadata IS 'Stage 3 audit & remediation diagnostic snapshot: criteria results, suggested_difficulty, missing/invalid variations. Written by audit scripts alongside quality_status. Mistral applies difficulty relabeling + invalid variation removal.';
 COMMENT ON TABLE batches IS 'Metadata for each question generation batch run. Tracks pipeline state, model, config, and results.';
 COMMENT ON COLUMN question_results.score IS 'Evaluation score 0-100. NULL for legacy data. MCQ/TF are always 0 or 100. Typed answers use fuzzy/API evaluation score.';
+COMMENT ON COLUMN question_results.graded_by IS 'Which grading path settled a typed answer: empty, exact, variation, swap, variation_swap, noise or semantic. NULL for multiple-choice and true-false rows (graded by equality on the server), for rows written before the column existed, and for a typed answer the grading route never graded.';
 COMMENT ON TABLE leitner_state IS 'Leitner spaced repetition box assignments per student per question';
 COMMENT ON COLUMN leitner_state.box IS 'Leitner box 1-5. Box 1 = most frequent review, Box 5 = mastered';
 COMMENT ON COLUMN leitner_state.consecutive_correct IS 'Number of consecutive correct answers. Resets to 0 on wrong answer.';
