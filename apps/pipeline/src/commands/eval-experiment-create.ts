@@ -8,9 +8,10 @@
  * `--update <slug>` replaces `--question`/`--variants`/`--decision-rule`/`--depends-on`/`--notes` on
  * an existing experiment, after the same validation a create runs. `--slug` cannot be combined with
  * `--update` (the slug is the public identifier and is never edited); `--tasks` and `--status`
- * cannot be changed this way either: `status` moves only through `eval-compare --decide`, and an
- * experiment's task list is fixed at creation. An update that would orphan runs is refused: one that
- * drops a declared variant (by its `label`) that has matching `eval_runs` rows, or keeps a label whose
+ * cannot be changed this way either: `status` moves only through `eval-compare --decide` or
+ * `eval-finding --decide`, and an experiment's task list is fixed at creation. An update that would
+ * orphan runs is refused: one that drops a declared variant (by its `label`) that has matching
+ * `eval_runs` rows, or keeps a label whose
  * new declaration no longer matches a run it matches today. The runs a label matches today are read
  * from `eval_experiment_variants`, and `declaredVariantMatchesRun` (the twin of that view's rule)
  * decides whether each still matches. A variant may carry `baseline_from`, the slug of another
@@ -95,7 +96,7 @@ export const cli = defineCli(
       type: 'string',
       choices: ['proposed', 'running'] as const,
       default: 'proposed',
-      help: 'Initial status; decided/deferred/superseded are set by eval-compare --decide, never here. Fixed after creation.',
+      help: 'Initial status; decided/deferred/superseded are set by eval-compare --decide or eval-finding --decide, never here. Fixed after creation.',
     },
     notes: { type: 'string', help: 'Free text notes' },
   },
@@ -110,7 +111,7 @@ export const cli = defineCli(
       if (o.update) {
         if (o.slug) return 'Error: --slug cannot be combined with --update; the slug is the public identifier and is never edited. Name the experiment to update with --update <slug>.';
         if (o.tasks) return "Error: --tasks cannot be changed with --update; an experiment's task list is fixed at creation.";
-        if (o.status !== 'proposed') return 'Error: --status cannot be changed with --update; decided/deferred/superseded are set by eval-compare --decide, and proposed/running are set only at creation.';
+        if (o.status !== 'proposed') return 'Error: --status cannot be changed with --update; decided/deferred/superseded are set by eval-compare --decide or eval-finding --decide, and proposed/running are set only at creation.';
         return;
       }
       if (!o.slug) return 'Error: --slug is required to create an experiment.';

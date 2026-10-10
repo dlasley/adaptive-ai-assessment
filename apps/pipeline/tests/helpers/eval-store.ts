@@ -195,6 +195,7 @@ export function makeEvalFindingRow(overrides: Partial<EvalFindingRow> = {}): Eva
     decided_at: DEFAULT_TIMESTAMP,
     supersedes_finding_id: null,
     created_at: DEFAULT_TIMESTAMP,
+    decided_via: null,
     ...overrides,
   };
 }

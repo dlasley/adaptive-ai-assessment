@@ -189,10 +189,13 @@ export interface EvalFindingRow {
   decided_at: string;
   supersedes_finding_id: string | null;
   created_at: string;
+  /** The command that recorded this row as a decision, through its own `--decide`. Null for a plain
+   * observation, which decides nothing. */
+  decided_via: 'eval-compare' | 'eval-finding' | null;
 }
 
 export type NewEvalFindingRow = Pick<EvalFindingRow, 'kind' | 'statement'> &
-  Partial<Pick<EvalFindingRow, 'experiment_id' | 'task' | 'evidence_note' | 'run_ids' | 'item_ids' | 'external_refs' | 'decided_by' | 'supersedes_finding_id'>>;
+  Partial<Pick<EvalFindingRow, 'experiment_id' | 'task' | 'evidence_note' | 'run_ids' | 'item_ids' | 'external_refs' | 'decided_by' | 'supersedes_finding_id' | 'decided_via'>>;
 
 export interface EvalReviewRoundRow {
   id: string;

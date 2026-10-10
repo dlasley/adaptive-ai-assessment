@@ -60,6 +60,7 @@ import { loadEnv } from '../lib/env';
 import { createScriptSupabase } from '../lib/db-queries';
 import { createSupabaseEvalStore, type EvalStore, type EvalResultRow, type EvalRunRow } from '../lib/eval/db';
 import { resolveDecidedBy } from '../lib/eval/decided-by';
+import { experimentStatusForDecision } from '../lib/eval/decision-status';
 import {
   extractAuditPairedOutcomes,
   extractGradingPairedOutcomes,
@@ -807,8 +808,9 @@ export async function main(deps: { argv?: string[]; store?: EvalStore } = {}) {
       run_ids: [baselineRun.id, decideCandidateRun.id],
       decided_by: decidedBy!,
       supersedes_finding_id: options.supersedes,
+      decided_via: 'eval-compare',
     });
-    const newStatus = options.decide === 'defer' ? 'deferred' : 'decided';
+    const newStatus = experimentStatusForDecision(options.decide);
     await store.updateExperiment(experimentId, { status: newStatus, decided_at: new Date().toISOString() });
     console.log(`Recorded ${options.decide} finding ${finding.id} for experiment ${experimentId} (status now ${newStatus}).`);
   }

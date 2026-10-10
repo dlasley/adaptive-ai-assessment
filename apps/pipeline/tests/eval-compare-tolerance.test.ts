@@ -77,6 +77,7 @@ function makeFakeStore(params: {
         statement: row.statement, evidence_note: row.evidence_note ?? null, run_ids: row.run_ids ?? [],
         item_ids: row.item_ids ?? [], external_refs: row.external_refs ?? [], decided_by: row.decided_by ?? null,
         decided_at: '2026-09-30T00:00:00Z', supersedes_finding_id: row.supersedes_finding_id ?? null, created_at: '2026-09-30T00:00:00Z',
+        decided_via: row.decided_via ?? null,
       };
     },
     async updateExperiment() {},

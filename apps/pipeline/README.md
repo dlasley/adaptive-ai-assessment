@@ -419,7 +419,7 @@ write plus which `eval_models_current` row each declared variant's `model_slug` 
   0 and 1), and `description`. An unrecognized key is refused.
 - `--depends-on` is a comma-separated list of experiment slugs, each checked to exist.
 - `--status` accepts only `proposed` or `running`; `decided`, `deferred`, and `superseded` come only
-  from `eval-compare --decide`.
+  from `eval-compare --decide` or `eval-finding --decide`.
 - `--update <slug>` replaces any subset of `--question`, `--variants`, `--decision-rule`,
   `--depends-on`, and `--notes` on an existing experiment through the same validation. `--slug`,
   `--tasks`, and `--status` cannot change this way. An update that would orphan runs is refused: it
@@ -583,14 +583,28 @@ required with `--decide`; the statement is where a ruling's actual origin is rec
 
 ### eval-finding
 
-Records a plain observation as an `eval_findings` row: something worth writing down about the
-evidence that is not an adopt, reject, or defer decision. `eval-compare --decide` is the only other
-route into the table, and it always moves an experiment's status, which is wrong for a standalone
-observation. `--experiment` and `--task` are optional. `--runs` and `--items` are the cited
-evidence: each run must resolve, and each item must belong to the set of at least one cited run.
-`--supersedes <finding_id>` names an earlier finding this one revises, and `--kind` accepts only
+Records an `eval_findings` row. Without `--decide` it is a plain observation: something worth writing
+down about the evidence that is not an adopt, reject, or defer decision, and nothing about
+`eval_experiments` changes. `--experiment` and `--task` are optional. `--runs` and `--items` are the
+cited evidence: each run must resolve, and each item must belong to the set of at least one cited
+run. `--supersedes <finding_id>` names an earlier finding this one revises, and `--kind` accepts only
 `observation`. `--decided-by <name>` or `EVAL_DECIDED_BY` is required with `--write-db`. Dry run by
-default, printing the row it would insert. It never touches `eval_experiments`.
+default, printing the row it would insert.
+
+**Deciding.** `--decide <adopt|reject|defer|supersede>` records the finding as a decision on
+`--experiment` and moves that experiment to `decided` (adopt or reject), `deferred` (defer), or
+`superseded` (supersede), stamping `decided_at`. It requires `--write-db`, `--experiment`,
+attribution, and at least one of `--runs`/`--items`, and `--kind` is ignored: adopt, reject and defer
+are recorded as that kind. This command and `eval-compare --decide` are the two writers of an
+experiment's status, and `eval_findings.decided_via` records which one wrote a given row.
+`eval-compare` decides from a paired comparison and gates `adopt` on a non-inferiority verdict; a
+decision here rests on the cited evidence alone, so `adopt` carries no such verdict. `supersede`
+exists only here: it requires `--superseded-by <slug>` naming an existing, different experiment (and
+is refused without `--decide supersede`), and records an `observation` whose `external_refs` carries
+`experiment:<slug>`, which `eval_experiment_summary.superseded_by_slug` reads back. An experiment
+already `decided` or `superseded` is refused unless `--supersedes <finding_id>` names the decision
+finding that currently stands on it; when no decision stands under it any more, the status is
+re-derived from the new decision and the command warns that it did so.
 
 ### eval-judge
 

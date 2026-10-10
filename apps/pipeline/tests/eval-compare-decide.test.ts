@@ -85,6 +85,7 @@ function makeFakeStore(params: {
         decided_at: '2026-09-29T00:00:00Z',
         supersedes_finding_id: row.supersedes_finding_id ?? null,
         created_at: '2026-09-29T00:00:00Z',
+        decided_via: row.decided_via ?? null,
       };
     },
     async listFindings() { return findings; },
@@ -218,7 +219,7 @@ describe('eval-compare --decide', () => {
     const existing: EvalFindingRow = {
       id: 'finding-old', experiment_id: 'exp-1', kind: 'adopt', task: 'grading', statement: 'earlier',
       evidence_note: null, run_ids: ['run-baseline', 'run-candidate-good'], item_ids: [], external_refs: [],
-      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '',
+      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '', decided_via: null,
     };
     const { store, insertFindingCalls } = makeFakeStore({ findings: [existing] });
     await expect(main({ argv: argv(['--write-db', '--decide', 'adopt', '--statement', 'x']), store })).rejects.toThrow(ProcessExitError);
@@ -229,7 +230,7 @@ describe('eval-compare --decide', () => {
     const observation: EvalFindingRow = {
       id: 'finding-obs', experiment_id: 'exp-1', kind: 'observation', task: 'grading', statement: 'measured first',
       evidence_note: null, run_ids: ['run-baseline', 'run-candidate-good'], item_ids: [], external_refs: [],
-      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '',
+      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '', decided_via: null,
     };
     const { store, insertFindingCalls } = makeFakeStore({ findings: [observation] });
     await main({ argv: argv(['--write-db', '--decide', 'adopt', '--statement', 'Decided on top of the observation.']), store });
@@ -242,12 +243,12 @@ describe('eval-compare --decide', () => {
     const deadReject: EvalFindingRow = {
       id: 'finding-dead', experiment_id: 'exp-1', kind: 'reject', task: 'grading', statement: 'earlier reject',
       evidence_note: null, run_ids: pair, item_ids: [], external_refs: [],
-      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '',
+      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '', decided_via: null,
     };
     const supersedingObservation: EvalFindingRow = {
       id: 'finding-obs', experiment_id: 'exp-1', kind: 'observation', task: 'grading', statement: 'reread the evidence',
       evidence_note: null, run_ids: pair, item_ids: [], external_refs: [],
-      decided_by: null, decided_at: '', supersedes_finding_id: 'finding-dead', created_at: '',
+      decided_by: null, decided_at: '', supersedes_finding_id: 'finding-dead', created_at: '', decided_via: null,
     };
     const superseded = makeFakeStore({ findings: [deadReject, supersedingObservation] });
     await main({ argv: argv(['--write-db', '--decide', 'adopt', '--statement', 'Decided after the reject was superseded.']), store: superseded.store });
@@ -270,6 +271,7 @@ describe('eval-compare --decide', () => {
       statement: 'Sonnet matches baseline recall.',
       run_ids: ['run-baseline', 'run-candidate-good'],
       decided_by: 'jsmith',
+      decided_via: 'eval-compare',
     });
     expect(insertFindingCalls[0].evidence_note).toBeTruthy();
     expect(updateExperimentCalls).toEqual([{ id: 'exp-1', patch: expect.objectContaining({ status: 'decided' }) }]);
@@ -287,6 +289,7 @@ describe('eval-compare --decide', () => {
 
     expect(insertFindingCalls).toHaveLength(1);
     expect(insertFindingCalls[0].kind).toBe('reject');
+    expect(insertFindingCalls[0].decided_via).toBe('eval-compare');
     expect(updateExperimentCalls).toEqual([{ id: 'exp-1', patch: expect.objectContaining({ status: 'decided' }) }]);
   });
 
@@ -296,6 +299,7 @@ describe('eval-compare --decide', () => {
 
     expect(insertFindingCalls).toHaveLength(1);
     expect(insertFindingCalls[0].kind).toBe('defer');
+    expect(insertFindingCalls[0].decided_via).toBe('eval-compare');
     expect(updateExperimentCalls).toEqual([{ id: 'exp-1', patch: expect.objectContaining({ status: 'deferred' }) }]);
   });
 
@@ -303,7 +307,7 @@ describe('eval-compare --decide', () => {
     const existing: EvalFindingRow = {
       id: 'finding-old', experiment_id: 'exp-1', kind: 'adopt', task: 'grading', statement: 'earlier',
       evidence_note: null, run_ids: ['run-baseline', 'run-candidate-good'], item_ids: [], external_refs: [],
-      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '',
+      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '', decided_via: null,
     };
     const { store, insertFindingCalls } = makeFakeStore({ findings: [existing] });
     await main({
@@ -319,7 +323,7 @@ describe('eval-compare --decide', () => {
     const existing: EvalFindingRow = {
       id: 'finding-old', experiment_id: 'exp-1', kind: 'adopt', task: 'grading', statement: 'earlier',
       evidence_note: null, run_ids: ['run-baseline', 'run-candidate-good'], item_ids: [], external_refs: [],
-      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '',
+      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '', decided_via: null,
     };
     const { store, insertFindingCalls } = makeFakeStore({ findings: [existing] });
     await expect(
@@ -335,12 +339,12 @@ describe('eval-compare --decide', () => {
     const first: EvalFindingRow = {
       id: 'finding-first', experiment_id: 'exp-1', kind: 'reject', task: 'grading', statement: 'earlier reject',
       evidence_note: null, run_ids: pair, item_ids: [], external_refs: [],
-      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '',
+      decided_by: null, decided_at: '', supersedes_finding_id: null, created_at: '', decided_via: null,
     };
     const successor: EvalFindingRow = {
       id: 'finding-successor', experiment_id: 'exp-1', kind: 'observation', task: 'grading', statement: 'reread the evidence',
       evidence_note: null, run_ids: pair, item_ids: [], external_refs: [],
-      decided_by: null, decided_at: '', supersedes_finding_id: 'finding-first', created_at: '',
+      decided_by: null, decided_at: '', supersedes_finding_id: 'finding-first', created_at: '', decided_via: null,
     };
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { store, insertFindingCalls } = makeFakeStore({ findings: [first, successor] });

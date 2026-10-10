@@ -865,3 +865,20 @@ To write down an observation that is not a decision (and so never moves an exper
 pipeline eval-finding --statement "<one paragraph>" --runs <run-id>,<run-id> --decided-by <name> \
   --write-db
 ```
+
+The same command records a decision whose evidence is not a paired comparison:
+`--decide <adopt|reject|defer|supersede>`, with `--experiment`, at least one cited run or item, and
+`--write-db`, writes the finding and moves that experiment to `decided`, `deferred`, or
+`superseded`. `supersede` is available only here: it also takes `--superseded-by <slug>` naming the
+experiment that replaces this one, and writes an `observation` carrying `experiment:<slug>` in
+`external_refs`. An `adopt` recorded this way rests on the cited evidence alone and is not gated on a
+non-inferiority verdict, unlike `eval-compare --decide adopt`; `eval_findings.decided_via` records
+which of the two commands decided a row. An experiment already decided or superseded needs
+`--supersedes <finding-id>` naming the decision that currently stands on it, unless no decision
+stands under it any more, in which case the status is re-derived from the new decision and the
+command warns that it did so.
+
+```bash
+pipeline eval-finding --experiment <slug> --decide supersede --superseded-by <successor-slug> \
+  --runs <run-id> --statement "<one paragraph>" --decided-by <name> --write-db
+```

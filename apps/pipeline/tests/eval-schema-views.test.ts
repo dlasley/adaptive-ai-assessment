@@ -301,4 +301,20 @@ describe('supabase/schema.sql declares the evaluation framework cross-cutting vi
   it('eval_runs.scoring_review_round_id carries a COMMENT ON COLUMN statement', () => {
     expect(schema).toContain('COMMENT ON COLUMN eval_runs.scoring_review_round_id IS');
   });
+
+  it('eval_findings.decided_via admits exactly the two commands that write a decision, and carries a COMMENT ON COLUMN', () => {
+    expect(schema).toContain("decided_via IN ('eval-compare', 'eval-finding')");
+    expect(schema).toContain('COMMENT ON COLUMN eval_findings.decided_via IS');
+  });
+
+  it('eval_experiment_summary reads the successor slug out of a current finding external_refs entry', () => {
+    const viewStart = schema.indexOf('CREATE VIEW eval_experiment_summary');
+    expect(viewStart).toBeGreaterThan(-1);
+    const viewEnd = schema.indexOf(';', viewStart);
+    const viewBody = schema.slice(viewStart, viewEnd);
+    expect(viewBody).toContain("substring(ref FROM '^experiment:(.*)$')");
+    expect(viewBody).toContain("ref LIKE 'experiment:%'");
+    // Appended after every column the view already had, so CREATE OR REPLACE VIEW stays valid.
+    expect(viewBody).toMatch(/AS current_finding_count,[\s\S]*AS superseded_by_slug\s*\nFROM eval_experiments e/);
+  });
 });

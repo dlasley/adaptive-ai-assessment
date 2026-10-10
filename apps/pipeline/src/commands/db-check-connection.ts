@@ -28,6 +28,7 @@ const CORE_RELATIONS = [
   'concept_mastery',
   'weak_topics',
   'strong_topics',
+  'grading_path_summary',
 ] as const;
 
 export interface RelationCheck {

@@ -646,8 +646,16 @@ any single run, all service-role only with no anon policies:
   variants, and the decision rule it will be judged against (a task's default tolerance, or an
   override for this experiment only). `eval-run --experiment <id-or-slug>` attributes runs to it;
   its `status` moves through `proposed`, `running`, and then `decided`, `deferred`, or `superseded`.
-  `eval-experiment-create` is the only command that creates or edits the row, and it validates what
-  it writes against the registry and the tolerance keys.
+  `eval-compare --decide` and `eval-finding --decide` are the two commands that move the status past
+  `running`, and `superseded` is reached only through `eval-finding --decide supersede`, which names
+  the successor experiment on the finding it writes. `eval-experiment-create` is the only command
+  that creates the row or edits its declared plan, and it validates what it writes against the
+  registry and the tolerance keys. Two limits of the supersede path are known and left as they are:
+  `eval_overview.findings_observation` counts a supersede's finding among the observations, since its
+  `kind` is `observation` (`eval_findings.decided_via` is what tells the two apart), and a superseded
+  dependency still counts toward `eval_experiment_summary.undecided_dependency_count`. Repointing a
+  dependent experiment's `depends_on` at the successor is a manual step, through
+  `eval-experiment-create --update`.
 - **`eval_model_families`** / **`eval_models`**: a dated snapshot of a model's attributes (open or
   closed weights, total and active parameter count, architecture, release date, price, context
   window, reasoning support, and known serving hosts), one row per model identifier per
@@ -663,8 +671,14 @@ any single run, all service-role only with no anon policies:
 - **`eval_findings`**: an append-only record of what was concluded and why, each row citing the run
   and item ids that support it. A finding is `adopt`, `reject`, `defer`, or a plain `observation`; a
   later reversal writes a new row with `supersedes_finding_id` pointing at the one it revises, rather
-  than editing the original. `eval-compare --decide` writes an adopt, reject, or defer finding and
-  moves the experiment's status; `eval-finding` writes a plain `observation` and never touches it.
+  than editing the original. `eval-compare --decide` writes an adopt, reject, or defer finding from a
+  paired comparison and moves the experiment's status. `eval-finding` writes a plain `observation`
+  and touches no experiment, or records the same kinds of decision with its own `--decide`, for a
+  ruling that rests on evidence a comparison does not produce, so an `adopt` recorded there carries
+  no non-inferiority verdict; `--decide supersede` is the one route to `superseded`, writing an
+  `observation` whose `external_refs` names the successor as `experiment:<slug>` and which
+  `eval_experiment_summary.superseded_by_slug` reads back. `decided_via` records which of the two
+  commands decided a row.
 - **`eval_review_rounds`**: one row per reference-labeling campaign on a set (who reviewed it, under
   what rubric version, with what calibration result against a pilot sample), kept separate from
   `eval_items.reviewed_by`/`reviewed_at`, which are per item. A re-review under a revised rubric adds

@@ -45,7 +45,22 @@ Student answer → Empty check → Exact match → Fuzzy match → Semantic (LLM
 - **Fuzzy match**: accepts an answer that equals an acceptable variation, or that differs from the correct answer or a variation by one pair of adjacent characters exchanged. It never marks an answer wrong.
 - **Semantic fallback**: an LLM evaluates the cases the first three tiers cannot settle.
 
-Each stored result records which tier settled it, in `question_results.graded_by`.
+Each stored result records which tier settled it, in `question_results.graded_by`. That column names
+the grading path at finer grain than the tiers above, since the fuzzy tier reports which of its
+routes matched and a noise check has a value of its own; the column's comment in
+`supabase/schema.sql` lists every value. The `grading_path_summary` view counts stored
+results by question type, grading path and outcome, so one query answers how often each path settled
+an answer and how often it marked one correct. The view is a plain aggregate; the answers the model
+graded are read from `question_results` itself, and this is the query that returns what a student
+wrote alongside the answer key and the verdict:
+
+```sql
+select q.type, r.user_answer, r.correct_answer, r.is_correct, r.score, r.attempted_at
+from question_results r
+join questions q on q.id = r.question_id
+where r.graded_by = 'semantic'
+order by r.attempted_at desc;
+```
 
 ### Web app
 

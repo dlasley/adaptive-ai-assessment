@@ -254,6 +254,22 @@ FROM concept_mastery
 WHERE mastery_percentage >= 85 AND total_attempts >= 5
 ORDER BY mastery_percentage DESC;
 
+-- Grading Path Summary View
+-- Counts stored results by question type, grading path and outcome
+CREATE VIEW grading_path_summary WITH (security_invoker = true) AS
+SELECT
+  q.type,
+  r.graded_by,
+  r.is_correct,
+  count(*) AS result_count,
+  min(r.attempted_at) AS first_attempted_at,
+  max(r.attempted_at) AS last_attempted_at
+FROM question_results r
+JOIN questions q ON q.id = r.question_id
+GROUP BY q.type, r.graded_by, r.is_correct;
+
+COMMENT ON VIEW grading_path_summary IS 'One row per question type, graded_by value and is_correct: how many question_results rows carry that combination, and the earliest and latest attempted_at among them. A null graded_by is its own row, covering multiple-choice and true-false results, rows written before the column existed, and a typed answer the grading route never graded. A plain aggregate: what a student wrote, what the key was and what score a grading path gave it are read from question_results itself.';
+
 -- Function to update last_active timestamp
 CREATE OR REPLACE FUNCTION update_last_active()
 RETURNS TRIGGER AS $$
@@ -704,11 +720,12 @@ CREATE TABLE eval_findings (
   evidence_note         TEXT,                       -- narrative detail a bare id list can't carry, e.g. "grouped wrong on 18 of 23 disagreements, singles wrong on 3"
   run_ids               UUID[] NOT NULL DEFAULT '{}', -- eval_runs.id cited as evidence
   item_ids              UUID[] NOT NULL DEFAULT '{}', -- eval_items.id cited as evidence
-  external_refs         TEXT[] NOT NULL DEFAULT '{}', -- paths to markdown reports predating this table
+  external_refs         TEXT[] NOT NULL DEFAULT '{}', -- paths to markdown reports, and experiment:<slug> entries naming a successor experiment
   decided_by            TEXT,                       -- operator/reviewer handle; informational while there is one operator
   decided_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   supersedes_finding_id UUID REFERENCES eval_findings(id), -- set when this finding revises an earlier one; the earlier row is never edited
-  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  decided_via           TEXT CHECK (decided_via IN ('eval-compare', 'eval-finding')) -- the command that recorded a decision; NULL for a plain observation
 );
 
 CREATE INDEX idx_eval_findings_experiment ON eval_findings(experiment_id);
@@ -1341,7 +1358,16 @@ SELECT
     WHERE v.experiment_id = e.id AND v.run_count > 0)                 AS declared_variants_with_runs,
   (SELECT count(*) FROM eval_experiment_dependencies d
     WHERE d.experiment_id = e.id AND d.depends_on_status <> 'decided') AS undecided_dependency_count,
-  (SELECT count(*) FROM eval_findings_current c WHERE c.experiment_id = e.id) AS current_finding_count
+  (SELECT count(*) FROM eval_findings_current c WHERE c.experiment_id = e.id) AS current_finding_count,
+  -- eval_findings_current holds the heads of each supersedes chain but not external_refs, so the
+  -- successor reference is read from eval_findings for the rows that view still carries.
+  (SELECT substring(ref FROM '^experiment:(.*)$')
+     FROM eval_findings_current c
+     JOIN eval_findings f ON f.id = c.id
+     CROSS JOIN LATERAL unnest(f.external_refs) AS ref
+    WHERE c.experiment_id = e.id AND ref LIKE 'experiment:%'
+    ORDER BY c.decided_at DESC
+    LIMIT 1)                                                          AS superseded_by_slug
 FROM eval_experiments e
 LEFT JOIN LATERAL (
   SELECT c.kind, c.decided_at
@@ -1351,7 +1377,7 @@ LEFT JOIN LATERAL (
   LIMIT 1
 ) lf ON true;
 
-COMMENT ON VIEW eval_experiment_summary IS 'One row per experiment: its own columns, how many eval_runs cite it (run_count), and its findings. finding_count is the raw count of every eval_findings row citing it, superseded ones included; current_finding_count counts eval_findings_current rows, where a superseded chain counts once as its head. latest_finding_kind and latest_finding_at come from the newest eval_findings_current row, so a superseded finding never ranks as latest. declared_variant_count is how many variants it declared (variants_declared); declared_variants_with_runs is how many of those have at least one matching run (eval_experiment_variants.run_count > 0), and a declared baseline that carries baseline_from counts the runs of the experiment it names, so a shared baseline counts as having run. undecided_dependency_count is how many of its eval_experiment_dependencies entries name a dependency whose own status is not ''decided'' (proposed, running, deferred, superseded, or missing all count as undecided).';
+COMMENT ON VIEW eval_experiment_summary IS 'One row per experiment: its own columns, how many eval_runs cite it (run_count), and its findings. finding_count is the raw count of every eval_findings row citing it, superseded ones included; current_finding_count counts eval_findings_current rows, where a superseded chain counts once as its head. latest_finding_kind and latest_finding_at come from the newest eval_findings_current row, so a superseded finding never ranks as latest. declared_variant_count is how many variants it declared (variants_declared); declared_variants_with_runs is how many of those have at least one matching run (eval_experiment_variants.run_count > 0), and a declared baseline that carries baseline_from counts the runs of the experiment it names, so a shared baseline counts as having run. undecided_dependency_count is how many of its eval_experiment_dependencies entries name a dependency whose own status is not ''decided'' (proposed, running, deferred, superseded, or missing all count as undecided). superseded_by_slug is the successor named by the newest eval_findings_current row on this experiment that carries an experiment:<slug> entry in external_refs, the reference eval-finding --decide supersede writes; null for an experiment nothing has superseded, and null as well if that reference is on a finding a later one supersedes.';
 
 -- Every unordered pair of completed runs on the same set: how many items both scored without
 -- error, and the share of those where they reached the same per-task verdict
@@ -1428,6 +1454,8 @@ COMMENT ON COLUMN eval_experiments.decision_rule IS 'The rule this experiment is
 
 COMMENT ON TABLE eval_findings IS 'Append-only record of what was concluded from a run or comparison, with the run and item ids that support it. Never UPDATEd or DELETEd; a change of mind is a new row with supersedes_finding_id pointing at the one it revises, so the earlier claim and what was known when it was made both stay intact.';
 COMMENT ON COLUMN eval_findings.run_ids IS 'Not FK-enforced per element (Postgres arrays can''t reference a table), the same "free text, not a foreign key" precedent as eval_sets.source. Move to a join table only if a finding routinely cites more than a handful of runs or a referential-integrity problem actually shows up.';
+COMMENT ON COLUMN eval_findings.external_refs IS 'References this finding points at outside the eval_* tables: paths to markdown reports, and entries of the form experiment:<slug> naming the experiment that supersedes the one this finding is recorded against, written by eval-finding --decide supersede.';
+COMMENT ON COLUMN eval_findings.decided_via IS 'Names the command that recorded this row as a decision through its own --decide: eval-compare, where an adopt is gated on a non-inferiority verdict against a reference, or eval-finding, where a decision rests on the cited evidence alone and supersede is available. NULL for a plain observation, which decides nothing, and for any decision written before this column existed. Tells apart two rows that are otherwise identical in shape, including the observation a supersede writes from a standalone one.';
 
 COMMENT ON TABLE eval_review_rounds IS 'One row per reference-labeling campaign on a set: who labeled it, under what rubric, with what calibration result. Append-only: a re-review under a revised rubric adds a new row rather than overwriting the claim about what confidence applied to labels made under the old one. Distinct from eval_items.reviewed_by/reviewed_at, which are per-item; this is per-campaign.';
 COMMENT ON COLUMN eval_review_rounds.set_id IS 'ON DELETE RESTRICT deliberately, unlike eval_items.set_id/eval_runs.set_id which CASCADE from eval_sets: a set with a recorded review round must not disappear silently when the set itself is deleted. Deleting a set that has a recorded review round requires deleting those rows first, as an explicit, separate decision.';
