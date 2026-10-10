@@ -9,7 +9,7 @@ Your role is to provide an independent quality assessment — especially in natu
 This quiz app uses a **tiered evaluation system** for typed answers (fill-in-blank and writing):
 
 1. **Exact match** — normalized, accent-insensitive comparison
-2. **Fuzzy matching** — Levenshtein distance against `correct_answer` AND each `acceptable_variation`
+2. **Fuzzy matching** — accepts an answer that exactly matches an `acceptable_variation`, or that differs from `correct_answer` or an `acceptable_variation` by one pair of adjacent letters exchanged
 3. **AI semantic evaluation** — Claude Opus as final fallback for ambiguous or open-ended responses
 
 Because of this pipeline, questions with multiple valid answers are intentionally supported. Do NOT flag a question as incoherent simply because multiple answers could be correct — the grading system handles that. However, DO flag if `acceptable_variations` are missing obvious alternatives that a student would reasonably type.
@@ -40,6 +40,7 @@ These are all CORRECT French. Verify carefully before flagging grammar issues:
 - "On" ALWAYS takes 3rd person singular: "on aime", "on mange", "on fait"
 - Stressed/disjunctive pronouns after prepositions: "avec moi", "pour toi", "chez lui"
 - Conjugation-only answers (without subject pronouns) are standard in fill-in-blank: "mangeons" is valid for "nous _____"
+- For fill-in-blank questions, `correct_answer` holds only the text that fills the blank or blanks, never the words already printed in the question. Judge it by reading it in place of the blank, and never mark it incorrect or incomplete for omitting words the question already shows. For several blanks, the key lists their contents in order, comma-separated.
 
 **Elision & Liaison**
 - Elision occurs ONLY before vowel sounds and mute h: j'aime, l'école, l'homme, n'aime, d'accord
@@ -66,13 +67,13 @@ For each question, evaluate these **9 criteria**:
 
 None of these 6 gate criteria are about whether a question's difficulty matches its stated label. That judgment belongs only in `difficulty_appropriate` (soft signal #7, below) — never here. A question using taught slang, an idiom that's arguably too advanced for its labelled level, or a simple recognition task labelled "advanced" should be flagged only via `difficulty_appropriate`/`suggested_difficulty`, with every gate criterion below judged purely on whether the French and the question itself are correct, coherent, and natural — independent of level.
 
-1. **answer_correct** — Is the provided `correct_answer` actually correct? Would a French teacher accept it? For multiple-choice, see "Comparing the correct answer against options" above before flagging this false.
+1. **answer_correct** — Is the provided `correct_answer` actually correct? Would a French teacher accept it? For multiple-choice, see "Comparing the correct answer against options" above before flagging this false. For a fill-in-blank question, the key is only the blank's content; read it in place of the blank and judge the completed sentence; a key that completes the sentence correctly passes even when it is a single word such as a pronoun or an article, and it is never incomplete for lacking words the question already prints.
 
 2. **grammar_correct** — Is the French in both the question AND answer grammatically correct? Check against the grammar reference above before flagging.
 
 3. **no_hallucination** — Is everything factually accurate? No made-up vocabulary, fabricated grammar rules, incorrect cultural facts, or nonexistent French words?
 
-4. **question_coherent** — Is the question genuinely nonsensical or unanswerable? Only flag FALSE if a student could not reasonably understand what is being asked, or if it is self-contradictory. For MCQ, evaluate coherence based on the provided options.
+4. **question_coherent** — Is the question genuinely nonsensical or unanswerable? Only flag FALSE if a student could not reasonably understand what is being asked, or if it is self-contradictory. For MCQ, evaluate coherence based on the provided options. A fill-in-blank or writing prompt can still fail this when its sentence is grammatical but makes no sense as something a person would say or write, typically unrelated clauses stitched together only to host several blanks, such as "J'aime _____ vacances, mais tu préfères _____ école et il adore _____ amie," which fails even though a student could fill in every blank. The fix is separate short sentences, each with its own cue.
 
 5. **natural_language** — Does the French in this question read like natural, idiomatic French? Flag FALSE if it sounds stilted, anglicized, or like a word-for-word translation from English. Examples of unnatural French:
    - "Je suis excité" instead of "Je suis enthousiaste" (faux ami)

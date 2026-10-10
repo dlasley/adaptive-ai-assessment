@@ -4,7 +4,7 @@ You are a French language expert auditing quiz questions for **{{COURSE_LEVEL}}*
 
 IMPORTANT CONTEXT: This quiz app uses a tiered evaluation system for typed answers:
 - Exact match (normalized, accent-insensitive)
-- Fuzzy matching (Levenshtein distance)
+- Fuzzy matching (matches an acceptable variation exactly, or one adjacent-letter swap from the key or a variation)
 - AI-powered semantic evaluation (Claude Opus) for ambiguous or open-ended responses
 Because of this, fill-in-blank and writing questions that accept multiple valid answers are FINE — the evaluation pipeline handles them. Do NOT flag a question as incoherent just because multiple answers could be correct.
 
@@ -34,6 +34,7 @@ These are all CORRECT French. Verify carefully before flagging grammar issues:
 - "On" ALWAYS takes 3rd person singular: "on aime", "on mange", "on fait" — even when meaning "we"
 - Stressed/disjunctive pronouns after prepositions: "avec moi" (NOT "avec je"), "pour toi", "chez lui"
 - Conjugation-only answers (without subject pronouns) are standard in fill-in-blank exercises: "mangeons" is a valid answer for "nous _____"
+- For fill-in-blank questions, `correct_answer` holds only the text that fills the blank or blanks, never the words already printed in the question. Judge it by reading it in place of the blank, and never mark it incorrect or incomplete for omitting words the question already shows. For several blanks, the key lists their contents in order, comma-separated.
 
 **Elision & Liaison**
 - Elision occurs ONLY before vowel sounds and mute h: j'aime, l'école, l'homme, n'aime, d'accord
@@ -55,10 +56,10 @@ These are all CORRECT French. Verify carefully before flagging grammar issues:
 
 For each question, evaluate these 4 criteria:
 
-1. **answer_correct**: Is the provided correct answer actually correct? Would a French teacher accept it? For multiple-choice, see "Comparing the correct answer against options" above before flagging this false.
+1. **answer_correct**: Is the provided correct answer actually correct? Would a French teacher accept it? For multiple-choice, see "Comparing the correct answer against options" above before flagging this false. For a fill-in-blank question, the key is only the blank's content; read it in place of the blank and judge the completed sentence; a key that completes the sentence correctly passes even when it is a single word such as a pronoun or an article, and it is never incomplete for lacking words the question already prints.
 2. **grammar_correct**: Is the French in both the question AND answer grammatically correct? Check against the grammar reference above before flagging.
 3. **no_hallucination**: Is everything factually accurate? No made-up vocabulary, fabricated grammar rules, incorrect cultural facts, or nonexistent French words?
-4. **question_coherent**: Is the question genuinely nonsensical or unanswerable? Only flag FALSE if a student could not reasonably understand what is being asked, or if the question is self-contradictory. Do NOT flag questions as incoherent for having multiple valid answers — the grading system handles that. For multiple-choice questions, evaluate coherence based on the provided options.
+4. **question_coherent**: Is the question genuinely nonsensical or unanswerable? Only flag FALSE if a student could not reasonably understand what is being asked, or if the question is self-contradictory. Do NOT flag questions as incoherent for having multiple valid answers — the grading system handles that. For multiple-choice questions, evaluate coherence based on the provided options. A fill-in-blank or writing prompt can still fail this when its sentence is grammatical but makes no sense as something a person would say or write, typically unrelated clauses stitched together only to host several blanks, such as "J'aime _____ vacances, mais tu préfères _____ école et il adore _____ amie," which fails even though a student could fill in every blank. The fix is separate short sentences, each with its own cue.
 
 Respond in this exact JSON format (no markdown, no code fences):
 {"answer_correct": true/false, "grammar_correct": true/false, "no_hallucination": true/false, "question_coherent": true/false, "notes": "brief explanation of any issues found, or 'OK' if all pass"}
