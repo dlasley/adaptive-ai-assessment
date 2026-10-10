@@ -663,6 +663,11 @@ the group means the key is wrong, and blank or `FALSE` elsewhere in the group is
 is required whenever the key is wrong, and disagreeing `key_note` text across a group's rows is a
 validation error naming the group.
 
+When a set's owner revises a reviewer's marks, the owner's and the reviewer's workbooks are each
+imported in their own `eval-review-import` pass against the same set; see "Two-pass review import"
+in [`docs/pipeline-architecture.md`](../../docs/pipeline-architecture.md) and "Owner and reviewer
+passes" in the [CLI guide](../../docs/cli-guide-content-ingestion-and-question-pipeline.md).
+
 ---
 
 ## Directory map

@@ -670,6 +670,40 @@ any single run, all service-role only with no anon policies:
   `eval_items.reviewed_by`/`reviewed_at`, which are per item. A re-review under a revised rubric adds
   a new round rather than overwriting the claim about what confidence applied under the old one.
 
+### Two-pass review import
+
+A set whose owner can revise a reviewer's mark (the owner has access to the course material the
+reviewer does not, or applies rubric scope the reviewer missed) is imported in two
+`eval-review-import` passes against the same set, in this order:
+
+1. **Owner pass.** A workbook holding only the items the owner revised or filled is imported under a
+   reviewer handle of the form `<reviewer>+owner` (for example `sandra-o+owner`), without
+   `--policy-labels`.
+2. **Reviewer pass.** The reviewer's full workbook is imported under the reviewer's own handle.
+   Items the owner pass already approved are skipped by default (`--overwrite` is not passed), so
+   `eval_items.reviewed_by` on each item ends up naming whichever pass actually set its reference.
+   `--policy-labels` runs only on this pass, so policy-approved `typo`/`missing_accent` items are
+   stamped `reviewed_by: 'policy'`, never the owner handle.
+
+Each pass records its own `eval_review_rounds` row, so a set reviewed this way carries two rounds,
+not one. A sensitivity check that wants to exclude owner-revised items from a result filters
+`eval_items.reviewed_by` for the `+owner` handle.
+
+The owner revises a reviewer's mark only under rules recorded per item, outside the sheet's mark
+columns: the course material settles the mark the other way and the reviewer has no access to it;
+the mark rests on something the rubric puts out of scope (acceptable variations, distractors,
+typography, punctuation); the reviewer's own standard applied consistently to a blank or
+inconsistent cell; or sheet logic (an answer identical to an unchallenged key). A question the owner
+judges defective is excluded whole, its rows dropped from both workbooks, rather than having its key
+dispute resolved; its items stay `pending`.
+
+The two import workbooks are built from a review copy of the reviewer's workbook that carries one
+added column, `evaluation_notes`, the only column edited during review. Each decision in that column
+ends with an `APPLY:` clause naming either column=value pairs or `exclude row`; a script turns those
+clauses into the owner and reviewer workbooks above, so the reviewer's original file is never
+modified directly. `eval-review-import` itself validates every row before any write and refuses the
+whole tab on any error, including a blank verdict cell.
+
 ### Views
 
 Views compute across the tables so a comparison does not need a hand-written join each time. Each

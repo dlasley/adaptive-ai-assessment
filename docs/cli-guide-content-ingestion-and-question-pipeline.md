@@ -585,6 +585,32 @@ plain string such as `v1`), so a later re-review under a revised rubric can be t
 version, and how many items the run wrote. `--rubric-hash` and `--calibration-result` (a JSON object
 such as `{"pilot_agreement": 0.92, "pilot_item_count": 20}`) are optional fields on that row.
 
+### Owner and reviewer passes
+
+When whoever set up the set can revise a reviewer's mark on items the reviewer judged without
+access to the course material, import the completed workbooks in two passes against the same set,
+in this order:
+
+```bash
+# 1. Owner pass: a workbook holding only the items the owner revised or filled, imported under a
+#    "<reviewer>+owner" handle. No --policy-labels on this pass.
+pipeline eval-review-import --set <set-id> --from <owner-revisions-path>.xlsx \
+  --reviewer sandra-o+owner --rubric-version v1 --write-db
+
+# 2. Reviewer pass: the reviewer's full workbook, imported under their own handle. Items the
+#    owner pass already approved are skipped by default (no --overwrite), so reviewed_by on each
+#    item ends up naming whichever pass actually set its reference. --policy-labels, if used,
+#    goes on this pass.
+pipeline eval-review-import --set <set-id> --from <completed-sheet-path>.xlsx \
+  --reviewer sandra-o --rubric-version v1 --policy-labels --write-db
+```
+
+Running the owner pass first and the reviewer pass second, never the reverse, is what makes
+`reviewed_by` meaningful: without `--overwrite`, the second pass never overwrites what the first
+pass already approved. Each pass records its own `eval_review_rounds` row, so a set reviewed this
+way carries two rounds. A question the owner judges defective is dropped from both workbooks
+rather than having its key dispute resolved, and its items stay `pending`.
+
 ### Run a baseline twice
 
 Before judging any candidate, establish the reference numbers and the run-to-run noise floor by
